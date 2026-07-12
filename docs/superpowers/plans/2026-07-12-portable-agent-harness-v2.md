@@ -386,7 +386,7 @@ Normalize each request before routing:
     "read_resources": [],
     "write_scope": "NONE|PROJECT|NAMED_RESOURCES|UNKNOWN",
     "write_resources": [],
-    "execute_scope": "NONE|PROJECT|NAMED_COMMANDS|UNKNOWN",
+    "execute_scope": "NONE|NAMED_COMMANDS|UNKNOWN",
     "execute_commands": [],
     "network_scope": "NONE|NAMED_HOSTS|UNKNOWN",
     "network_hosts": [],
@@ -409,25 +409,28 @@ Normalize each request before routing:
 }
 ~~~
 
-Authority scope and companion-list validation is exact:
+Authority validation uses explicit, non-overlapping branches:
 
-- NAMED_RESOURCES requires a non-empty read_resources or write_resources list.
-- NAMED_COMMANDS requires non-empty execute_commands.
-- NAMED_HOSTS requires non-empty network_hosts.
-- NONE, UNKNOWN, and PROJECT require the corresponding companion list to be
-  empty. PROJECT itself is the explicit whole-project grant.
-- Resource entries are canonical project-root-relative literal resource_ref
-  values and match only the identical resource_ref. Absolute paths, parent
-  traversal, empty values, duplicates, wildcards, glob, regex, and prefix or
-  suffix inference are invalid.
-- execute_commands contains validation-command IDs. Both command and cwd must
-  exactly match that declared record; a prefix or similar shell string is not a
-  match.
-- network_hosts contains exact normalized lower-case host[:port] identities
-  without scheme or path. Wildcard domains, suffix matching, inherited redirect
-  authority, and implicit default-port expansion are invalid.
-- An inconsistent scope/list pair is CONTRACT_ERROR. No companion value can
-  broaden its scope and UNKNOWN fails closed.
+- read_scope and write_scope are NONE|PROJECT|NAMED_RESOURCES|UNKNOWN.
+- PROJECT requires an empty companion list. It authorizes a RESOURCE identity
+  only when its canonical resource_ref resolves inside project_profile.root.
+  This is root-containment validation, not named membership.
+- NAMED_RESOURCES requires a non-empty companion list and case-sensitive exact
+  resource_ref membership. It never inherits PROJECT behavior.
+- execute_scope is NONE|NAMED_COMMANDS|UNKNOWN. Project-wide execute authority
+  does not exist. NAMED_COMMANDS requires non-empty execute_commands.
+- network_scope is NONE|NAMED_HOSTS|UNKNOWN. Project-wide network authority does
+  not exist. NAMED_HOSTS requires non-empty network_hosts.
+- NONE and UNKNOWN require an empty corresponding companion list.
+- Resource identities are canonical project-root-relative literals. Absolute
+  paths, parent traversal, empty values, duplicates, wildcards, glob, regex,
+  and prefix/suffix inference are invalid.
+- COMMAND authority uses an exact validation-command ID, command, and canonical
+  root-relative cwd. NETWORK authority uses an exact canonical lower-case
+  host[:port] without scheme or path.
+- Never case-fold, trim, resolve, rewrite, expand a default port, follow a
+  redirect, or otherwise normalize an action identity to manufacture a match.
+- An inconsistent scope/list pair is CONTRACT_ERROR. UNKNOWN fails closed.
 
 Canonical record schemas:
 
@@ -462,6 +465,183 @@ Canonical record schemas:
 exit_code, observed_revision, and observed_at are optional when not applicable.
 Candidate operation is read|create|update|delete|invoke. Candidate confidence is
 a JSON number from 0.0 through 1.0.
+
+Every candidate also has one action_type and one required action_identity.
+The mapping is exact:
+
+| action_type | operation | identity_kind | authority branch |
+| --- | --- | --- | --- |
+| READ_RESOURCE | read | RESOURCE | read_scope/read_resources |
+| CREATE_RESOURCE | create | RESOURCE | write_scope/write_resources |
+| UPDATE_RESOURCE | update | RESOURCE | write_scope/write_resources |
+| DELETE_RESOURCE | delete | RESOURCE | write_scope/write_resources |
+| EXECUTE_COMMAND | invoke | COMMAND | execute_scope/execute_commands |
+| CALL_NETWORK | invoke | NETWORK | network_scope/network_hosts |
+
+action_identity is a closed discriminated union:
+
+- RESOURCE requires exactly identity_kind and resource_ref.
+- COMMAND requires exactly identity_kind, command_id, command, and cwd.
+- NETWORK requires exactly identity_kind and network_host.
+- Fields from another identity kind are forbidden. Combined command/network
+  effects require separate approved candidates with explicit dependencies.
+- Producers supply canonical values. Main, part, work, and adapters reject
+  noncanonical values and never normalize them to manufacture authority.
+- command_id must case-sensitively equal one execute_commands member and command
+  plus cwd must exactly equal the referenced validation_command record.
+- network_host must case-sensitively equal one network_hosts member.
+
+The following normative fixture suite is used by executable conformance checks:
+
+~~~json
+{
+  "fixture_suite": "portable_harness_v2_semantics",
+  "action_positive": [
+    {
+      "id": "PROJECT_RESOURCE",
+      "action_type": "READ_RESOURCE",
+      "operation": "read",
+      "action_identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py"},
+      "root_contained": true,
+      "authority": {"read_scope": "PROJECT", "read_resources": []}
+    },
+    {
+      "id": "NAMED_RESOURCE",
+      "action_type": "UPDATE_RESOURCE",
+      "operation": "update",
+      "action_identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py"},
+      "root_contained": true,
+      "authority": {"write_scope": "NAMED_RESOURCES", "write_resources": ["src/app.py"]}
+    },
+    {
+      "id": "NAMED_COMMAND",
+      "action_type": "EXECUTE_COMMAND",
+      "operation": "invoke",
+      "action_identity": {
+        "identity_kind": "COMMAND",
+        "command_id": "tests",
+        "command": "python -m pytest -q",
+        "cwd": "."
+      },
+      "authority": {"execute_scope": "NAMED_COMMANDS", "execute_commands": ["tests"]},
+      "validation_command": {"id": "tests", "command": "python -m pytest -q", "cwd": "."}
+    },
+    {
+      "id": "NAMED_NETWORK",
+      "action_type": "CALL_NETWORK",
+      "operation": "invoke",
+      "action_identity": {"identity_kind": "NETWORK", "network_host": "api.example.com:443"},
+      "authority": {"network_scope": "NAMED_HOSTS", "network_hosts": ["api.example.com:443"]}
+    }
+  ],
+  "action_negative": [
+    {
+      "id": "PROJECT_WITH_NAMED_LIST",
+      "expected_error": "PROJECT_COMPANION_NOT_EMPTY",
+      "action_type": "READ_RESOURCE",
+      "operation": "read",
+      "action_identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py"},
+      "root_contained": true,
+      "authority": {"read_scope": "PROJECT", "read_resources": ["src/app.py"]}
+    },
+    {
+      "id": "NAMED_RESOURCE_MISS",
+      "expected_error": "NAMED_RESOURCE_NOT_AUTHORIZED",
+      "action_type": "UPDATE_RESOURCE",
+      "operation": "update",
+      "action_identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py"},
+      "root_contained": true,
+      "authority": {"write_scope": "NAMED_RESOURCES", "write_resources": ["src/other.py"]}
+    },
+    {
+      "id": "HYBRID_IDENTITY",
+      "expected_error": "IDENTITY_FIELDS_INVALID",
+      "action_type": "UPDATE_RESOURCE",
+      "operation": "update",
+      "action_identity": {
+        "identity_kind": "RESOURCE",
+        "resource_ref": "src/app.py",
+        "command_id": "tests"
+      },
+      "root_contained": true,
+      "authority": {"write_scope": "PROJECT", "write_resources": []}
+    },
+    {
+      "id": "MISSING_ACTION_IDENTITY",
+      "expected_error": "ACTION_IDENTITY_MISSING",
+      "action_type": "UPDATE_RESOURCE",
+      "operation": "update",
+      "root_contained": true,
+      "authority": {"write_scope": "PROJECT", "write_resources": []}
+    },
+    {
+      "id": "COMMAND_NORMALIZATION_ATTEMPT",
+      "expected_error": "COMMAND_RECORD_MISMATCH",
+      "action_type": "EXECUTE_COMMAND",
+      "operation": "invoke",
+      "action_identity": {
+        "identity_kind": "COMMAND",
+        "command_id": "tests",
+        "command": "python -m PYTEST -q",
+        "cwd": "."
+      },
+      "authority": {"execute_scope": "NAMED_COMMANDS", "execute_commands": ["tests"]},
+      "validation_command": {"id": "tests", "command": "python -m pytest -q", "cwd": "."}
+    },
+    {
+      "id": "PROJECT_EXECUTE_SCOPE",
+      "expected_error": "EXECUTE_SCOPE_INVALID",
+      "action_type": "EXECUTE_COMMAND",
+      "operation": "invoke",
+      "action_identity": {
+        "identity_kind": "COMMAND",
+        "command_id": "tests",
+        "command": "python -m pytest -q",
+        "cwd": "."
+      },
+      "authority": {"execute_scope": "PROJECT", "execute_commands": []},
+      "validation_command": {"id": "tests", "command": "python -m pytest -q", "cwd": "."}
+    }
+  ],
+  "evidence_negative": [
+    {
+      "id": "UNRESOLVED_REFERENCE",
+      "expected_error": "EVIDENCE_REF_UNRESOLVED",
+      "base_revision": 2,
+      "outcome_code": "NO_CANDIDATE",
+      "inspected_sources": [{"source_ref": "README.md", "evidence_refs": ["EVID-MISSING"]}],
+      "evidence": [{"id": "EVID-1", "tier": "E1", "type": "file", "source": "README.md", "observation": "inspected", "observed_revision": 2}]
+    },
+    {
+      "id": "DUPLICATE_EVIDENCE_ID",
+      "expected_error": "EVIDENCE_ID_DUPLICATE",
+      "base_revision": 2,
+      "outcome_code": "NO_CANDIDATE",
+      "inspected_sources": [{"source_ref": "README.md", "evidence_refs": ["EVID-1"]}],
+      "evidence": [
+        {"id": "EVID-1", "tier": "E1", "type": "file", "source": "README.md", "observation": "first", "observed_revision": 2},
+        {"id": "EVID-1", "tier": "E1", "type": "file", "source": "README.md", "observation": "duplicate", "observed_revision": 2}
+      ]
+    },
+    {
+      "id": "STALE_REFERENCE",
+      "expected_error": "EVIDENCE_STALE",
+      "base_revision": 2,
+      "outcome_code": "NO_CANDIDATE",
+      "inspected_sources": [{"source_ref": "README.md", "evidence_refs": ["EVID-1"]}],
+      "evidence": [{"id": "EVID-1", "tier": "E1", "type": "file", "source": "README.md", "observation": "stale", "observed_revision": 1}]
+    },
+    {
+      "id": "EMPTY_DIAGNOSTIC_DISCOVERY",
+      "expected_error": "DIAGNOSTIC_DISCOVERY_EMPTY",
+      "base_revision": 2,
+      "outcome_code": "NO_CANDIDATE",
+      "inspected_sources": [],
+      "evidence": []
+    }
+  ]
+}
+~~~
 
 Every CandidatePacket, including NO_CANDIDATE, BLOCKED_PROPOSAL, and
 CONTRACT_ERROR, carries payload.evidence as its canonical evidence catalog.
@@ -580,9 +760,11 @@ CandidatePacket payload.outcome_code is required and is exactly
 CANDIDATES_PROPOSED|NO_CANDIDATE|BLOCKED_PROPOSAL|CONTRACT_ERROR. Every outcome
 includes payload.evidence. CANDIDATES_PROPOSED requires one or more candidates;
 the other outcomes require an empty candidates array. Each candidate must
-include candidate_id, resource_ref, operation, expected_effect, scope,
-rationale, confidence, evidence_refs, dependencies, preconditions,
-proposed_verification, and risk_notes.
+include candidate_id, action_type, action_identity, operation, expected_effect,
+scope, rationale, confidence, evidence_refs, dependencies, preconditions,
+proposed_verification, and risk_notes. A top-level candidate resource_ref may be
+retained only for RESOURCE actions and must exactly equal
+action_identity.resource_ref; it is forbidden for COMMAND and NETWORK actions.
 
 WorkResult must include approved_candidate_ids, candidate_results,
 changed_resources, acceptance_results, evidence, residual_risks,
@@ -592,15 +774,19 @@ Before acceptance, validate:
 
 1. protocol, packet type, actor, task_id, correlation_id, and base_revision;
 2. candidate outcome cardinality and canonical project_profile field names;
-3. unique evidence IDs, unique evidence_refs, exact reference resolution, and
+3. action_type/operation/identity_kind mapping, required and forbidden identity
+   fields, and absence of normalization;
+4. PROJECT root containment versus NAMED exact membership, with no PROJECT
+   execute or network scope;
+5. unique evidence IDs, unique evidence_refs, exact reference resolution, and
    freshness metadata;
-4. project-root-relative resource scope and exact authority scope/companion
+6. project-root-relative resource scope and exact authority scope/companion
    matches;
-5. mutation authority and protected resources;
-6. acceptance-result evidence freshness and floor;
-7. consistency between changed_resources, evidence, and proposed_transition;
-8. retry budget and idempotency;
-9. absence of secret or untrusted-instruction promotion.
+7. mutation authority and protected resources;
+8. acceptance-result evidence freshness and floor;
+9. consistency between changed_resources, evidence, and proposed_transition;
+10. retry budget and idempotency;
+11. absence of secret or untrusted-instruction promotion.
 
 Invalid format receives at most one repair attempt. A safety or authority
 violation is not a formatting error and must not be repaired into acceptance.
@@ -766,6 +952,10 @@ Before deciding, confirm:
 - retries remain within budget;
 - only main updates accepted state and event sequence;
 - user output matches trace level;
+- PROJECT RESOURCE authority uses root containment with an empty list, NAMED
+  authority uses exact membership, and execute/network never use PROJECT;
+- every candidate has one valid action_type/action_identity union with no
+  forbidden fields, hybrid identity, missing identity, or normalization;
 - every authority scope/list pair is consistent and every named operation is an
   exact literal match without wildcard or implicit authority;
 - every CandidatePacket outcome has a unique, fresh payload.evidence catalog and
@@ -780,10 +970,114 @@ Run:
 ~~~powershell
 $path = '.github/agents/main_instruction.prompt.md'
 $text = Get-Content -Raw -Encoding UTF8 $path
-$required = @('Protocol: 2.0','TaskPacket | task | main','MainDecision | main_decision | main','MainDecision.payload.accepted_state.status','validation_command','TaskPacket.capabilities','DIRECT|PART_ONLY|PART_THEN_WORK|WORK_ONLY|FORK_JOIN','operation_mode','response_phase','payload.accepted_state.checkpoint_ref','CandidatePacket','WorkResult','HC-AUTH-001','assertion_suggestions','event_suggestions','QUIET','sole v1 normalization owner','read_resources','write_resources','execute_commands','network_hosts','CANDIDATES_PROPOSED|NO_CANDIDATE|BLOCKED_PROPOSAL|CONTRACT_ERROR','payload.evidence','every reference resolves to exactly one catalog','wildcards')
-$missing = $required | Where-Object { -not $text.Contains($_) }
-if ($missing) { $missing; exit 1 }
 if ($text.Contains('ForgeOps') -or $text.Contains('hyunsuki5329')) { exit 1 }
+$match = [regex]::Match($text, '(?ms)^~~~json\r?$\n(?<j>\{\s*"fixture_suite":\s*"portable_harness_v2_semantics".*?\})\r?\n^~~~\r?$')
+if (-not $match.Success) { Write-Error 'semantic fixture missing'; exit 1 }
+$fx = $match.Groups['j'].Value | ConvertFrom-Json
+
+function Exact-Props($o, [string[]]$expected) {
+  if ($null -eq $o) { return $false }
+  return @(Compare-Object $expected @($o.PSObject.Properties.Name)).Count -eq 0
+}
+function Unique-List($v) {
+  $a = @($v)
+  return $a.Count -gt 0 -and
+    @($a | Where-Object { [string]::IsNullOrWhiteSpace([string]$_) }).Count -eq 0 -and
+    @($a | Sort-Object -CaseSensitive -Unique).Count -eq $a.Count
+}
+function Canonical-Resource([string]$v) {
+  if ([string]::IsNullOrWhiteSpace($v) -or $v.StartsWith('/') -or $v.Contains('\') -or
+      $v -match '^[A-Za-z]:' -or $v -match '[*?\[\]]') { return $false }
+  return @(($v -split '/') | Where-Object { $_ -eq '' -or $_ -eq '.' -or $_ -eq '..' }).Count -eq 0
+}
+function Resource-Error($c, [string]$operation, [string]$scopeName, [string]$listName) {
+  $i = $c.action_identity
+  if ($c.operation -cne $operation -or $i.identity_kind -cne 'RESOURCE') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
+  if (-not (Exact-Props $i @('identity_kind','resource_ref'))) { return 'IDENTITY_FIELDS_INVALID' }
+  if (-not (Canonical-Resource $i.resource_ref)) { return 'RESOURCE_IDENTITY_NONCANONICAL' }
+  $scope = $c.authority.$scopeName
+  $list = @($c.authority.$listName)
+  if ($scope -ceq 'PROJECT') {
+    if ($list.Count -ne 0) { return 'PROJECT_COMPANION_NOT_EMPTY' }
+    if ($c.root_contained -ne $true) { return 'PROJECT_ROOT_CONTAINMENT_FAILED' }
+    return $null
+  }
+  if ($scope -ceq 'NAMED_RESOURCES') {
+    if (-not (Unique-List $list)) { return 'NAMED_RESOURCE_LIST_INVALID' }
+    if (-not ($list -ccontains $i.resource_ref)) { return 'NAMED_RESOURCE_NOT_AUTHORIZED' }
+    return $null
+  }
+  return 'RESOURCE_SCOPE_INVALID'
+}
+function Action-Error($c) {
+  if ($null -eq $c.action_identity) { return 'ACTION_IDENTITY_MISSING' }
+  $i = $c.action_identity
+  switch -CaseSensitive ($c.action_type) {
+    'READ_RESOURCE' { return Resource-Error $c 'read' 'read_scope' 'read_resources' }
+    'CREATE_RESOURCE' { return Resource-Error $c 'create' 'write_scope' 'write_resources' }
+    'UPDATE_RESOURCE' { return Resource-Error $c 'update' 'write_scope' 'write_resources' }
+    'DELETE_RESOURCE' { return Resource-Error $c 'delete' 'write_scope' 'write_resources' }
+    'EXECUTE_COMMAND' {
+      if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'COMMAND') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
+      if (-not (Exact-Props $i @('identity_kind','command_id','command','cwd'))) { return 'IDENTITY_FIELDS_INVALID' }
+      if ($c.authority.execute_scope -cne 'NAMED_COMMANDS') { return 'EXECUTE_SCOPE_INVALID' }
+      if (-not (Unique-List $c.authority.execute_commands) -or
+          -not (@($c.authority.execute_commands) -ccontains $i.command_id)) { return 'COMMAND_NOT_AUTHORIZED' }
+      if ($i.command_id -cne $c.validation_command.id -or $i.command -cne $c.validation_command.command -or
+          $i.cwd -cne $c.validation_command.cwd) { return 'COMMAND_RECORD_MISMATCH' }
+      if ($i.cwd -cne '.' -and -not (Canonical-Resource $i.cwd)) { return 'COMMAND_CWD_NONCANONICAL' }
+      return $null
+    }
+    'CALL_NETWORK' {
+      if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'NETWORK') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
+      if (-not (Exact-Props $i @('identity_kind','network_host'))) { return 'IDENTITY_FIELDS_INVALID' }
+      if ($i.network_host -cnotmatch '^[a-z0-9.-]+:[0-9]+$') { return 'NETWORK_IDENTITY_NONCANONICAL' }
+      if ($c.authority.network_scope -cne 'NAMED_HOSTS') { return 'NETWORK_SCOPE_INVALID' }
+      if (-not (Unique-List $c.authority.network_hosts) -or
+          -not (@($c.authority.network_hosts) -ccontains $i.network_host)) { return 'NETWORK_NOT_AUTHORIZED' }
+      return $null
+    }
+    default { return 'ACTION_TYPE_UNKNOWN' }
+  }
+}
+function Evidence-Error($c) {
+  $e = @($c.evidence)
+  $sources = @($c.inspected_sources)
+  if ($c.outcome_code -ceq 'NO_CANDIDATE' -and ($e.Count -eq 0 -or $sources.Count -eq 0)) {
+    return 'DIAGNOSTIC_DISCOVERY_EMPTY'
+  }
+  $ids = @($e | ForEach-Object { $_.id })
+  if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_ID_DUPLICATE' }
+  foreach ($source in $sources) {
+    if (-not (Unique-List $source.evidence_refs)) { return 'EVIDENCE_REF_MISSING' }
+    foreach ($ref in @($source.evidence_refs)) {
+      $found = @($e | Where-Object { $_.id -ceq $ref })
+      if ($found.Count -eq 0) { return 'EVIDENCE_REF_UNRESOLVED' }
+      if ($found.Count -gt 1) { return 'EVIDENCE_REF_MULTIPLE' }
+      if ($null -ne $found[0].observed_revision) {
+        if ([int]$found[0].observed_revision -ne [int]$c.base_revision) { return 'EVIDENCE_STALE' }
+      }
+      elseif ([string]::IsNullOrWhiteSpace([string]$found[0].observed_at)) { return 'EVIDENCE_FRESHNESS_MISSING' }
+    }
+  }
+  return $null
+}
+foreach ($case in @($fx.action_positive)) {
+  $actual = Action-Error $case
+  if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
+}
+foreach ($case in @($fx.action_negative)) {
+  $actual = Action-Error $case
+  if ($actual -cne $case.expected_error) {
+    Write-Error "negative $($case.id): expected $($case.expected_error), got $actual"; exit 1
+  }
+}
+foreach ($case in @($fx.evidence_negative)) {
+  $actual = Evidence-Error $case
+  if ($actual -cne $case.expected_error) {
+    Write-Error "negative evidence $($case.id): expected $($case.expected_error), got $actual"; exit 1
+  }
+}
 ~~~
 
 Expected: exit code 0 and no output.
@@ -875,9 +1169,11 @@ Reject a recall whose attempt exceeds budgets.part_attempts.
 
 ## 2. Discovery order
 
-1. Confirm project root and the exact read_scope/read_resources pair. For
-   NAMED_RESOURCES, each read resource_ref must be an identical literal list
-   member; do not use wildcard, prefix, suffix, or inferred authority.
+1. Confirm project root and branch on read_scope. PROJECT requires empty
+   read_resources and root containment for each RESOURCE identity.
+   NAMED_RESOURCES requires non-empty read_resources and case-sensitive exact
+   resource_ref membership. NONE or UNKNOWN denies discovery. Never apply named
+   membership to PROJECT or normalize a resource_ref to manufacture a match.
 2. Load host/runtime and applicable scoped instructions already identified by
    main; discover additional nested instructions only within read scope.
 3. Inspect declared source_of_truth before weak signals.
@@ -894,8 +1190,12 @@ absolute path as a portable candidate reference.
 Each candidate has:
 
 - candidate_id unique within task_id;
-- resource_ref;
-- operation read|create|update|delete|invoke;
+- action_type READ_RESOURCE|CREATE_RESOURCE|UPDATE_RESOURCE|DELETE_RESOURCE|
+  EXECUTE_COMMAND|CALL_NETWORK;
+- action_identity as the required closed RESOURCE|COMMAND|NETWORK union;
+- operation read|create|update|delete|invoke compatible with action_type;
+- resource_ref only for RESOURCE actions, exactly equal to
+  action_identity.resource_ref;
 - expected_effect;
 - scope;
 - rationale;
@@ -914,9 +1214,18 @@ Confidence guidance:
 - 0.50-0.79: corroborated repository evidence with bounded inference.
 - 0.00-0.49: weak signal; do not make it the sole mutating candidate.
 
+action_type maps to identity_kind exactly: the four resource action types use
+RESOURCE, EXECUTE_COMMAND uses COMMAND, and CALL_NETWORK uses NETWORK. RESOURCE
+allows only identity_kind/resource_ref; COMMAND only
+identity_kind/command_id/command/cwd; NETWORK only
+identity_kind/network_host. Reject missing or hybrid identities. Values are
+already canonical: never case-fold, trim, resolve, rewrite, or otherwise
+normalize them to create authority. Combined command and network effects are
+separate candidates with dependencies.
+
 Do not duplicate candidates that share the same evidence and expected effect.
-Do not propose delete or external invoke when authority is UNKNOWN or denied;
-record the gate requirement instead.
+Do not propose delete, command, or network action when exact authority is
+UNKNOWN or denied; record the gate requirement instead.
 
 ## 4. CandidatePacket
 
@@ -954,6 +1263,11 @@ Return:
     "candidates": [
       {
         "candidate_id": "CAND-1",
+        "action_type": "UPDATE_RESOURCE",
+        "action_identity": {
+          "identity_kind": "RESOURCE",
+          "resource_ref": "relative/path"
+        },
         "resource_ref": "relative/path",
         "operation": "update",
         "expected_effect": "observable effect",
@@ -996,18 +1310,40 @@ return:
 
 ~~~json
 {
+  "protocol_version": "2.0",
+  "packet_type": "candidate_proposal",
+  "task_id": "TASK-001",
+  "correlation_id": "CORR-001",
+  "base_revision": 0,
+  "actor": "part",
+  "status": "SUCCEEDED",
   "payload": {
     "outcome_code": "NO_CANDIDATE",
     "task_breakdown": [],
-    "evidence": [],
+    "evidence": [
+      {
+        "id": "EVID-NC-1",
+        "tier": "E1",
+        "type": "file",
+        "source": "README.md",
+        "observation": "README.md was inspected within scope and contained no evidence supporting a candidate",
+        "observed_revision": 0
+      }
+    ],
     "candidates": [],
     "missing_evidence": [],
     "missing_capability": [],
-    "inspected_sources": [],
-    "recommended_next_action": "ASK_USER|EXPAND_READ_SCOPE|LOAD_PROFILE|BLOCK",
+    "inspected_sources": [
+      {
+        "source_ref": "README.md",
+        "observation": "completed direct inspection",
+        "evidence_refs": ["EVID-NC-1"]
+      }
+    ],
+    "recommended_next_action": "ASK_USER",
     "assertion_suggestions": [],
     "event_suggestions": [],
-    "proposed_transition": "WAITING_FOR_HUMAN|BLOCKED"
+    "proposed_transition": "WAITING_FOR_HUMAN"
   }
 }
 ~~~
@@ -1021,8 +1357,12 @@ outcome_code semantics are exact:
 - CONTRACT_ERROR: input or canonical contract is incompatible; candidates is
   empty and contract_violations identifies the invalid or missing fields.
 
-Every outcome, including the last three, carries payload.evidence, even when it
-is an empty array. Do not broaden scope automatically.
+Every outcome carries payload.evidence. NO_CANDIDATE is completed diagnostic
+discovery, so inspected_sources and payload.evidence are non-empty; every
+inspected source has concrete evidence_refs that resolve exactly once and are
+fresh at base_revision. BLOCKED_PROPOSAL and CONTRACT_ERROR may have an empty
+catalog only when no observation was possible. Do not broaden scope
+automatically.
 
 ## 6. Recall behavior
 
@@ -1054,9 +1394,11 @@ Before returning:
 - every task unit maps to acceptance criteria;
 - every evidence ID and evidence_ref is unique, every reference resolves exactly
   once, and freshness metadata supports its tier;
+- every candidate has exactly one valid action_type/action_identity mapping,
+  required identity fields, and no forbidden or normalized fields;
 - every candidate maps to direct evidence or declares inference;
-- every resource is root-relative and exactly covered by read_scope and
-  read_resources;
+- every RESOURCE is root-contained under PROJECT or exact-listed under
+  NAMED_RESOURCES; command/network scopes are never PROJECT;
 - no mutation, accepted-state update, event sequence, or fabricated evidence
   occurred;
 - recall rules and budgets are respected;
@@ -1071,11 +1413,122 @@ Run:
 ~~~powershell
 $path = '.github/agents/part_agent.prompt.md'
 $text = Get-Content -Raw -Encoding UTF8 $path
-$required = @('Protocol: 2.0','read-only','CandidatePacket','"packet_type": "candidate_proposal"','candidate_id','resource_ref','operation read|create|update|delete|invoke','confidence from 0.0 to 1.0','confidence_basis','evidence_refs','proposed_verification','"outcome_code": "CANDIDATES_PROPOSED"','"outcome_code": "NO_CANDIDATE"','BLOCKED_PROPOSAL','CONTRACT_ERROR','payload.evidence','Duplicate evidence IDs','each resolve to exactly one payload.evidence entry','observed_revision equals this','read_scope/read_resources','profile_type','profile_status','instruction_files','source_of_truth','validation_commands','protected_resources','risk_rules','extensions','recall_context','assertion_suggestions','proposed_transition','event_suggestions')
-$missing = $required | Where-Object { -not $text.Contains($_) }
-if ($missing) { $missing; exit 1 }
 if ($text.Contains('ForgeOps') -or $text.Contains('hyunsuki5329')) { exit 1 }
 if ($text -match 'Part (updates|increments|assigns) accepted') { exit 1 }
+$objects = @([regex]::Matches($text, '(?ms)^~~~json\r?$\n(?<j>.*?)^~~~\r?$') | ForEach-Object { $_.Groups['j'].Value | ConvertFrom-Json })
+$packets = @($objects | Where-Object { $_.packet_type -ceq 'candidate_proposal' })
+$normal = $packets | Where-Object { $_.payload.outcome_code -ceq 'CANDIDATES_PROPOSED' } | Select-Object -First 1
+$none = $packets | Where-Object { $_.payload.outcome_code -ceq 'NO_CANDIDATE' } | Select-Object -First 1
+if ($null -eq $normal -or $null -eq $none) { Write-Error 'positive CandidatePacket examples missing'; exit 1 }
+
+function Ref-Error($packet, $refs) {
+  $items = @($refs)
+  $uniqueItems = @($items | Sort-Object -CaseSensitive -Unique)
+  $itemCount = $items.Count
+  $uniqueItemCount = $uniqueItems.Count
+  if ($itemCount -ne $uniqueItemCount) {
+    return 'EVIDENCE_REF_DUPLICATE'
+  }
+  $evidence = @($packet.payload.evidence)
+  foreach ($ref in $items) {
+    $found = @($evidence | Where-Object { $_.id -ceq $ref })
+    if ($found.Count -ne 1) { return 'EVIDENCE_REF_RESOLUTION' }
+    if ($null -ne $found[0].observed_revision) {
+      if ([int]$found[0].observed_revision -ne [int]$packet.base_revision) {
+        return 'EVIDENCE_STALE'
+      }
+    }
+    elseif ([string]::IsNullOrWhiteSpace([string]$found[0].observed_at)) {
+      return 'EVIDENCE_FRESHNESS_MISSING'
+    }
+  }
+  return $null
+}
+
+function Packet-Evidence-Error($packet) {
+  $evidence = @($packet.payload.evidence)
+  $ids = @($evidence | ForEach-Object { $_.id })
+  $uniqueIds = @($ids | Sort-Object -CaseSensitive -Unique)
+  if ($ids.Count -ne $uniqueIds.Count) {
+    return 'EVIDENCE_ID_DUPLICATE'
+  }
+
+  $sourceItems = @()
+  $hasInspectedSources = $packet.payload.PSObject.Properties.Name -contains 'inspected_sources'
+  if ($hasInspectedSources) {
+    $sourceValue = $packet.payload.inspected_sources
+    if ($null -eq $sourceValue -or $sourceValue -isnot [System.Array]) {
+      return 'INSPECTED_SOURCES_INVALID'
+    }
+    $sourceItems = @($sourceValue)
+    foreach ($sourceItem in $sourceItems) {
+      if ($null -eq $sourceItem -or
+          $sourceItem -isnot [System.Management.Automation.PSCustomObject] -or
+          $sourceItem.PSObject.Properties.Name -notcontains 'evidence_refs' -or
+          $null -eq $sourceItem.evidence_refs -or
+          $sourceItem.evidence_refs -isnot [System.Array]) {
+        return 'INSPECTED_SOURCES_INVALID'
+      }
+    }
+  }
+
+  foreach ($candidateItem in @($packet.payload.candidates)) {
+    $candidateRefs = @($candidateItem.evidence_refs)
+    $errorCode = Ref-Error -packet $packet -refs $candidateRefs
+    if ($null -ne $errorCode) { return $errorCode }
+  }
+  foreach ($sourceItem in $sourceItems) {
+    $sourceRefs = @($sourceItem.evidence_refs)
+    $errorCode = Ref-Error -packet $packet -refs $sourceRefs
+    if ($null -ne $errorCode) { return $errorCode }
+  }
+  if ($packet.payload.outcome_code -ceq 'NO_CANDIDATE') {
+    if (@($packet.payload.candidates).Count -ne 0 -or $evidence.Count -eq 0 -or
+        $sourceItems.Count -eq 0) {
+      return 'DIAGNOSTIC_DISCOVERY_EMPTY'
+    }
+    foreach ($sourceItem in $sourceItems) {
+      if ([string]::IsNullOrWhiteSpace([string]$sourceItem.source_ref) -or
+          @($sourceItem.evidence_refs).Count -eq 0) {
+        return 'DIAGNOSTIC_SOURCE_INVALID'
+      }
+    }
+  }
+  return $null
+}
+$candidate = @($normal.payload.candidates)[0]
+$identity = $candidate.action_identity
+if ($candidate.action_type -cne 'UPDATE_RESOURCE' -or $candidate.operation -cne 'update' -or
+    $identity.identity_kind -cne 'RESOURCE' -or
+    @(Compare-Object @('identity_kind','resource_ref') @($identity.PSObject.Properties.Name)).Count -ne 0 -or
+    $candidate.resource_ref -cne $identity.resource_ref) {
+  Write-Error 'positive RESOURCE identity invalid'; exit 1
+}
+if ($normal.payload.PSObject.Properties.Name -contains 'inspected_sources') {
+  Write-Error 'positive CANDIDATES_PROPOSED must exercise absent inspected_sources'; exit 1
+}
+$normalError = Packet-Evidence-Error $normal
+$noneError = Packet-Evidence-Error $none
+if ($null -ne $normalError -or $null -ne $noneError) {
+  Write-Error "positive CandidatePacket evidence invalid: normal=$normalError none=$noneError"; exit 1
+}
+
+$invalidSourceShapes = @(
+  [pscustomobject]@{ id = 'NULL'; value = $null },
+  [pscustomobject]@{
+    id = 'NON_ARRAY'
+    value = [pscustomobject]@{ source_ref = 'README.md'; evidence_refs = @('EVID-1') }
+  },
+  [pscustomobject]@{ id = 'INVALID_ENTRY'; value = @($null) }
+)
+foreach ($case in $invalidSourceShapes) {
+  $copy = $normal | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+  $copy.payload | Add-Member -NotePropertyName 'inspected_sources' -NotePropertyValue $case.value
+  $actual = Packet-Evidence-Error $copy
+  if ($actual -cne 'INSPECTED_SOURCES_INVALID') {
+    Write-Error "invalid inspected_sources $($case.id) accepted as $actual"; exit 1
+  }
+}
 ~~~
 
 Expected: exit code 0 and no output.
@@ -1131,26 +1584,30 @@ authoritative events, final task status, or user approval. It proposes results
 to main.
 
 Mutation is forbidden unless TaskPacket operation_mode is EXECUTE, required
-capabilities are AVAILABLE, the applicable authority scope and companion
-read_resources, write_resources, execute_commands, or network_hosts entry
-matches the action identity exactly, approved candidate IDs are present,
-base_revision is current, and preflight passes. UNKNOWN fails closed.
+capabilities are AVAILABLE, the candidate has one valid action_type and closed
+action_identity, exact authority binds that identity, approved candidate IDs are
+present, base_revision is current, and preflight passes. UNKNOWN fails closed.
 
-NAMED_RESOURCES, NAMED_COMMANDS, and NAMED_HOSTS require non-empty matching
-companion lists. NONE, UNKNOWN, and PROJECT require an empty corresponding list.
-PROJECT is the explicit whole-project resource grant. Named entries are literal:
-resource_ref must match exactly, command ID plus declared command and cwd must
-match exactly, and normalized host[:port] must match exactly. Reject empty or
-duplicate entries, absolute or parent-traversing resources, wildcards, glob,
-regex, prefix/suffix inference, inherited redirect authority, and every
-inconsistent scope/list pair as CONTRACT_ERROR.
+For RESOURCE actions, PROJECT and NAMED_RESOURCES are separate branches.
+PROJECT requires an empty companion list and canonical resource_ref containment
+inside project_profile.root; it never checks named membership. NAMED_RESOURCES
+requires a non-empty list and case-sensitive exact resource_ref membership.
+execute_scope is only NONE|NAMED_COMMANDS|UNKNOWN and network_scope is only
+NONE|NAMED_HOSTS|UNKNOWN; project-wide execute or network authority is invalid.
+COMMAND requires exact command_id membership plus exact command and
+root-relative cwd equality with validation_commands. NETWORK requires exact
+network_host membership. Reject missing or hybrid identities, forbidden fields,
+empty or duplicate lists, traversal, wildcard, prefix/suffix or redirect
+inference, case folding, trimming, path resolution, and every normalization
+attempt or inconsistent scope/list pair as CONTRACT_ERROR.
 
 ## 1. Input contract
 
 Require:
 
 - protocol 2.0 TaskPacket from main;
-- a compatible CandidatePacket or complete approved execution context;
+- a compatible CandidatePacket or complete approved execution context with
+  action_type, action_identity, and operation;
 - approved_candidate_ids;
 - current accepted revision;
 - canonical project_profile root, profile_type, profile_status,
@@ -1169,18 +1626,19 @@ Perform in order:
 
 1. Confirm project root and resolve each resource_ref under it.
 2. Confirm candidate ID approval and acceptance-criterion mapping.
-3. Re-read applicable instructions and candidate evidence.
-4. Validate every authority scope/companion pair.
-   Require an exact literal match in read_resources, write_resources,
-   execute_commands, or network_hosts for each named read, write, execute, or
-   network action. Reject wildcard,
-   prefix, suffix, redirect-inherited, duplicate, or implicit authority. Also
-   check destructive action and external effects.
-5. Check protected resources, user-owned changes, dirty workspace, locks,
+3. Validate action_type/operation/identity_kind mapping and the exact required
+   and forbidden fields for RESOURCE, COMMAND, or NETWORK. Never normalize.
+4. Re-read applicable instructions and candidate evidence.
+5. Branch authority validation: PROJECT RESOURCE uses root containment and an
+   empty list; NAMED_RESOURCES uses exact list membership; COMMAND and NETWORK
+   require NAMED_COMMANDS and NAMED_HOSTS. Reject project-wide execute/network,
+   wildcard, prefix/suffix, redirect-inherited, duplicate, or implicit
+   authority. Also check destructive action and external effects.
+6. Check protected resources, user-owned changes, dirty workspace, locks,
    branch or state revision, and overlapping writers.
-6. Confirm operation idempotency and retry safety.
-7. Confirm required validation is available or record why it cannot run.
-8. Stop and propose WAITING_FOR_HUMAN or BLOCKED on any hard failure.
+7. Confirm operation idempotency and retry safety.
+8. Confirm required validation is available or record why it cannot run.
+9. Stop and propose WAITING_FOR_HUMAN or BLOCKED on any hard failure.
 
 Never overwrite unrelated user changes. Never interpret permission to change
 one resource as permission to reformat or refactor adjacent resources.
@@ -1262,6 +1720,11 @@ Return:
     "candidate_results": [
       {
         "candidate_id": "CAND-1",
+        "action_type": "UPDATE_RESOURCE",
+        "action_identity": {
+          "identity_kind": "RESOURCE",
+          "resource_ref": "relative/path"
+        },
         "decision": "ACCEPTED",
         "reason": "current evidence and authority support execution",
         "evidence_refs": ["EVID-1"]
@@ -1274,10 +1737,35 @@ Return:
         "scope": "observed change"
       }
     ],
-    "acceptance_results": [],
-    "evidence": [],
+    "acceptance_results": [
+      {
+        "criterion_id": "AC-1",
+        "status": "PASSED",
+        "evidence_refs": ["EVID-2"],
+        "notes": "required validation passed"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "EVID-1",
+        "tier": "E1",
+        "type": "file",
+        "source": "relative/path",
+        "observation": "approved target and preconditions were inspected before execution",
+        "observed_revision": 0
+      },
+      {
+        "id": "EVID-2",
+        "tier": "E2",
+        "type": "test",
+        "source": "tests",
+        "observation": "required validation passed after the change",
+        "exit_code": 0,
+        "observed_revision": 0
+      }
+    ],
     "validation_summary": {
-      "passed": 0,
+      "passed": 1,
       "failed": 0,
       "not_run": 0
     },
@@ -1338,9 +1826,11 @@ or fabricated success are HARD_CRITICAL and stop execution.
 Before returning:
 
 - protocol, task, correlation, actor, and base revision match;
-- every mutation maps to approved candidate, criterion, and an exact
-  write_resources, execute_commands, or network_hosts identity when the scope is
-  named;
+- every mutation maps to an approved candidate, criterion, valid action_type,
+  closed action_identity, and matching authority branch;
+- PROJECT RESOURCE uses root containment only, NAMED uses exact membership, and
+  command/network authority is never PROJECT;
+- every identity has required fields only and was not normalized;
 - every authority scope/list pair is consistent, unique, literal, and free of
   wildcard or implicit matching;
 - user-owned changes and protected resources are preserved;
@@ -1359,10 +1849,46 @@ Run:
 ~~~powershell
 $path = '.github/agents/work_agent.prompt.md'
 $text = Get-Content -Raw -Encoding UTF8 $path
-$required = @('Protocol: 2.0','UNKNOWN fails closed','"packet_type": "work_result"','approved_candidate_ids','base_revision','protected resources','dirty workspace','overlapping writers','idempotency','WorkResult','acceptance_results','evidence floor','PARTIAL','compensation_options','assertion_suggestions','event_suggestions','proposed_transition','read_resources','write_resources','execute_commands','network_hosts','inconsistent scope/list pair','wildcard','exact literal match')
-$missing = $required | Where-Object { -not $text.Contains($_) }
-if ($missing) { $missing; exit 1 }
 if ($text.Contains('ForgeOps') -or $text.Contains('hyunsuki5329')) { exit 1 }
+$objects = @([regex]::Matches($text, '(?ms)^~~~json\r?$\n(?<j>.*?)^~~~\r?$') | ForEach-Object { $_.Groups['j'].Value | ConvertFrom-Json })
+$result = $objects | Where-Object { $_.packet_type -ceq 'work_result' } | Select-Object -First 1
+if ($null -eq $result) { Write-Error 'positive WorkResult missing'; exit 1 }
+$e = @($result.payload.evidence)
+$ids = @($e | ForEach-Object { $_.id })
+if ($e.Count -eq 0 -or $ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) {
+  Write-Error 'WorkResult evidence invalid'; exit 1
+}
+$arrays = @()
+foreach ($cr in @($result.payload.candidate_results)) {
+  $i = $cr.action_identity
+  if ($cr.action_type -cne 'UPDATE_RESOURCE' -or $i.identity_kind -cne 'RESOURCE' -or
+      @(Compare-Object @('identity_kind','resource_ref') @($i.PSObject.Properties.Name)).Count -ne 0) {
+    Write-Error 'WorkResult action_identity invalid'; exit 1
+  }
+  $arrays += ,@($cr.evidence_refs)
+}
+foreach ($ar in @($result.payload.acceptance_results)) { $arrays += ,@($ar.evidence_refs) }
+foreach ($refs in $arrays) {
+  if (@($refs).Count -ne @($refs | Sort-Object -CaseSensitive -Unique).Count) {
+    Write-Error 'duplicate WorkResult ref'; exit 1
+  }
+  foreach ($ref in @($refs)) {
+    $found = @($e | Where-Object { $_.id -ceq $ref })
+    if ($found.Count -ne 1) { Write-Error "unresolved WorkResult ref $ref"; exit 1 }
+    if ($null -ne $found[0].observed_revision) {
+      if ([int]$found[0].observed_revision -ne [int]$result.base_revision) {
+        Write-Error "stale WorkResult ref $ref"; exit 1
+      }
+    }
+    elseif ([string]::IsNullOrWhiteSpace([string]$found[0].observed_at)) {
+      Write-Error "freshness missing $ref"; exit 1
+    }
+  }
+}
+if (@($result.payload.acceptance_results | Where-Object { $_.status -ceq 'PASSED' }).Count -eq 0 -or
+    [int]$result.payload.validation_summary.passed -lt 1) {
+  Write-Error 'successful WorkResult lacks passed criterion'; exit 1
+}
 ~~~
 
 Expected: exit code 0 and no output.
@@ -1740,14 +2266,26 @@ authority는 scope와 companion 목록을 항상 함께 기록한다.
 - execute_scope와 execute_commands
 - network_scope와 network_hosts
 
-NAMED_RESOURCES, NAMED_COMMANDS, NAMED_HOSTS는 대응 목록이 비어 있으면
-CONTRACT_ERROR다. NONE, UNKNOWN, PROJECT일 때 대응 목록은 비어 있어야 한다.
-PROJECT는 프로젝트 전체에 대한 명시적 자원 권한이다. named resource는
-프로젝트 루트 상대 resource_ref가 문자 그대로 같아야 하고, execute_commands는
-validation command id와 그 command/cwd가 정확히 같아야 하며, network_hosts는
-정규화된 소문자 host[:port]가 정확히 같아야 한다. 빈 값, 중복, 절대 경로,
-상위 경로 이동, wildcard, glob, regex, prefix/suffix 추론, redirect 권한 상속은
-모두 거부한다. 목록이나 범위를 암묵적으로 확장하지 않는다.
+read_scope/write_scope의 PROJECT와 NAMED_RESOURCES는 별도 분기다. PROJECT는
+companion 목록이 비어 있어야 하며 canonical RESOURCE resource_ref가
+project_profile.root 내부에 포함되는지만 검사한다. named membership을 검사하지
+않는다. NAMED_RESOURCES는 비어 있지 않은 목록의 case-sensitive exact
+resource_ref membership을 요구한다.
+
+execute_scope는 NONE|NAMED_COMMANDS|UNKNOWN, network_scope는
+NONE|NAMED_HOSTS|UNKNOWN만 허용한다. 프로젝트 전체 execute/network 권한은
+없다. command_id는 execute_commands에 정확히 있어야 하고 command/cwd는
+validation_commands record와 정확히 같아야 한다. network_host는 정규화된
+소문자 host[:port]가 network_hosts와 정확히 같아야 한다. 빈 값, 중복, 절대
+경로, 상위 경로 이동, wildcard, glob, regex, prefix/suffix 추론, redirect
+권한 상속은 거부한다. case-fold, trim, path resolve 등으로 일치를 만들지 않는다.
+
+모든 candidate에는 action_type과 하나의 closed action_identity가 필요하다.
+READ/CREATE/UPDATE/DELETE_RESOURCE는 RESOURCE(identity_kind, resource_ref),
+EXECUTE_COMMAND는 COMMAND(identity_kind, command_id, command, cwd),
+CALL_NETWORK는 NETWORK(identity_kind, network_host)를 사용한다. 다른 variant
+필드가 섞인 hybrid, identity 누락, action_type/operation 불일치, 정규화 시도는
+CONTRACT_ERROR다.
 
 예:
 
@@ -1786,6 +2324,14 @@ reference는 catalog의 항목 하나에만 정확히 해석되어야 한다. �
 evidence의 observed_revision은 packet base_revision과 같아야 한다. E1 이상
 runtime evidence는 런타임이 제공한 observed_at 또는 일치하는
 observed_revision이 필요하며 timestamp를 만들지 않는다.
+
+NO_CANDIDATE는 탐색 완료 결과이므로 inspected_sources와 payload.evidence가
+비어 있지 않아야 하고 source의 모든 evidence_ref가 정확히 하나의 최신 항목을
+가리켜야 한다. WorkResult의 candidate_results와 acceptance_results가 참조한
+모든 ID도 payload.evidence에 있어야 한다. unresolved, duplicate, stale ref와
+빈 diagnostic discovery는 conformance 실패다. EMPTY_DIAGNOSTIC_DISCOVERY fixture를 포함한 음성 사례의 expected_error는
+EVIDENCE_REF_UNRESOLVED, EVIDENCE_ID_DUPLICATE, EVIDENCE_STALE,
+DIAGNOSTIC_DISCOVERY_EMPTY를 각각 확인한다.
 
 ## 10. v1 마이그레이션
 
@@ -1836,6 +2382,19 @@ v2만 사용한다.
 입력: 현재 파일의 문제 분석
 기대: PART_ONLY, E1, outcome_code가 CANDIDATES_PROPOSED 또는
 NO_CANDIDATE인 CandidatePacket, payload.evidence 포함, mutation 없음
+
+### PROJECT와 NAMED_RESOURCE
+
+입력: 동일 RESOURCE candidate를 PROJECT 빈 목록과 NAMED_RESOURCES exact
+목록으로 각각 검사
+기대: PROJECT는 root containment만, NAMED는 exact membership만 적용
+
+### action_identity 음성 fixture
+
+입력: hybrid RESOURCE+COMMAND, identity 누락, command 대소문자 변경,
+execute_scope PROJECT
+기대: 각각 IDENTITY_FIELDS_INVALID, ACTION_IDENTITY_MISSING,
+COMMAND_RECORD_MISMATCH, EXECUTE_SCOPE_INVALID
 
 ### 권한 없는 변경
 
@@ -1986,12 +2545,152 @@ foreach ($path in $portablePaths) {
   if ($text -match 'ForgeOps|hyunsuki5329') { Write-Error "$path project coupling"; exit 1 }
 }
 
-$mainRequired = @('TaskPacket | task | main','CandidatePacket | candidate_proposal | part','WorkResult | work_result | work','MainDecision | main_decision | main','MainDecision.payload.accepted_state.status','payload.accepted_state.checkpoint_ref','payload.assertions','payload.events','read_resources','write_resources','execute_commands','network_hosts','sole v1 normalization owner','payload.evidence','every reference resolves to exactly one catalog','CANDIDATES_PROPOSED|NO_CANDIDATE|BLOCKED_PROPOSAL|CONTRACT_ERROR')
-$partRequired = @('"packet_type": "candidate_proposal"','"outcome_code": "CANDIDATES_PROPOSED"','"outcome_code": "NO_CANDIDATE"','BLOCKED_PROPOSAL','CONTRACT_ERROR','payload.evidence','Duplicate evidence IDs','each resolve to exactly one payload.evidence entry','observed_revision equals this','read_scope/read_resources','profile_type','instruction_files','source_of_truth','validation_commands','assertion_suggestions','event_suggestions','proposed_transition','operation read|create|update|delete|invoke','confidence from 0.0 to 1.0')
-$workRequired = @('"packet_type": "work_result"','approved_candidate_ids','base_revision is current','protected resources','dirty workspace','overlapping writers','read_resources','write_resources','execute_commands','network_hosts','exact literal match','inconsistent scope/list pair','assertion_suggestions','event_suggestions','proposed_transition')
+$mainRequired = @('TaskPacket | task | main','CandidatePacket | candidate_proposal | part','WorkResult | work_result | work','MainDecision | main_decision | main','MainDecision.payload.accepted_state.status','payload.accepted_state.checkpoint_ref','payload.assertions','payload.events','"execute_scope": "NONE|NAMED_COMMANDS|UNKNOWN"','"network_scope": "NONE|NAMED_HOSTS|UNKNOWN"','fixture_suite','action_type','action_identity','payload.evidence')
+$partRequired = @('"packet_type": "candidate_proposal"','"outcome_code": "CANDIDATES_PROPOSED"','"outcome_code": "NO_CANDIDATE"','EVID-NC-1','inspected_sources','action_type','action_identity','identity_kind','assertion_suggestions','event_suggestions','proposed_transition')
+$workRequired = @('"packet_type": "work_result"','approved_candidate_ids','base_revision is current','action_type','action_identity','EVID-1','EVID-2','acceptance_results','protected resources','dirty workspace','overlapping writers','assertion_suggestions','event_suggestions','proposed_transition')
 foreach ($token in $mainRequired) { if (-not $main.Contains($token)) { Write-Error "main missing $token"; exit 1 } }
 foreach ($token in $partRequired) { if (-not $part.Contains($token)) { Write-Error "part missing $token"; exit 1 } }
 foreach ($token in $workRequired) { if (-not $work.Contains($token)) { Write-Error "work missing $token"; exit 1 } }
+
+function Exact-Props($o, [string[]]$expected) {
+  if ($null -eq $o) { return $false }
+  return @(Compare-Object $expected @($o.PSObject.Properties.Name)).Count -eq 0
+}
+function Unique-List($v) {
+  $a = @($v)
+  return $a.Count -gt 0 -and
+    @($a | Where-Object { [string]::IsNullOrWhiteSpace([string]$_) }).Count -eq 0 -and
+    @($a | Sort-Object -CaseSensitive -Unique).Count -eq $a.Count
+}
+function Canonical-Resource([string]$v) {
+  if ([string]::IsNullOrWhiteSpace($v) -or $v.StartsWith('/') -or $v.Contains('\') -or
+      $v -match '^[A-Za-z]:' -or $v -match '[*?\[\]]') { return $false }
+  return @(($v -split '/') | Where-Object { $_ -eq '' -or $_ -eq '.' -or $_ -eq '..' }).Count -eq 0
+}
+function Resource-Error($c, [string]$operation, [string]$scopeName, [string]$listName) {
+  $i = $c.action_identity
+  if ($c.operation -cne $operation -or $i.identity_kind -cne 'RESOURCE') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
+  if (-not (Exact-Props $i @('identity_kind','resource_ref'))) { return 'IDENTITY_FIELDS_INVALID' }
+  if (-not (Canonical-Resource $i.resource_ref)) { return 'RESOURCE_IDENTITY_NONCANONICAL' }
+  $scope = $c.authority.$scopeName
+  $list = @($c.authority.$listName)
+  if ($scope -ceq 'PROJECT') {
+    if ($list.Count -ne 0) { return 'PROJECT_COMPANION_NOT_EMPTY' }
+    if ($c.root_contained -ne $true) { return 'PROJECT_ROOT_CONTAINMENT_FAILED' }
+    return $null
+  }
+  if ($scope -ceq 'NAMED_RESOURCES') {
+    if (-not (Unique-List $list)) { return 'NAMED_RESOURCE_LIST_INVALID' }
+    if (-not ($list -ccontains $i.resource_ref)) { return 'NAMED_RESOURCE_NOT_AUTHORIZED' }
+    return $null
+  }
+  return 'RESOURCE_SCOPE_INVALID'
+}
+function Action-Error($c) {
+  if ($null -eq $c.action_identity) { return 'ACTION_IDENTITY_MISSING' }
+  $i = $c.action_identity
+  switch -CaseSensitive ($c.action_type) {
+    'READ_RESOURCE' { return Resource-Error $c 'read' 'read_scope' 'read_resources' }
+    'CREATE_RESOURCE' { return Resource-Error $c 'create' 'write_scope' 'write_resources' }
+    'UPDATE_RESOURCE' { return Resource-Error $c 'update' 'write_scope' 'write_resources' }
+    'DELETE_RESOURCE' { return Resource-Error $c 'delete' 'write_scope' 'write_resources' }
+    'EXECUTE_COMMAND' {
+      if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'COMMAND') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
+      if (-not (Exact-Props $i @('identity_kind','command_id','command','cwd'))) { return 'IDENTITY_FIELDS_INVALID' }
+      if ($c.authority.execute_scope -cne 'NAMED_COMMANDS') { return 'EXECUTE_SCOPE_INVALID' }
+      if (-not (Unique-List $c.authority.execute_commands) -or -not (@($c.authority.execute_commands) -ccontains $i.command_id)) { return 'COMMAND_NOT_AUTHORIZED' }
+      if ($i.command_id -cne $c.validation_command.id -or $i.command -cne $c.validation_command.command -or
+          $i.cwd -cne $c.validation_command.cwd) { return 'COMMAND_RECORD_MISMATCH' }
+      return $null
+    }
+    'CALL_NETWORK' {
+      if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'NETWORK') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
+      if (-not (Exact-Props $i @('identity_kind','network_host'))) { return 'IDENTITY_FIELDS_INVALID' }
+      if ($i.network_host -cnotmatch '^[a-z0-9.-]+:[0-9]+$') { return 'NETWORK_IDENTITY_NONCANONICAL' }
+      if ($c.authority.network_scope -cne 'NAMED_HOSTS') { return 'NETWORK_SCOPE_INVALID' }
+      if (-not (Unique-List $c.authority.network_hosts) -or -not (@($c.authority.network_hosts) -ccontains $i.network_host)) { return 'NETWORK_NOT_AUTHORIZED' }
+      return $null
+    }
+    default { return 'ACTION_TYPE_UNKNOWN' }
+  }
+}
+function Evidence-Error($c) {
+  $e = @($c.evidence)
+  $sources = @($c.inspected_sources)
+  if ($c.outcome_code -ceq 'NO_CANDIDATE' -and ($e.Count -eq 0 -or $sources.Count -eq 0)) {
+    return 'DIAGNOSTIC_DISCOVERY_EMPTY'
+  }
+  $ids = @($e | ForEach-Object { $_.id })
+  if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_ID_DUPLICATE' }
+  foreach ($source in $sources) {
+    if (-not (Unique-List $source.evidence_refs)) { return 'EVIDENCE_REF_MISSING' }
+    foreach ($ref in @($source.evidence_refs)) {
+      $found = @($e | Where-Object { $_.id -ceq $ref })
+      if ($found.Count -eq 0) { return 'EVIDENCE_REF_UNRESOLVED' }
+      if ($found.Count -gt 1) { return 'EVIDENCE_REF_MULTIPLE' }
+      if ($null -ne $found[0].observed_revision) {
+        if ([int]$found[0].observed_revision -ne [int]$c.base_revision) { return 'EVIDENCE_STALE' }
+      }
+      elseif ([string]::IsNullOrWhiteSpace([string]$found[0].observed_at)) { return 'EVIDENCE_FRESHNESS_MISSING' }
+    }
+  }
+  return $null
+}
+
+$fixtureMatch = [regex]::Match($main, '(?ms)^~~~json\r?$\n(?<j>\{\s*"fixture_suite":\s*"portable_harness_v2_semantics".*?\})\r?\n^~~~\r?$')
+if (-not $fixtureMatch.Success) { Write-Error 'semantic fixture missing'; exit 1 }
+$fx = $fixtureMatch.Groups['j'].Value | ConvertFrom-Json
+foreach ($case in @($fx.action_positive)) {
+  $actual = Action-Error $case
+  if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
+}
+foreach ($case in @($fx.action_negative)) {
+  $actual = Action-Error $case
+  if ($actual -cne $case.expected_error) { Write-Error "negative $($case.id): $actual"; exit 1 }
+}
+foreach ($case in @($fx.evidence_negative)) {
+  $actual = Evidence-Error $case
+  if ($actual -cne $case.expected_error) { Write-Error "negative evidence $($case.id): $actual"; exit 1 }
+}
+
+function Json-Objects([string]$body) {
+  return @([regex]::Matches($body, '(?ms)^~~~json\r?$\n(?<j>.*?)^~~~\r?$') |
+    ForEach-Object { $_.Groups['j'].Value | ConvertFrom-Json })
+}
+function Refs-Resolve($packet, $arrays) {
+  $e = @($packet.payload.evidence)
+  $ids = @($e | ForEach-Object { $_.id })
+  if ($e.Count -eq 0 -or $ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return $false }
+  foreach ($refs in $arrays) {
+    if (@($refs).Count -ne @($refs | Sort-Object -CaseSensitive -Unique).Count) { return $false }
+    foreach ($ref in @($refs)) {
+      $found = @($e | Where-Object { $_.id -ceq $ref })
+      if ($found.Count -ne 1) { return $false }
+      if ($null -ne $found[0].observed_revision -and
+          [int]$found[0].observed_revision -ne [int]$packet.base_revision) { return $false }
+    }
+  }
+  return $true
+}
+$partObjects = Json-Objects $part
+$normal = $partObjects | Where-Object { $_.payload.outcome_code -ceq 'CANDIDATES_PROPOSED' } | Select-Object -First 1
+$none = $partObjects | Where-Object { $_.payload.outcome_code -ceq 'NO_CANDIDATE' } | Select-Object -First 1
+if ($null -eq $normal -or $null -eq $none -or
+    @($none.payload.inspected_sources).Count -eq 0 -or @($none.payload.evidence).Count -eq 0) {
+  Write-Error 'CandidatePacket positive evidence examples invalid'; exit 1
+}
+$normalArrays = @(); foreach ($c in @($normal.payload.candidates)) { $normalArrays += ,@($c.evidence_refs) }
+$noneArrays = @(); foreach ($s in @($none.payload.inspected_sources)) { $noneArrays += ,@($s.evidence_refs) }
+if (-not (Refs-Resolve $normal $normalArrays) -or -not (Refs-Resolve $none $noneArrays)) {
+  Write-Error 'CandidatePacket evidence refs invalid'; exit 1
+}
+$workResult = Json-Objects $work | Where-Object { $_.packet_type -ceq 'work_result' } | Select-Object -First 1
+$workArrays = @()
+foreach ($cr in @($workResult.payload.candidate_results)) { $workArrays += ,@($cr.evidence_refs) }
+foreach ($ar in @($workResult.payload.acceptance_results)) { $workArrays += ,@($ar.evidence_refs) }
+if ($null -eq $workResult -or -not (Refs-Resolve $workResult $workArrays)) {
+  Write-Error 'WorkResult evidence refs invalid'; exit 1
+}
 
 if ($part.Contains('"assertions":') -or $part.Contains('"events":')) { Write-Error 'part claims authoritative records'; exit 1 }
 if ($work.Contains('"assertions":') -or $work.Contains('"events":')) { Write-Error 'work claims authoritative records'; exit 1 }
@@ -2010,7 +2709,7 @@ if ($agents -match '(?m)^  validation_discovery:') { Write-Error 'validation_dis
 if (-not $copilot.Contains('sole v1 normalization owner') -or $copilot.Contains('Normalize legacy')) { Write-Error 'adapter normalization ownership invalid'; exit 1 }
 
 $guide = $textByPath['docs/agent-harness/PORTING_GUIDE.md']
-foreach ($token in @('권한 없는 변경','stale revision','검증 실패','병렬 충돌','외부 효과','v1 마이그레이션','read_resources','write_resources','execute_commands','network_hosts','payload.evidence','CANDIDATES_PROPOSED','BLOCKED_PROPOSAL','CONTRACT_ERROR','payload.accepted_state.checkpoint_ref','extensions.forgeops.validation_discovery')) {
+foreach ($token in @('권한 없는 변경','stale revision','검증 실패','병렬 충돌','외부 효과','v1 마이그레이션','read_resources','write_resources','execute_commands','network_hosts','payload.evidence','CANDIDATES_PROPOSED','BLOCKED_PROPOSAL','CONTRACT_ERROR','payload.accepted_state.checkpoint_ref','extensions.forgeops.validation_discovery','PROJECT와 NAMED_RESOURCE','action_identity 음성 fixture','EMPTY_DIAGNOSTIC_DISCOVERY')) {
   if (-not $guide.Contains($token)) { Write-Error "guide missing $token"; exit 1 }
 }
 $readme = $textByPath['README.md']

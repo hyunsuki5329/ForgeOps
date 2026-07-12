@@ -134,23 +134,34 @@ fields are the only active top-level profile fields; adapters must reject an
 unknown active top-level field and place project-specific data below a
 namespaced project_profile.extensions entry.
 
-Authority scope and its companion list form one indivisible contract.
-NAMED_RESOURCES requires a non-empty read_resources or write_resources list;
-NAMED_COMMANDS requires non-empty execute_commands; NAMED_HOSTS requires
-non-empty network_hosts. NONE, UNKNOWN, and PROJECT require the corresponding
-list to be empty. Named resource values are canonical project-root-relative
-literal resource_ref values, command values are validation-command IDs whose
-command and cwd must match the declared record, and network values are exact
-normalized host[:port] identities. Empty values, duplicates, absolute paths,
-parent traversal, wildcard, glob, regex, prefix, suffix, scheme, redirect inheritance,
-or any other implicit match are invalid. Every operation must match its named
-companion exactly. An inconsistent scope/list pair is CONTRACT_ERROR and
+Authority validation branches explicitly by scope. read_scope and write_scope
+are NONE|PROJECT|NAMED_RESOURCES|UNKNOWN. PROJECT requires an empty companion
+list and authorizes a RESOURCE identity only when its canonical resource_ref
+resolves inside project_profile.root; named membership is not consulted.
+NAMED_RESOURCES requires a non-empty read_resources or write_resources list and
+case-sensitive exact membership. execute_scope is
+NONE|NAMED_COMMANDS|UNKNOWN, and network_scope is NONE|NAMED_HOSTS|UNKNOWN;
+project-wide execute or network authority does not exist. NAMED_COMMANDS and
+NAMED_HOSTS require non-empty exact companion lists. NONE and UNKNOWN require an
+empty companion list.
+
+Named resource values are canonical project-root-relative literals. Command
+authority names a validation-command ID whose command and root-relative cwd
+match exactly. Network authority names an exact canonical lower-case host[:port]
+identity. Empty values, duplicates, absolute paths, parent traversal, wildcard,
+glob, regex, prefix/suffix matching, scheme inheritance, redirects, case
+folding, path resolution to manufacture a match, or any other implicit
+authority are invalid. An inconsistent scope/list pair is CONTRACT_ERROR and
 UNKNOWN fails closed.
 
 Canonical records are:
 
 - validation command: id, command, cwd, evidence_tier, required;
 - candidate operation: read|create|update|delete|invoke;
+- candidate action_type: READ_RESOURCE|CREATE_RESOURCE|UPDATE_RESOURCE|
+  DELETE_RESOURCE|EXECUTE_COMMAND|CALL_NETWORK;
+- candidate action_identity: a required discriminated union with identity_kind
+  RESOURCE, COMMAND, or NETWORK;
 - candidate confidence: JSON number from 0.0 through 1.0;
 - acceptance result: criterion_id, status PASSED|FAILED|NOT_RUN,
   evidence_refs, notes;
@@ -181,18 +192,23 @@ decomposes the objective, and returns CandidatePacket. Every CandidatePacket
 has payload.outcome_code set to CANDIDATES_PROPOSED, NO_CANDIDATE,
 BLOCKED_PROPOSAL, or CONTRACT_ERROR and has a payload.evidence catalog,
 including no-candidate and error outcomes. Each candidate includes candidate_id,
-project-root-relative resource_ref, operation, expected effect, scope,
-rationale, confidence, evidence references, dependencies, preconditions,
-proposed verification, and risk notes. Part never updates accepted state.
+action_type, action_identity, operation, expected effect, scope, rationale,
+confidence, evidence references, dependencies, preconditions, proposed
+verification, and risk notes. RESOURCE identity contains only resource_ref;
+COMMAND contains only command_id, exact command, and exact root-relative cwd;
+NETWORK contains only network_host. Part never updates accepted state.
 
 ### Work
 
-Work mutates only when the task requests execution, the applicable authority
-scope and companion read_resources, write_resources, execute_commands, or
-network_hosts entry matches exactly, the candidate is approved, base_revision
-is current, and protected-resource and dirty-workspace checks pass. It makes
-the smallest authorized change, verifies each criterion, and returns WorkResult.
-Work never updates accepted state.
+Work mutates only when the task requests execution, action_type maps to the
+required action_identity kind, forbidden identity fields are absent, and the
+identity binds to the applicable authority branch. PROJECT read/write uses root
+containment only; NAMED_RESOURCES uses exact membership; command and network
+actions require exact NAMED_COMMANDS or NAMED_HOSTS authority. Work never
+normalizes an identity to manufacture a match. The candidate must also be
+approved, base_revision current, and protected-resource and dirty-workspace
+checks passing. Work makes the smallest authorized change, verifies each
+criterion, and returns WorkResult without updating accepted state.
 
 ## 9. Routing, evidence, and state
 
@@ -225,6 +241,11 @@ exactly one catalog entry. Project-state evidence is fresh only when its
 observed_revision equals the packet base_revision; E1-or-higher runtime evidence
 instead needs runtime-supplied observed_at or that matching observed_revision.
 Evidence without valid freshness metadata cannot support E1 or higher.
+NO_CANDIDATE means diagnostic discovery completed, so inspected_sources and
+payload.evidence are non-empty and every inspected-source evidence_ref resolves
+exactly once. WorkResult evidence contains every evidence ID referenced by
+candidate_results or acceptance_results. Duplicate, dangling, stale, or
+multiply resolving references and empty diagnostic discovery are invalid.
 Assertions always use a stable status plus violations array. Events are
 structured and owned by main; sub-agents return event_suggestions only. Runtime
 timestamps are optional and never invented. Secrets and oversized logs are
@@ -358,18 +379,24 @@ Implementation is accepted when:
 6. UNKNOWN fails closed for safety-relevant actions, and authority scope/list
    pairs reject wildcards, duplicates, mismatches, and implicit authority.
 7. Every CandidatePacket outcome includes a unique, fresh payload.evidence
-   catalog and all evidence_ref values resolve exactly once.
-8. Portable prompts contain no ForgeOps paths or domain rules.
-9. Both adapters reference all three prompt paths.
-10. The guide covers copying, configuration, dry run, failure tests, migration,
+   catalog and all evidence_ref values resolve exactly once; NO_CANDIDATE has
+   non-empty inspected_sources and evidence, and WorkResult resolves all refs.
+8. PROJECT versus NAMED authority is validated by separate branches and no
+   project-wide execute or network scope exists.
+9. Every candidate has a valid action_type/action_identity discriminated union;
+   hybrids, missing identities, forbidden fields, and normalization attempts
+   fail executable positive/negative fixture checks.
+10. Portable prompts contain no ForgeOps paths or domain rules.
+11. Both adapters reference all three prompt paths.
+12. The guide covers copying, configuration, dry run, failure tests, migration,
     and activation.
-11. Active project_profile fields are canonical; project-only fields are
+13. Active project_profile fields are canonical; project-only fields are
     namespaced under extensions.
-12. Main alone normalizes v1 and owns payload.accepted_state.checkpoint_ref.
-13. No contradictory event grammar, scoring fast path, implicit permission, or
+14. Main alone normalizes v1 and owns payload.accepted_state.checkpoint_ref.
+15. No contradictory event grammar, scoring fast path, implicit permission, or
     turn-count timeout remains.
-14. README links to all three prompts and every link resolves.
-15. Another project can reuse the harness by copying three prompts and defining
+16. README links to all three prompts and every link resolves.
+17. Another project can reuse the harness by copying three prompts and defining
     only its adapter/profile.
 
 ## 16. Scope boundary

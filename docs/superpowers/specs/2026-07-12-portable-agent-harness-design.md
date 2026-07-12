@@ -120,7 +120,8 @@ TaskPacket groups use these canonical field names:
   extensions;
 - capabilities: filesystem_read, filesystem_write, command_execute,
   delegation, network, external_side_effects;
-- authority: read_scope, write_scope, execute_scope, network_scope,
+- authority: read_scope, read_resources, write_scope, write_resources,
+  execute_scope, execute_commands, network_scope, network_hosts,
   destructive_actions, external_side_effects;
 - control: route, operation_mode, response_phase, risk_level, evidence_floor,
   trace_level;
@@ -128,7 +129,23 @@ TaskPacket groups use these canonical field names:
 
 Adapter capability_defaults are discovery hints that main normalizes into
 TaskPacket.capabilities; they never grant availability. Adapter trace_level
-normalizes into TaskPacket.control.trace_level.
+normalizes into TaskPacket.control.trace_level. The listed project_profile
+fields are the only active top-level profile fields; adapters must reject an
+unknown active top-level field and place project-specific data below a
+namespaced project_profile.extensions entry.
+
+Authority scope and its companion list form one indivisible contract.
+NAMED_RESOURCES requires a non-empty read_resources or write_resources list;
+NAMED_COMMANDS requires non-empty execute_commands; NAMED_HOSTS requires
+non-empty network_hosts. NONE, UNKNOWN, and PROJECT require the corresponding
+list to be empty. Named resource values are canonical project-root-relative
+literal resource_ref values, command values are validation-command IDs whose
+command and cwd must match the declared record, and network values are exact
+normalized host[:port] identities. Empty values, duplicates, absolute paths,
+parent traversal, wildcard, glob, regex, prefix, suffix, scheme, redirect inheritance,
+or any other implicit match are invalid. Every operation must match its named
+companion exactly. An inconsistent scope/list pair is CONTRACT_ERROR and
+UNKNOWN fails closed.
 
 Canonical records are:
 
@@ -138,7 +155,9 @@ Canonical records are:
 - acceptance result: criterion_id, status PASSED|FAILED|NOT_RUN,
   evidence_refs, notes;
 - evidence: id, tier, type, source, observation, with optional exit_code,
-  observed_revision, and observed_at.
+  observed_revision, and observed_at;
+- candidate outcome: CANDIDATES_PROPOSED|NO_CANDIDATE|BLOCKED_PROPOSAL|
+  CONTRACT_ERROR.
 
 Safety-relevant missing values are UNKNOWN. UNKNOWN never grants mutation,
 network, credential access, publication, messaging, or destructive action.
@@ -147,26 +166,33 @@ network, credential access, publication, messaging, or destructive action.
 
 ### Main
 
-Main alone owns request normalization, routing, risk and authority evaluation,
-accepted state, revisions, authoritative assertions and events, retry and gate
-decisions, terminal status, and final user response. Main verifies referenced
-evidence instead of trusting a sub-agent success claim.
+Main alone owns request normalization, including every v1-to-v2 field
+normalization, routing, risk and authority evaluation, accepted state,
+revisions, authoritative assertions and events, retry and gate decisions,
+terminal status, and final user response. Adapters only transport and preserve
+legacy input for main; they never rename or restructure it. Main verifies
+referenced evidence instead of trusting a sub-agent success claim.
 
 ### Part
 
-Part is strictly read-only. It validates TaskPacket, discovers applicable
-instructions and sources, decomposes the objective, and returns CandidatePacket.
-Each candidate includes candidate_id, project-root-relative resource_ref,
-operation, expected effect, scope, rationale, confidence, evidence references,
-dependencies, preconditions, proposed verification, and risk notes. Part never
-updates accepted state.
+Part is strictly read-only. It validates TaskPacket, consumes only the canonical
+project_profile fields, discovers applicable instructions and sources,
+decomposes the objective, and returns CandidatePacket. Every CandidatePacket
+has payload.outcome_code set to CANDIDATES_PROPOSED, NO_CANDIDATE,
+BLOCKED_PROPOSAL, or CONTRACT_ERROR and has a payload.evidence catalog,
+including no-candidate and error outcomes. Each candidate includes candidate_id,
+project-root-relative resource_ref, operation, expected effect, scope,
+rationale, confidence, evidence references, dependencies, preconditions,
+proposed verification, and risk notes. Part never updates accepted state.
 
 ### Work
 
-Work mutates only when the task requests execution, exact authority exists, the
-candidate is approved, base_revision is current, and protected-resource and
-dirty-workspace checks pass. It makes the smallest authorized change, verifies
-each criterion, and returns WorkResult. Work never updates accepted state.
+Work mutates only when the task requests execution, the applicable authority
+scope and companion read_resources, write_resources, execute_commands, or
+network_hosts entry matches exactly, the candidate is approved, base_revision
+is current, and protected-resource and dirty-workspace checks pass. It makes
+the smallest authorized change, verifies each criterion, and returns WorkResult.
+Work never updates accepted state.
 
 ## 9. Routing, evidence, and state
 
@@ -192,10 +218,17 @@ Evidence tiers:
 - E3: independent reproduction, isolation, deployment observation, or approval.
 
 Every acceptance criterion records PASSED, FAILED, or NOT_RUN. A passed
-criterion references fresh evidence. Assertions always use a stable status plus
-violations array. Events are structured and owned by main; sub-agents return
-event_suggestions only. Runtime timestamps are optional. Secrets and oversized
-logs are excluded.
+criterion references fresh evidence. CandidatePacket payload.evidence is the
+canonical catalog for every candidate outcome. Evidence IDs and each
+evidence_refs array contain no duplicates, and every evidence_ref resolves to
+exactly one catalog entry. Project-state evidence is fresh only when its
+observed_revision equals the packet base_revision; E1-or-higher runtime evidence
+instead needs runtime-supplied observed_at or that matching observed_revision.
+Evidence without valid freshness metadata cannot support E1 or higher.
+Assertions always use a stable status plus violations array. Events are
+structured and owned by main; sub-agents return event_suggestions only. Runtime
+timestamps are optional and never invented. Secrets and oversized logs are
+excluded.
 
 Canonical transitions:
 
@@ -223,7 +256,9 @@ payload.events are authoritative.
 
 | Failure | Required behavior |
 | --- | --- |
-| Incompatible protocol | Reject; one safe format repair |
+| Incompatible protocol | Candidate outcome CONTRACT_ERROR; one safe format repair |
+| Missing read capability or authority | Candidate outcome BLOCKED_PROPOSAL; never broaden scope |
+| Completed search with no defensible candidate | Candidate outcome NO_CANDIDATE |
 | Missing evidence | Repeat the relevant observation within budget |
 | Stale revision or conflict | Refresh; never overwrite silently |
 | Validation failure | Report criterion and evidence; bounded safe retry only |
@@ -260,7 +295,7 @@ Internal fields are not forced into normal user responses.
 | task_harness_mode BUILD | control.operation_mode EXECUTE |
 | execution_mode plan/report | control.response_phase PLAN/REPORT |
 | numeric evidence_tier | E0/E1/E2/E3 |
-| last_committed_ref | state.checkpoint_ref |
+| last_committed_ref | payload.accepted_state.checkpoint_ref |
 | proposal commit | main acceptance and revision increment |
 | part/work state_update | proposed_transition only |
 | text event_logs | structured events |
@@ -269,8 +304,9 @@ Internal fields are not forced into normal user responses.
 | file-count fast path | post-discovery scope signal only |
 | turn-count timeout | runtime-observed timeout metadata |
 
-Adapters may accept v1 temporarily but normalize before routing. New outputs are
-v2 only.
+Adapters may temporarily transport v1 input, but they preserve it unchanged for
+main. Main is the sole v1 normalization owner and normalizes directly to the
+canonical v2 payload before routing. New outputs are v2 only.
 
 ## 13. ForgeOps profile
 
@@ -285,8 +321,9 @@ Initial conservative defaults:
   observations;
 - protected resources: .git, .env files, credentials, secret stores, generated
   caches, and paths outside the project root;
-- validation: discover native commands from project configuration; while none
-  exist, run structural prompt checks and report missing runtime tests;
+- validation: extensions.forgeops.validation_discovery lists project
+  configuration files used to discover native commands; while none exist, run
+  structural prompt checks and report missing runtime tests;
 - network, destructive action, publication, messaging, and external effects:
   UNKNOWN until explicitly granted;
 - trace level: QUIET.
@@ -298,9 +335,11 @@ Future commands and domain risks belong in this profile, not portable prompts.
 1. Copy the three prompt files unchanged.
 2. Add the target platform instruction entry point.
 3. Map roles only to capabilities that really exist.
-4. Define root, instructions, sources, validation, protected resources, risks,
-   and namespaced extensions in project_profile.
-5. Start read-only.
+4. Define only the canonical root, profile_type, profile_status,
+   instruction_files, source_of_truth, validation_commands,
+   protected_resources, risk_rules, and namespaced extensions fields in
+   project_profile.
+5. Define all four authority companion lists explicitly and start read-only.
 6. Exercise direct, part-only, permission-denied, no-candidate, stale-revision,
    validation-failure, and human-gate scenarios.
 7. Enable low-risk writes after conformance.
@@ -316,15 +355,21 @@ Implementation is accepted when:
 4. Part is read-only and returns CandidatePacket.
 5. Work performs authority, scope, revision, protected-resource, and dirty-tree
    preflight before mutation.
-6. UNKNOWN fails closed for safety-relevant actions.
-7. Portable prompts contain no ForgeOps paths or domain rules.
-8. Both adapters reference all three prompt paths.
-9. The guide covers copying, configuration, dry run, failure tests, migration,
-   and activation.
-10. No contradictory event grammar, scoring fast path, implicit permission, or
+6. UNKNOWN fails closed for safety-relevant actions, and authority scope/list
+   pairs reject wildcards, duplicates, mismatches, and implicit authority.
+7. Every CandidatePacket outcome includes a unique, fresh payload.evidence
+   catalog and all evidence_ref values resolve exactly once.
+8. Portable prompts contain no ForgeOps paths or domain rules.
+9. Both adapters reference all three prompt paths.
+10. The guide covers copying, configuration, dry run, failure tests, migration,
+    and activation.
+11. Active project_profile fields are canonical; project-only fields are
+    namespaced under extensions.
+12. Main alone normalizes v1 and owns payload.accepted_state.checkpoint_ref.
+13. No contradictory event grammar, scoring fast path, implicit permission, or
     turn-count timeout remains.
-11. README links resolve.
-12. Another project can reuse the harness by copying three prompts and defining
+14. README links to all three prompts and every link resolves.
+15. Another project can reuse the harness by copying three prompts and defining
     only its adapter/profile.
 
 ## 16. Scope boundary

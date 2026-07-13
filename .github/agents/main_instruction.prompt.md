@@ -1451,7 +1451,11 @@ The following normative fixture suite is used by executable conformance checks:
                           {"id":"WORK_EVIDENCE_TIER_ARRAY","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_ARRAY"},
                           {"id":"WORK_EVIDENCE_TIER_NULL","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_NULL"},
                           {"id":"WORK_EVIDENCE_TIER_OBJECT","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_OBJECT"},
-                          {"id":"WORK_EVIDENCE_TIER_LOWERCASE","expected_error":"WORK_EVIDENCE_TIER_VALUE_INVALID","mutation":"EVIDENCE_TIER_LOWERCASE"}
+                          {"id":"WORK_EVIDENCE_TIER_LOWERCASE","expected_error":"WORK_EVIDENCE_TIER_VALUE_INVALID","mutation":"EVIDENCE_TIER_LOWERCASE"},
+                          {"id":"WORK_CANDIDATE_FLOOR_WRONG_CASE","expected_error":"WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CANDIDATE_FLOOR_WRONG_CASE"},
+                          {"id":"WORK_CRITERION_FLOOR_WRONG_CASE","expected_error":"WORK_CRITERION_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CRITERION_FLOOR_WRONG_CASE"},
+                          {"id":"WORK_CANDIDATE_REFS_WRONG_CASE","expected_error":"WORK_CANDIDATE_REFS_TYPE_INVALID","mutation":"CANDIDATE_REFS_WRONG_CASE"},
+                          {"id":"WORK_EVIDENCE_TIER_WRONG_CASE","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_WRONG_CASE"}
                       ]
 }
 ~~~

@@ -1719,7 +1719,11 @@ The following normative fixture suite is used by executable conformance checks:
                           {"id":"WORK_EVIDENCE_TIER_ARRAY","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_ARRAY"},
                           {"id":"WORK_EVIDENCE_TIER_NULL","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_NULL"},
                           {"id":"WORK_EVIDENCE_TIER_OBJECT","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_OBJECT"},
-                          {"id":"WORK_EVIDENCE_TIER_LOWERCASE","expected_error":"WORK_EVIDENCE_TIER_VALUE_INVALID","mutation":"EVIDENCE_TIER_LOWERCASE"}
+                          {"id":"WORK_EVIDENCE_TIER_LOWERCASE","expected_error":"WORK_EVIDENCE_TIER_VALUE_INVALID","mutation":"EVIDENCE_TIER_LOWERCASE"},
+                          {"id":"WORK_CANDIDATE_FLOOR_WRONG_CASE","expected_error":"WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CANDIDATE_FLOOR_WRONG_CASE"},
+                          {"id":"WORK_CRITERION_FLOOR_WRONG_CASE","expected_error":"WORK_CRITERION_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CRITERION_FLOOR_WRONG_CASE"},
+                          {"id":"WORK_CANDIDATE_REFS_WRONG_CASE","expected_error":"WORK_CANDIDATE_REFS_TYPE_INVALID","mutation":"CANDIDATE_REFS_WRONG_CASE"},
+                          {"id":"WORK_EVIDENCE_TIER_WRONG_CASE","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_WRONG_CASE"}
                       ]
 }
 ~~~
@@ -2271,7 +2275,7 @@ function Catalog-Error($c) {
   }
   return $null
 }
-$expected = [ordered]@{action_positive=5;action_negative=21;evidence_negative=13;freshness_positive=7;freshness_negative=14;inspected_sources_negative=10;work_positive=2;work_negative=34}
+$expected = [ordered]@{action_positive=5;action_negative=21;evidence_negative=13;freshness_positive=7;freshness_negative=14;inspected_sources_negative=10;work_positive=2;work_negative=38}
 foreach ($key in $expected.Keys) { if (@($fx.$key).Count -ne $expected[$key]) { Write-Error "$key count"; exit 1 } }
 foreach ($case in @($fx.action_positive)) {
   $actual = Action-Error $case; if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
@@ -3168,6 +3172,10 @@ object is invalid even when it contains one item. The trusted
 acceptance_criteria value remains the original array of criterion_id and
 evidence_floor records; an ordinal dictionary is only a runtime lookup.
 
+Closed-object WorkResult field names retain their original JSON spelling and
+are compared with StringComparer.Ordinal. Case variants are not aliases and
+fail required-field or exact-field validation.
+
 Every trusted approved candidate ID, trusted required criterion ID, and result
 candidate_id or criterion_id is an original non-empty JSON string before any
 cast or lookup. ID uniqueness, membership, and lookup use .NET HashSet and
@@ -3475,6 +3483,12 @@ function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) 
   if ($age -gt 300) { return 'WORK_EVIDENCE_STALE' }
   return $null
 }
+function Exact-Value($o, [string]$name) {
+  $property = Get-Exact-Property $o $name
+  if ($null -eq $property) { return $null }
+  Write-Output -NoEnumerate $property.Value
+  return
+}
 function Ref-Error($refs, [object[]]$evidence, [int]$baseRevision, [DateTimeOffset]$validationAt, $floor) {
   if (-not (Raw-Array $refs)) { return 'WORK_EVIDENCE_REFS_TYPE_INVALID' }
   $items = @($refs)
@@ -3489,13 +3503,14 @@ function Ref-Error($refs, [object[]]$evidence, [int]$baseRevision, [DateTimeOffs
   $floorRank = Tier-Rank $floor
   if ($floorRank -lt 0) { return 'WORK_EVIDENCE_FLOOR_INVALID' }
   foreach ($ref in $items) {
-    $found = @($evidence | Where-Object { $_.id -ceq $ref })
+    $found = @($evidence | Where-Object { (Exact-Value $_ 'id') -ceq $ref })
     if ($found.Count -eq 0) { return 'WORK_EVIDENCE_REF_UNRESOLVED' }
     if ($found.Count -gt 1) { return 'WORK_EVIDENCE_REF_MULTIPLE' }
     $fresh = Freshness-Error $found[0] $baseRevision $validationAt
     if ($null -ne $fresh) { return $fresh }
-    if ($found[0].tier -isnot [string]) { return 'WORK_EVIDENCE_TIER_TYPE_INVALID' }
-    $tierRank = Tier-Rank $found[0].tier
+    $tier = Exact-Value $found[0] 'tier'
+    if ($tier -isnot [string]) { return 'WORK_EVIDENCE_TIER_TYPE_INVALID' }
+    $tierRank = Tier-Rank $tier
     if ($tierRank -lt 0) { return 'WORK_EVIDENCE_TIER_VALUE_INVALID' }
     if ($tierRank -lt $floorRank) {
       return 'WORK_EVIDENCE_FLOOR_NOT_MET'
@@ -3504,43 +3519,59 @@ function Ref-Error($refs, [object[]]$evidence, [int]$baseRevision, [DateTimeOffs
   return $null
 }
 function Work-Error($case) {
-  $context = $case.context
-  $result = $case.result
+  $context = Exact-Value $case 'context'
+  $result = Exact-Value $case 'result'
+  $contextProtocol = Exact-Value $context 'protocol_version'
+  $contextTaskId = Exact-Value $context 'task_id'
+  $contextCorrelationId = Exact-Value $context 'correlation_id'
+  $contextBaseRevision = Exact-Value $context 'base_revision'
+  $contextValidationAt = Exact-Value $context 'validationAt'
+  $contextCandidateFloor = Exact-Value $context 'candidate_evidence_floor'
+  $contextApprovedIds = Exact-Value $context 'approved_candidate_ids'
+  $contextCriteria = Exact-Value $context 'acceptance_criteria'
   if ($null -eq $context -or $null -eq $result -or
-      $context.protocol_version -cne '2.0' -or
-      $context.task_id -isnot [string] -or [string]::IsNullOrWhiteSpace($context.task_id) -or
-      $context.correlation_id -isnot [string] -or [string]::IsNullOrWhiteSpace($context.correlation_id) -or
-      -not (Json-Integer $context.base_revision)) {
+      $contextProtocol -cne '2.0' -or
+      $contextTaskId -isnot [string] -or [string]::IsNullOrWhiteSpace($contextTaskId) -or
+      $contextCorrelationId -isnot [string] -or [string]::IsNullOrWhiteSpace($contextCorrelationId) -or
+      -not (Json-Integer $contextBaseRevision)) {
     return 'WORK_CONTEXT_INVALID'
   }
   $validationAt = [DateTimeOffset]::MinValue
-  if ($context.validationAt -isnot [string] -or -not (Parse-StrictUtc $context.validationAt ([ref]$validationAt))) {
+  if ($contextValidationAt -isnot [string] -or -not (Parse-StrictUtc $contextValidationAt ([ref]$validationAt))) {
     return 'WORK_CONTEXT_INVALID'
   }
-  if ($context.candidate_evidence_floor -isnot [string]) {
+  if ($contextCandidateFloor -isnot [string]) {
     return 'WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID'
   }
-  if ((Tier-Rank $context.candidate_evidence_floor) -lt 0) {
+  if ((Tier-Rank $contextCandidateFloor) -lt 0) {
     return 'WORK_CANDIDATE_EVIDENCE_FLOOR_VALUE_INVALID'
   }
-  if ($result.protocol_version -cne $context.protocol_version -or
-      $result.packet_type -cne 'work_result' -or $result.actor -cne 'work' -or
-      $result.task_id -cne $context.task_id -or
-      $result.correlation_id -cne $context.correlation_id -or
-      -not (Json-Integer $result.base_revision) -or
-      [int64]$result.base_revision -ne [int64]$context.base_revision) {
+  $resultProtocol = Exact-Value $result 'protocol_version'
+  $resultPacketType = Exact-Value $result 'packet_type'
+  $resultActor = Exact-Value $result 'actor'
+  $resultTaskId = Exact-Value $result 'task_id'
+  $resultCorrelationId = Exact-Value $result 'correlation_id'
+  $resultBaseRevision = Exact-Value $result 'base_revision'
+  $resultStatus = Exact-Value $result 'status'
+  $resultPayload = Exact-Value $result 'payload'
+  if ($resultProtocol -cne $contextProtocol -or
+      $resultPacketType -cne 'work_result' -or $resultActor -cne 'work' -or
+      $resultTaskId -cne $contextTaskId -or
+      $resultCorrelationId -cne $contextCorrelationId -or
+      -not (Json-Integer $resultBaseRevision) -or
+      [int64]$resultBaseRevision -ne [int64]$contextBaseRevision) {
     return 'WORK_CONTEXT_MISMATCH'
   }
-  if ($result.status -isnot [string] -or
-      -not (@('SUCCEEDED','FAILED','PARTIAL','BLOCKED') -ccontains $result.status)) {
+  if ($resultStatus -isnot [string] -or
+      -not (@('SUCCEEDED','FAILED','PARTIAL','BLOCKED') -ccontains $resultStatus)) {
     return 'WORK_STATUS_INVALID'
   }
-  $transition = $result.payload.proposed_transition
+  $transition = Exact-Value $resultPayload 'proposed_transition'
   if ($transition -isnot [string] -or
       -not (@('SUCCEEDED','FAILED','PARTIAL','BLOCKED','WAITING_FOR_HUMAN') -ccontains $transition)) {
     return 'WORK_TRANSITION_INVALID'
   }
-  $allowedTransitions = switch -CaseSensitive ($result.status) {
+  $allowedTransitions = switch -CaseSensitive ($resultStatus) {
     'SUCCEEDED' { @('SUCCEEDED') }
     'FAILED' { @('FAILED') }
     'PARTIAL' { @('PARTIAL') }
@@ -3549,136 +3580,152 @@ function Work-Error($case) {
   if (-not (@($allowedTransitions) -ccontains $transition)) {
     return 'WORK_STATUS_TRANSITION_INVALID'
   }
-  if (-not (NonEmpty-Unique-Strings $context.approved_candidate_ids) -or
-      -not (Raw-Array $context.acceptance_criteria) -or
-      @($context.acceptance_criteria).Count -eq 0 -or
-      -not (NonEmpty-Unique-Strings $result.payload.approved_candidate_ids) -or
-      -not (Raw-Array $result.payload.candidate_results) -or
-      -not (Raw-Array $result.payload.acceptance_results) -or
-      -not (Raw-Array $result.payload.evidence)) {
+  $payloadApprovedIds = Exact-Value $resultPayload 'approved_candidate_ids'
+  $candidateResults = Exact-Value $resultPayload 'candidate_results'
+  $acceptanceResults = Exact-Value $resultPayload 'acceptance_results'
+  $evidenceValue = Exact-Value $resultPayload 'evidence'
+  if (-not (NonEmpty-Unique-Strings $contextApprovedIds) -or
+      -not (Raw-Array $contextCriteria) -or
+      @($contextCriteria).Count -eq 0 -or
+      -not (NonEmpty-Unique-Strings $payloadApprovedIds) -or
+      -not (Raw-Array $candidateResults) -or
+      -not (Raw-Array $acceptanceResults) -or
+      -not (Raw-Array $evidenceValue)) {
     return 'WORK_ARRAY_INVALID'
   }
-  $trustedIds = @($context.approved_candidate_ids)
-  $resultIds = @($result.payload.approved_candidate_ids)
+  $trustedIds = @($contextApprovedIds)
+  $resultIds = @($payloadApprovedIds)
   if (-not (Exact-Ordinal-String-Set $trustedIds $resultIds)) {
     return 'WORK_APPROVED_IDS_MISMATCH'
   }
   $trustedIdSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
   foreach ($trustedId in $trustedIds) { [void]$trustedIdSet.Add($trustedId) }
-  $criteriaById = [Collections.Generic.Dictionary[string,object]]::new(
+  $criteriaFloorById = [Collections.Generic.Dictionary[string,string]]::new(
     [StringComparer]::Ordinal
   )
-  foreach ($criterion in @($context.acceptance_criteria)) {
-    if ($null -eq $criterion -or $criterion.criterion_id -isnot [string] -or
-        [string]::IsNullOrWhiteSpace($criterion.criterion_id)) {
+  foreach ($criterion in @($contextCriteria)) {
+    $criterionId = Exact-Value $criterion 'criterion_id'
+    if ($null -eq $criterion -or $criterionId -isnot [string] -or
+        [string]::IsNullOrWhiteSpace($criterionId)) {
       return 'WORK_CONTEXT_INVALID'
     }
-    if ($criterion.evidence_floor -isnot [string]) {
+    $criterionFloor = Exact-Value $criterion 'evidence_floor'
+    if ($criterionFloor -isnot [string]) {
       return 'WORK_CRITERION_EVIDENCE_FLOOR_TYPE_INVALID'
     }
-    if ((Tier-Rank $criterion.evidence_floor) -lt 0) {
+    if ((Tier-Rank $criterionFloor) -lt 0) {
       return 'WORK_CRITERION_EVIDENCE_FLOOR_VALUE_INVALID'
     }
-    $criterionId = $criterion.criterion_id
-    if ($criteriaById.ContainsKey($criterionId)) { return 'WORK_CONTEXT_INVALID' }
-    $criteriaById.Add($criterionId, $criterion)
+    if ($criteriaFloorById.ContainsKey($criterionId)) { return 'WORK_CONTEXT_INVALID' }
+    $criteriaFloorById.Add($criterionId, $criterionFloor)
   }
   $seenCandidates = [Collections.Generic.HashSet[string]]::new(
     [StringComparer]::Ordinal
   )
-  foreach ($candidate in @($result.payload.candidate_results)) {
-    if ($candidate.decision -isnot [string] -or
-        -not (@('ACCEPTED','REJECTED','DEFERRED') -ccontains $candidate.decision)) {
+  $acceptedCandidateRefs = @()
+  foreach ($candidate in @($candidateResults)) {
+    $candidateDecision = Exact-Value $candidate 'decision'
+    if ($candidateDecision -isnot [string] -or
+        -not (@('ACCEPTED','REJECTED','DEFERRED') -ccontains $candidateDecision)) {
       return 'WORK_CANDIDATE_DECISION_INVALID'
     }
-    if (-not (Raw-Array $candidate.evidence_refs)) {
+    $candidateRefs = Exact-Value $candidate 'evidence_refs'
+    if (-not (Raw-Array $candidateRefs)) {
       return 'WORK_CANDIDATE_REFS_TYPE_INVALID'
     }
-    if ($candidate.candidate_id -isnot [string] -or
-        [string]::IsNullOrWhiteSpace($candidate.candidate_id)) {
+    $candidateId = Exact-Value $candidate 'candidate_id'
+    if ($candidateId -isnot [string] -or
+        [string]::IsNullOrWhiteSpace($candidateId)) {
       return 'WORK_CANDIDATE_ID_INVALID'
     }
-    $candidateId = $candidate.candidate_id
     if (-not $trustedIdSet.Contains($candidateId)) { return 'WORK_CANDIDATE_UNKNOWN' }
     if (-not $seenCandidates.Add($candidateId)) { return 'WORK_CANDIDATE_DUPLICATE' }
+    if ($candidateDecision -ceq 'ACCEPTED') { $acceptedCandidateRefs += ,$candidateRefs }
   }
   if ($seenCandidates.Count -ne $trustedIds.Count) { return 'WORK_CANDIDATE_MISSING' }
   $seenCriteria = [Collections.Generic.HashSet[string]]::new(
     [StringComparer]::Ordinal
   )
-  foreach ($criterionResult in @($result.payload.acceptance_results)) {
-    if ($criterionResult.criterion_id -isnot [string] -or
-        [string]::IsNullOrWhiteSpace($criterionResult.criterion_id)) {
+  $passedCriteria = @()
+  foreach ($criterionResult in @($acceptanceResults)) {
+    $criterionId = Exact-Value $criterionResult 'criterion_id'
+    if ($criterionId -isnot [string] -or
+        [string]::IsNullOrWhiteSpace($criterionId)) {
       return 'WORK_CRITERION_ID_INVALID'
     }
-    $criterionId = $criterionResult.criterion_id
-    if (-not $criteriaById.ContainsKey($criterionId)) { return 'WORK_CRITERION_UNKNOWN' }
+    if (-not $criteriaFloorById.ContainsKey($criterionId)) { return 'WORK_CRITERION_UNKNOWN' }
     if (-not $seenCriteria.Add($criterionId)) { return 'WORK_CRITERION_DUPLICATE' }
-    if ($criterionResult.status -isnot [string] -or
-        -not (@('PASSED','FAILED','NOT_RUN') -ccontains $criterionResult.status)) {
+    $criterionStatus = Exact-Value $criterionResult 'status'
+    if ($criterionStatus -isnot [string] -or
+        -not (@('PASSED','FAILED','NOT_RUN') -ccontains $criterionStatus)) {
       return 'WORK_ACCEPTANCE_STATUS_INVALID'
     }
-    if (-not (Raw-Array $criterionResult.evidence_refs)) {
-      switch -CaseSensitive ($criterionResult.status) {
+    $criterionRefs = Exact-Value $criterionResult 'evidence_refs'
+    if (-not (Raw-Array $criterionRefs)) {
+      switch -CaseSensitive ($criterionStatus) {
         'FAILED' { return 'WORK_FAILED_REFS_TYPE_INVALID' }
         'NOT_RUN' { return 'WORK_NOT_RUN_REFS_TYPE_INVALID' }
         default { return 'WORK_ACCEPTANCE_REFS_TYPE_INVALID' }
       }
     }
+    if ($criterionStatus -ceq 'PASSED') {
+      $passedCriteria += ,@{ criterion_id = $criterionId; evidence_refs = $criterionRefs }
+    }
   }
-  if ($seenCriteria.Count -ne $criteriaById.Count) { return 'WORK_CRITERION_MISSING' }
-  $evidence = @($result.payload.evidence)
+  if ($seenCriteria.Count -ne $criteriaFloorById.Count) { return 'WORK_CRITERION_MISSING' }
+  $evidence = @($evidenceValue)
   if ($evidence.Count -eq 0) { return 'WORK_EVIDENCE_CATALOG_INVALID' }
   $evidenceIds = @()
   foreach ($entry in $evidence) {
-    if ($null -eq $entry -or $entry.id -isnot [string] -or
-        [string]::IsNullOrWhiteSpace($entry.id)) {
+    $entryId = Exact-Value $entry 'id'
+    if ($null -eq $entry -or $entryId -isnot [string] -or
+        [string]::IsNullOrWhiteSpace($entryId)) {
       return 'WORK_EVIDENCE_CATALOG_INVALID'
     }
-    if ($entry.tier -isnot [string]) {
+    $entryTier = Exact-Value $entry 'tier'
+    if ($entryTier -isnot [string]) {
       return 'WORK_EVIDENCE_TIER_TYPE_INVALID'
     }
-    if ((Tier-Rank $entry.tier) -lt 0) {
+    if ((Tier-Rank $entryTier) -lt 0) {
       return 'WORK_EVIDENCE_TIER_VALUE_INVALID'
     }
-    $evidenceIds += [string]$entry.id
+    $evidenceIds += $entryId
   }
   if (@($evidenceIds | Sort-Object -CaseSensitive -Unique).Count -ne $evidenceIds.Count) {
     return 'WORK_EVIDENCE_ID_DUPLICATE'
   }
-  foreach ($candidate in @($result.payload.candidate_results)) {
-    if ($candidate.decision -ceq 'ACCEPTED') {
-      $errorCode = Ref-Error $candidate.evidence_refs $evidence ([int]$context.base_revision) $validationAt $context.candidate_evidence_floor
-      if ($null -ne $errorCode) { return $errorCode }
-    }
+  foreach ($candidateRefs in $acceptedCandidateRefs) {
+    $errorCode = Ref-Error $candidateRefs $evidence ([int]$contextBaseRevision) $validationAt $contextCandidateFloor
+    if ($null -ne $errorCode) { return $errorCode }
   }
-  foreach ($criterionResult in @($result.payload.acceptance_results)) {
-    if ($criterionResult.status -ceq 'PASSED') {
-      $floor = $criteriaById[$criterionResult.criterion_id].evidence_floor
-      $errorCode = Ref-Error $criterionResult.evidence_refs $evidence ([int]$context.base_revision) $validationAt $floor
-      if ($null -ne $errorCode) { return $errorCode }
-    }
+  foreach ($passedCriterion in $passedCriteria) {
+    $floor = $criteriaFloorById[$passedCriterion['criterion_id']]
+    $errorCode = Ref-Error $passedCriterion['evidence_refs'] $evidence ([int]$contextBaseRevision) $validationAt $floor
+    if ($null -ne $errorCode) { return $errorCode }
   }
-  $summary = $result.payload.validation_summary
+  $summary = Exact-Value $resultPayload 'validation_summary'
+  $summaryPassed = Exact-Value $summary 'passed'
+  $summaryFailed = Exact-Value $summary 'failed'
+  $summaryNotRun = Exact-Value $summary 'not_run'
   if ($null -eq $summary -or
-      -not (Json-Integer $summary.passed) -or -not (Json-Integer $summary.failed) -or
-      -not (Json-Integer $summary.not_run) -or
-      [int64]$summary.passed -lt 0 -or [int64]$summary.failed -lt 0 -or [int64]$summary.not_run -lt 0) {
+      -not (Json-Integer $summaryPassed) -or -not (Json-Integer $summaryFailed) -or
+      -not (Json-Integer $summaryNotRun) -or
+      [int64]$summaryPassed -lt 0 -or [int64]$summaryFailed -lt 0 -or [int64]$summaryNotRun -lt 0) {
     return 'WORK_SUMMARY_INVALID'
   }
-  $passed = @($result.payload.acceptance_results | Where-Object { $_.status -ceq 'PASSED' }).Count
-  $failed = @($result.payload.acceptance_results | Where-Object { $_.status -ceq 'FAILED' }).Count
-  $notRun = @($result.payload.acceptance_results | Where-Object { $_.status -ceq 'NOT_RUN' }).Count
-  if ([int64]$summary.passed -ne $passed -or
-      [int64]$summary.failed -ne $failed -or
-      [int64]$summary.not_run -ne $notRun) {
+  $passed = @($acceptanceResults | Where-Object { (Exact-Value $_ 'status') -ceq 'PASSED' }).Count
+  $failed = @($acceptanceResults | Where-Object { (Exact-Value $_ 'status') -ceq 'FAILED' }).Count
+  $notRun = @($acceptanceResults | Where-Object { (Exact-Value $_ 'status') -ceq 'NOT_RUN' }).Count
+  if ([int64]$summaryPassed -ne $passed -or
+      [int64]$summaryFailed -ne $failed -or
+      [int64]$summaryNotRun -ne $notRun) {
     return 'WORK_SUMMARY_MISMATCH'
   }
-  if ($result.status -ceq 'SUCCEEDED') {
-    if (@($result.payload.candidate_results | Where-Object { $_.decision -cne 'ACCEPTED' }).Count -ne 0 -or
-        @($result.payload.acceptance_results | Where-Object { $_.status -cne 'PASSED' }).Count -ne 0 -or
-        [int64]$summary.failed -ne 0 -or [int64]$summary.not_run -ne 0 -or
-        $result.payload.proposed_transition -cne 'SUCCEEDED') {
+  if ($resultStatus -ceq 'SUCCEEDED') {
+    if (@($candidateResults | Where-Object { (Exact-Value $_ 'decision') -cne 'ACCEPTED' }).Count -ne 0 -or
+        @($acceptanceResults | Where-Object { (Exact-Value $_ 'status') -cne 'PASSED' }).Count -ne 0 -or
+        [int64]$summaryFailed -ne 0 -or [int64]$summaryNotRun -ne 0 -or
+        $transition -cne 'SUCCEEDED') {
       return 'WORK_SUCCESS_INCONSISTENT'
     }
   }
@@ -3784,6 +3831,25 @@ function Mutate-Work($baseline, [string]$mutation) {
     'EVIDENCE_TIER_NULL' { $case.result.payload.evidence[0].tier = $null }
     'EVIDENCE_TIER_OBJECT' { $case.result.payload.evidence[0].tier = [pscustomobject]@{ value = 'E1' } }
     'EVIDENCE_TIER_LOWERCASE' { $case.result.payload.evidence[0].tier = 'e1' }
+    'CANDIDATE_FLOOR_WRONG_CASE' {
+      $case.context.PSObject.Properties.Remove('candidate_evidence_floor')
+      Add-Member -InputObject $case.context -NotePropertyName 'Candidate_Evidence_Floor' -NotePropertyValue 'E1'
+    }
+    'CRITERION_FLOOR_WRONG_CASE' {
+      $target = $case.context.acceptance_criteria[0]
+      $target.PSObject.Properties.Remove('evidence_floor')
+      Add-Member -InputObject $target -NotePropertyName 'Evidence_Floor' -NotePropertyValue 'E2'
+    }
+    'CANDIDATE_REFS_WRONG_CASE' {
+      $target = $case.result.payload.candidate_results[0]
+      $target.PSObject.Properties.Remove('evidence_refs')
+      Add-Member -InputObject $target -NotePropertyName 'Evidence_Refs' -NotePropertyValue @('EVID-1')
+    }
+    'EVIDENCE_TIER_WRONG_CASE' {
+      $target = $case.result.payload.evidence[0]
+      $target.PSObject.Properties.Remove('tier')
+      Add-Member -InputObject $target -NotePropertyName 'Tier' -NotePropertyValue 'E1'
+    }
     default { throw "unknown work mutation $mutation" }
   }
   return $case
@@ -3793,7 +3859,7 @@ function Shape-Hash($value) {
   $bytes = [Text.Encoding]::UTF8.GetBytes($json)
   return [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($bytes)).Replace('-','').ToLowerInvariant()
 }
-if (@($fx.work_positive).Count -ne 2 -or @($fx.work_negative).Count -ne 34) {
+if (@($fx.work_positive).Count -ne 2 -or @($fx.work_negative).Count -ne 38) {
   Write-Error 'work fixture counts invalid'; exit 1
 }
 $unexpectedPass = 0
@@ -3813,7 +3879,7 @@ foreach ($negative in @($fx.work_negative)) {
   if ($null -eq $actual) { $unexpectedPass++ }
   elseif ($actual -cne $negative.expected_error) { $unexpectedFail++ }
 }
-Write-Output "work_positive=2 work_negative=34 unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
+Write-Output "work_positive=2 work_negative=38 unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
 if ($unexpectedPass -ne 0 -or $unexpectedFail -ne 0) { exit 1 }
 ~~~
 
@@ -4349,7 +4415,7 @@ v2만 사용한다.
 | evidence catalog | 0 | 13 |
 | closed freshness union | 7 | 14 |
 | inspected_sources | 0 | 10 |
-| WorkResult matrix | 2 | 34 |
+| WorkResult matrix | 2 | 38 |
 
 Closed-object property names retain their original JSON spelling and are
 compared case-sensitively with StringComparer.Ordinal; a case variant is not an
@@ -4357,11 +4423,11 @@ alias. payload.evidence, inspected_sources when present or required, and nested
 evidence_refs are checked as raw JSON arrays before @() wrapping. Scalar, null,
 and object substitutes fail stably as EVIDENCE_LIST_TYPE_INVALID,
 INSPECTED_SOURCES_TYPE_INVALID, and EVIDENCE_REFS_TYPE_INVALID respectively.
-| 합계 | 14 | 92 |
+| 합계 | 14 | 96 |
 
 세 packet example인 CANDIDATES_PROPOSED, NO_CANDIDATE, WorkResult도 별도
 양성으로 검사한다. 최종 기대값은 fixture_positive=14,
-fixture_negative=92, example_positive=3, unexpected_pass=0,
+fixture_negative=96, example_positive=3, unexpected_pass=0,
 unexpected_fail=0이다.
 
 ### 일반 응답
@@ -4484,7 +4550,7 @@ foreach ($path in $files) {
 성공 summary는 정확히 다음과 같다.
 
 ~~~text
-fixture_positive=14 fixture_negative=92 example_positive=3 unexpected_pass=0 unexpected_fail=0
+fixture_positive=14 fixture_negative=96 example_positive=3 unexpected_pass=0 unexpected_fail=0
 ~~~
 
 애플리케이션 테스트가 존재하면 project_profile에 등록된 실제 명령을 추가로
@@ -4659,6 +4725,8 @@ $workRequired = @(
   'regardless of result status, candidate decision, or acceptance status',
   'original non-empty JSON string',
   'StringComparer.Ordinal',
+  'Closed-object WorkResult field names retain their original JSON spelling',
+  'case variants are not aliases',
   'WORK_CANDIDATE_ID_INVALID',
   'WORK_CRITERION_ID_INVALID',
   'validation_summary',
@@ -4772,7 +4840,7 @@ finally {
 
 $mainSummary = 'action_positive=5 action_negative=21 evidence_negative=13 freshness_positive=7 freshness_negative=14'
 $partSummary = 'inspected_sources_negative=10 outcome_absence_positive=3 no_candidate_required=1'
-$workSummary = 'work_positive=2 work_negative=34 unexpected_pass=0 unexpected_fail=0'
+$workSummary = 'work_positive=2 work_negative=38 unexpected_pass=0 unexpected_fail=0'
 if (-not $runOutput.main.Contains($mainSummary)) {
   Write-Error 'main semantic counts invalid'
   exit 1
@@ -4786,7 +4854,7 @@ if (-not $runOutput.work.Contains($workSummary)) {
   exit 1
 }
 $workCases = [regex]::Matches($runOutput.work, '(?m)^WORK_CASE ')
-if ($workCases.Count -ne 36) {
+if ($workCases.Count -ne 40) {
   Write-Error "work case line count=$($workCases.Count)"
   exit 1
 }
@@ -4861,15 +4929,31 @@ function Example-Fresh($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
   $age = ($validationAt - $observed).TotalSeconds
   return $age -ge 0 -and $age -le 300
 }
+function Exact-Value($o, [string]$name) {
+  $property = Get-Exact-Property $o $name
+  if ($null -eq $property) { return $null }
+  Write-Output -NoEnumerate $property.Value
+  return
+}
 function Example-Refs($packet, [object[]]$arrays, [DateTimeOffset]$validationAt) {
-  if (-not (Raw-Array $packet.payload.evidence)) {
+  $payload = Exact-Value $packet 'payload'
+  $rawEvidence = Exact-Value $payload 'evidence'
+  $baseRevision = Exact-Value $packet 'base_revision'
+  if (-not (Raw-Array $rawEvidence) -or -not (Json-Integer $baseRevision)) {
     return $false
   }
-  $evidence = @($packet.payload.evidence)
+  $evidence = @($rawEvidence)
   if ($evidence.Count -eq 0) {
     return $false
   }
-  $ids = @($evidence | ForEach-Object { $_.id })
+  $ids = @()
+  foreach ($entry in $evidence) {
+    $id = Exact-Value $entry 'id'
+    if ($id -isnot [string] -or [string]::IsNullOrWhiteSpace($id)) {
+      return $false
+    }
+    $ids += $id
+  }
   if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) {
     return $false
   }
@@ -4883,9 +4967,9 @@ function Example-Refs($packet, [object[]]$arrays, [DateTimeOffset]$validationAt)
       return $false
     }
     foreach ($ref in $items) {
-      $found = @($evidence | Where-Object { $_.id -ceq $ref })
+      $found = @($evidence | Where-Object { (Exact-Value $_ 'id') -ceq $ref })
       if ($found.Count -ne 1 -or
-          -not (Example-Fresh $found[0] ([int]$packet.base_revision) $validationAt)) {
+          -not (Example-Fresh $found[0] ([int]$baseRevision) $validationAt)) {
         return $false
       }
     }
@@ -4898,40 +4982,65 @@ function Json-Objects([string]$body) {
       ForEach-Object { $_.Groups['j'].Value | ConvertFrom-Json }
   )
 }
+function Outcome-Example([object[]]$objects, [string]$outcome) {
+  return @($objects | Where-Object {
+    $payload = Exact-Value $_ 'payload'
+    (Exact-Value $payload 'outcome_code') -ceq $outcome
+  } | Select-Object -First 1)[0]
+}
 $partObjects = Json-Objects $part
-$normal = $partObjects |
-  Where-Object { $_.payload.outcome_code -ceq 'CANDIDATES_PROPOSED' } |
-  Select-Object -First 1
-$none = $partObjects |
-  Where-Object { $_.payload.outcome_code -ceq 'NO_CANDIDATE' } |
-  Select-Object -First 1
-$workResult = Json-Objects $work |
-  Where-Object { $_.packet_type -ceq 'work_result' } |
-  Select-Object -First 1
+$normal = Outcome-Example $partObjects 'CANDIDATES_PROPOSED'
+$none = Outcome-Example $partObjects 'NO_CANDIDATE'
+$workObjects = Json-Objects $work
+$workResult = @($workObjects | Where-Object {
+  (Exact-Value $_ 'packet_type') -ceq 'work_result'
+} | Select-Object -First 1)[0]
 if ($null -eq $normal -or $null -eq $none -or $null -eq $workResult) {
   Write-Error 'positive packet examples missing'
   exit 1
 }
+$normalPayload = Exact-Value $normal 'payload'
+$nonePayload = Exact-Value $none 'payload'
+$workPayload = Exact-Value $workResult 'payload'
+$normalCandidates = Exact-Value $normalPayload 'candidates'
+$noneSources = Exact-Value $nonePayload 'inspected_sources'
+$workCandidates = Exact-Value $workPayload 'candidate_results'
+$workCriteria = Exact-Value $workPayload 'acceptance_results'
+if (-not (Raw-Array $normalCandidates) -or -not (Raw-Array $noneSources) -or
+    -not (Raw-Array $workCandidates) -or -not (Raw-Array $workCriteria)) {
+  Write-Error 'positive packet example arrays invalid'
+  exit 1
+}
 $normalRefs = @()
-foreach ($candidate in @($normal.payload.candidates)) {
-  $normalRefs += ,$candidate.evidence_refs
+foreach ($candidate in @($normalCandidates)) {
+  $normalRefs += ,(Exact-Value $candidate 'evidence_refs')
 }
 $noneRefs = @()
-foreach ($source in @($none.payload.inspected_sources)) {
-  $noneRefs += ,$source.evidence_refs
+foreach ($source in @($noneSources)) {
+  $noneRefs += ,(Exact-Value $source 'evidence_refs')
 }
 $workRefs = @()
-foreach ($candidate in @($workResult.payload.candidate_results)) {
-  $workRefs += ,$candidate.evidence_refs
+foreach ($candidate in @($workCandidates)) {
+  $workRefs += ,(Exact-Value $candidate 'evidence_refs')
 }
-foreach ($criterion in @($workResult.payload.acceptance_results)) {
-  $workRefs += ,$criterion.evidence_refs
+foreach ($criterion in @($workCriteria)) {
+  $workRefs += ,(Exact-Value $criterion 'evidence_refs')
 }
 $exampleValidationAt = [DateTimeOffset]::MinValue
 if (-not (Parse-StrictUtc '2026-07-13T00:05:00Z' ([ref]$exampleValidationAt))) {
   Write-Error 'trusted example validationAt invalid'
   exit 1
 }
+$wrongCaseWork = $workResult | ConvertTo-Json -Depth 50 -Compress | ConvertFrom-Json
+$wrongCasePayload = Exact-Value $wrongCaseWork 'payload'
+$wrongCaseEvidence = Exact-Value $wrongCasePayload 'evidence'
+$wrongCasePayload.PSObject.Properties.Remove('evidence')
+Add-Member -InputObject $wrongCasePayload -NotePropertyName 'Evidence' -NotePropertyValue $wrongCaseEvidence
+if (Example-Refs $wrongCaseWork $workRefs $exampleValidationAt) {
+  Write-Error 'wrong-case evidence alias accepted'
+  exit 1
+}
+Write-Output 'EXAMPLE_WRONG_CASE=PASS'
 $examplePositive = 0
 if (Example-Refs $normal $normalRefs $exampleValidationAt) {
   $examplePositive++
@@ -4982,7 +5091,7 @@ foreach ($token in @(
   'inspected_sources fixture',
   'WorkResult fixture',
   'fixture_positive=14',
-  'fixture_negative=92',
+  'fixture_negative=96',
   'example_positive=3',
   'unexpected_pass=0',
   'unexpected_fail=0'
@@ -5017,12 +5126,12 @@ if ($work.Contains('"assertions":') -or $work.Contains('"events":')) {
 }
 
 $fixturePositive = 5 + 7 + 2
-$fixtureNegative = 21 + 13 + 14 + 10 + 34
+$fixtureNegative = 21 + 13 + 14 + 10 + 38
 $unexpectedPass = 0
 $unexpectedFail = 0
 Write-Output "fixture_positive=$fixturePositive fixture_negative=$fixtureNegative example_positive=$examplePositive unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
 if ($fixturePositive -ne 14 -or
-    $fixtureNegative -ne 92 -or
+    $fixtureNegative -ne 96 -or
     $examplePositive -ne 3 -or
     $unexpectedPass -ne 0 -or
     $unexpectedFail -ne 0) {
@@ -5035,7 +5144,7 @@ if ($LASTEXITCODE -ne 0) {
 ~~~
 
 Expected: exit code 0 with role case evidence and the exact summary
-fixture_positive=14 fixture_negative=92 example_positive=3 unexpected_pass=0 unexpected_fail=0.
+fixture_positive=14 fixture_negative=96 example_positive=3 unexpected_pass=0 unexpected_fail=0.
 
 Run legacy-term location review:
 

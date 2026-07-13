@@ -144,6 +144,10 @@ object is invalid even when it contains one item. The trusted
 acceptance_criteria value remains the original array of criterion_id and
 evidence_floor records; an ordinal dictionary is only a runtime lookup.
 
+Closed-object WorkResult field names retain their original JSON spelling and
+are compared with StringComparer.Ordinal. Case variants are not aliases and
+fail required-field or exact-field validation.
+
 Every trusted approved candidate ID, trusted required criterion ID, and result
 candidate_id or criterion_id is an original non-empty JSON string before any
 cast or lookup. ID uniqueness, membership, and lookup use .NET HashSet and

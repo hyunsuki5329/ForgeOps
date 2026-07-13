@@ -490,7 +490,7 @@ Implementation is accepted when:
     trusted ID exactly once, closes every result enum, enforces compatibility and
     evidence floors, computes exact summary counts, and rejects inconsistent
     SUCCEEDED.
-15. The semantic fixture executes 14 positive and 92 negative cases with zero
+15. The semantic fixture executes 14 positive and 96 negative cases with zero
     unexpected pass or failure, plus three positive packet examples.
 16. Portable prompts contain no ForgeOps paths or domain rules.
 17. Both adapters reference all three prompt paths.

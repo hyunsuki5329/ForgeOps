@@ -226,12 +226,21 @@ candidate_evidence_floor, and every required acceptance criterion ID and
 evidence floor. WorkResult cannot supply or change this context. All context and
 result list fields remain raw JSON arrays.
 
+WorkResult status is closed to SUCCEEDED|FAILED|PARTIAL|BLOCKED, candidate
+decision to ACCEPTED|REJECTED|DEFERRED, acceptance status to
+PASSED|FAILED|NOT_RUN, and proposed_transition to
+SUCCEEDED|FAILED|PARTIAL|BLOCKED|WAITING_FOR_HUMAN. Exact compatibility is
+SUCCEEDED -> SUCCEEDED, FAILED -> FAILED, PARTIAL -> PARTIAL, and
+BLOCKED -> BLOCKED|WAITING_FOR_HUMAN.
+
 candidate_results covers every trusted approved candidate exactly once with no
 unknown, duplicate, or missing ID. acceptance_results covers every trusted
 required criterion exactly once with no unknown, duplicate, or missing ID.
-Every ACCEPTED candidate and PASSED criterion has non-empty, unique evidence
-references that resolve exactly once, are fresh under the closed evidence
-union, and meet the applicable evidence floor. validation_summary is exact.
+Every candidate and acceptance evidence_refs value retains its raw JSON array
+type regardless of status or decision. Every ACCEPTED candidate and PASSED
+criterion additionally has non-empty, unique evidence references that resolve
+exactly once, are fresh under the closed evidence union, and meet the applicable
+evidence floor. validation_summary is exact.
 SUCCEEDED additionally requires every candidate ACCEPTED, every criterion
 PASSED, zero failed or not_run results, and proposed_transition SUCCEEDED. Work
 makes the smallest authorized change and returns WorkResult without updating
@@ -272,8 +281,9 @@ observed_at. command, test, render, runtime, and approval evidence require only
 observed_at in strict UTC yyyy-MM-dd'T'HH:mm:ss'Z' form and forbid
 observed_revision. Main captures trusted validator-supplied validationAt once;
 packet data cannot supply or change it. TIME evidence age is zero through 300
-seconds inclusive. Validation uses stable priority: invalid type; missing
-freshness; mode mismatch; invalid revision or timestamp; then stale or future.
+seconds inclusive. Validation uses stable priority: invalid type; missing the
+variant's required field before checking a forbidden companion; mode mismatch;
+invalid revision or timestamp; then stale or future.
 
 NO_CANDIDATE means diagnostic discovery completed. inspected_sources is
 required and is an original non-empty JSON array. Each entry contains exactly
@@ -284,11 +294,13 @@ reference resolves exactly once and is fresh. inspected_sources may be absent
 only for CANDIDATES_PROPOSED, BLOCKED_PROPOSAL, or CONTRACT_ERROR; when present,
 the same closed schema applies.
 
-WorkResult payload.evidence contains every ID referenced by ACCEPTED
-candidate_results and PASSED acceptance_results. Each reference array is
-non-empty and unique, resolves exactly once, is fresh relative to trusted
-base_revision and validationAt, and reaches candidate_evidence_floor or that
-criterion's evidence_floor. Duplicate, dangling, stale, future, wrong-mode,
+Every WorkResult candidate and acceptance evidence_refs value is a raw JSON
+array regardless of decision or status. payload.evidence contains every ID
+referenced by ACCEPTED candidate_results and PASSED acceptance_results; those
+reference arrays are additionally non-empty and unique, resolve exactly once,
+are fresh relative to trusted base_revision and validationAt, and reach
+candidate_evidence_floor or that criterion's evidence_floor. Duplicate,
+dangling, stale, future, wrong-mode,
 multiply resolving, below-floor, scalar-array, malformed inspected-source, and
 empty diagnostic discovery cases are invalid.
 
@@ -434,15 +446,18 @@ Implementation is accepted when:
     1..65535 and rejects every noncanonical host variant.
 11. Authority companion values, evidence_refs, inspected_sources,
     candidate_results, and acceptance_results retain their original JSON array
-    type; scalar or null substitutes fail closed.
+    type; every Work candidate and acceptance refs value is checked regardless
+    of decision or status, and scalar or null substitutes fail closed.
 12. Freshness uses the closed REVISION/TIME union and trusted validationAt; a
-    packet cannot choose the clock or mix modes.
+    packet cannot choose the clock or mix modes, and missing required metadata
+    takes priority over forbidden companion metadata.
 13. inspected_sources has exact fields, canonical source_ref, non-empty
     observation and refs, and exact fresh reference resolution.
 14. WorkResult covers trusted approved candidate and required criterion IDs
-    exactly once, enforces candidate and criterion evidence floors, computes
-    exact validation_summary counts, and rejects inconsistent SUCCEEDED.
-15. The semantic fixture executes 13 positive and 56 negative cases with zero
+    exactly once, closes status/decision/acceptance/transition enums, enforces
+    exact status-transition compatibility and evidence floors, computes exact
+    validation_summary counts, and rejects inconsistent SUCCEEDED.
+15. The semantic fixture executes 13 positive and 66 negative cases with zero
     unexpected pass or failure, plus three positive packet examples.
 16. Portable prompts contain no ForgeOps paths or domain rules.
 17. Both adapters reference all three prompt paths.

@@ -1542,7 +1542,17 @@ The following normative fixture suite is used by executable conformance checks:
                               "id":  "WORK_SUCCESS_INCONSISTENT",
                               "expected_error":  "WORK_SUCCESS_INCONSISTENT",
                               "mutation":  "FAILED_SUCCESS"
-                          }
+                          },
+                          {"id":"WORK_STATUS_UNKNOWN","expected_error":"WORK_STATUS_INVALID","mutation":"UNKNOWN_ENVELOPE_STATUS"},
+                          {"id":"WORK_DECISION_UNKNOWN","expected_error":"WORK_CANDIDATE_DECISION_INVALID","mutation":"INVALID_CANDIDATE_DECISION"},
+                          {"id":"WORK_ACCEPTANCE_STATUS_UNKNOWN","expected_error":"WORK_ACCEPTANCE_STATUS_INVALID","mutation":"INVALID_ACCEPTANCE_STATUS"},
+                          {"id":"WORK_TRANSITION_UNKNOWN","expected_error":"WORK_TRANSITION_INVALID","mutation":"INVALID_PROPOSED_TRANSITION"},
+                          {"id":"WORK_STATUS_TRANSITION_MISMATCH","expected_error":"WORK_STATUS_TRANSITION_INVALID","mutation":"STATUS_TRANSITION_MISMATCH"},
+                          {"id":"WORK_REJECTED_REFS_SCALAR","expected_error":"WORK_CANDIDATE_REFS_TYPE_INVALID","mutation":"REJECTED_REFS_SCALAR"},
+                          {"id":"WORK_FAILED_REFS_SCALAR","expected_error":"WORK_FAILED_REFS_TYPE_INVALID","mutation":"FAILED_REFS_SCALAR"},
+                          {"id":"WORK_NOT_RUN_REFS_SCALAR","expected_error":"WORK_NOT_RUN_REFS_TYPE_INVALID","mutation":"NOT_RUN_REFS_SCALAR"},
+                          {"id":"WORK_REVISION_TIME_ONLY_PRIORITY","expected_error":"WORK_EVIDENCE_FRESHNESS_MISSING","mutation":"REVISION_TIME_ONLY"},
+                          {"id":"WORK_TIME_REVISION_ONLY_PRIORITY","expected_error":"WORK_EVIDENCE_FRESHNESS_MISSING","mutation":"TIME_REVISION_ONLY"}
                       ]
 }
 ~~~
@@ -2047,7 +2057,7 @@ function Catalog-Error($c) {
   }
   return $null
 }
-$expected = [ordered]@{action_positive=5;action_negative=19;evidence_negative=4;freshness_positive=7;freshness_negative=13;inspected_sources_negative=10;work_positive=1;work_negative=10}
+$expected = [ordered]@{action_positive=5;action_negative=19;evidence_negative=4;freshness_positive=7;freshness_negative=13;inspected_sources_negative=10;work_positive=1;work_negative=20}
 foreach ($key in $expected.Keys) { if (@($fx.$key).Count -ne $expected[$key]) { Write-Error "$key count"; exit 1 } }
 foreach ($case in @($fx.action_positive)) {
   $actual = Action-Error $case; if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
@@ -2888,21 +2898,32 @@ context. validationAt is runtime metadata, is never read from WorkResult, and is
 never invented from packet data.
 
 approved_candidate_ids, candidate_results, acceptance_criteria,
-acceptance_results, evidence, and every evidence_refs value are raw JSON arrays;
-a scalar, null, or object is invalid even when it contains one item. IDs and
+acceptance_results, evidence, and every candidate or acceptance evidence_refs
+value are raw JSON arrays for every decision and status. A scalar, null, or
+object is invalid even when it contains one item. IDs and
 references are non-empty case-sensitive strings and are unique in their own
 array. candidate_results contains every trusted approved candidate exactly once
 with no unknown, duplicate, or missing candidate. acceptance_results contains
 every trusted required criterion exactly once with no unknown, duplicate, or
 missing criterion.
 
+WorkResult status is exactly SUCCEEDED|FAILED|PARTIAL|BLOCKED. Every candidate
+decision is exactly ACCEPTED|REJECTED|DEFERRED, every acceptance status is
+exactly PASSED|FAILED|NOT_RUN, and proposed_transition is exactly
+SUCCEEDED|FAILED|PARTIAL|BLOCKED|WAITING_FOR_HUMAN. Compatibility is exact:
+SUCCEEDED -> SUCCEEDED; FAILED -> FAILED; PARTIAL -> PARTIAL; and
+BLOCKED -> BLOCKED|WAITING_FOR_HUMAN. Enum, compatibility, and raw
+evidence_refs-array validation applies regardless of result status, candidate
+decision, or acceptance status.
+
 Every ACCEPTED candidate result and every PASSED acceptance result has a
 non-empty evidence_refs array. Each reference resolves to exactly one unique
 payload.evidence entry. file and diff evidence require only an original JSON
 integer observed_revision equal to base_revision. command, test, render,
 runtime, and approval evidence require only a strict UTC observed_at and must be
-0 through 300 seconds old relative to trusted validationAt. Wrong-mode,
-missing, invalid, stale, or future freshness metadata fails closed. Referenced
+0 through 300 seconds old relative to trusted validationAt. Missing required
+freshness metadata is reported before forbidden companion metadata. Wrong-mode,
+invalid, stale, or future freshness metadata fails closed. Referenced
 evidence meets or exceeds candidate_evidence_floor for ACCEPTED candidate
 results and that criterion's evidence_floor for PASSED acceptance results,
 using E0 < E1 < E2 < E3.
@@ -2913,9 +2934,11 @@ valid only when candidate and criterion coverage is exact, every candidate
 decision is ACCEPTED, every required criterion is PASSED, all referenced
 evidence is exact, fresh, and at its required floor, validation_summary has no
 failed or not_run result, and proposed_transition is SUCCEEDED. These checks use
-stable fail-closed order: trusted context and envelope, raw arrays, candidate
-coverage, criterion coverage, evidence catalog and references, freshness and
-tier floors, exact summary counts, then SUCCEEDED invariants.
+stable fail-closed order: trusted context and envelope identity, closed status
+and transition compatibility, raw top-level arrays, candidate coverage then
+decision and refs type, criterion coverage then acceptance status and refs type,
+evidence catalog and accepted/passed references, freshness and tier floors,
+exact summary counts, then SUCCEEDED invariants.
 
 ## 6. WorkResult
 
@@ -3111,13 +3134,13 @@ function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) 
   $hasRevision = Has-Property $e 'observed_revision'
   $hasTime = Has-Property $e 'observed_at'
   if ($revisionTypes -ccontains $e.type) {
-    if (-not $hasRevision -and -not $hasTime) { return 'WORK_EVIDENCE_FRESHNESS_MISSING' }
+    if (-not $hasRevision) { return 'WORK_EVIDENCE_FRESHNESS_MISSING' }
     if ($hasTime) { return 'WORK_EVIDENCE_FRESHNESS_MODE_MISMATCH' }
     if (-not (Json-Integer $e.observed_revision)) { return 'WORK_EVIDENCE_REVISION_INVALID' }
     if ([int64]$e.observed_revision -ne [int64]$baseRevision) { return 'WORK_EVIDENCE_STALE' }
     return $null
   }
-  if (-not $hasTime -and -not $hasRevision) { return 'WORK_EVIDENCE_FRESHNESS_MISSING' }
+  if (-not $hasTime) { return 'WORK_EVIDENCE_FRESHNESS_MISSING' }
   if ($hasRevision) { return 'WORK_EVIDENCE_FRESHNESS_MODE_MISMATCH' }
   $observed = [DateTimeOffset]::MinValue
   if ($e.observed_at -isnot [string] -or -not (Parse-StrictUtc $e.observed_at ([ref]$observed))) {
@@ -3175,6 +3198,24 @@ function Work-Error($case) {
       [int64]$result.base_revision -ne [int64]$context.base_revision) {
     return 'WORK_CONTEXT_MISMATCH'
   }
+  if ($result.status -isnot [string] -or
+      -not (@('SUCCEEDED','FAILED','PARTIAL','BLOCKED') -ccontains $result.status)) {
+    return 'WORK_STATUS_INVALID'
+  }
+  $transition = $result.payload.proposed_transition
+  if ($transition -isnot [string] -or
+      -not (@('SUCCEEDED','FAILED','PARTIAL','BLOCKED','WAITING_FOR_HUMAN') -ccontains $transition)) {
+    return 'WORK_TRANSITION_INVALID'
+  }
+  $allowedTransitions = switch -CaseSensitive ($result.status) {
+    'SUCCEEDED' { @('SUCCEEDED') }
+    'FAILED' { @('FAILED') }
+    'PARTIAL' { @('PARTIAL') }
+    'BLOCKED' { @('BLOCKED','WAITING_FOR_HUMAN') }
+  }
+  if (-not (@($allowedTransitions) -ccontains $transition)) {
+    return 'WORK_STATUS_TRANSITION_INVALID'
+  }
   if (-not (NonEmpty-Unique-Strings $context.approved_candidate_ids) -or
       -not (Raw-Array $context.acceptance_criteria) -or
       @($context.acceptance_criteria).Count -eq 0 -or
@@ -3201,6 +3242,13 @@ function Work-Error($case) {
   }
   $seenCandidates = @{}
   foreach ($candidate in @($result.payload.candidate_results)) {
+    if ($candidate.decision -isnot [string] -or
+        -not (@('ACCEPTED','REJECTED','DEFERRED') -ccontains $candidate.decision)) {
+      return 'WORK_CANDIDATE_DECISION_INVALID'
+    }
+    if (-not (Raw-Array $candidate.evidence_refs)) {
+      return 'WORK_CANDIDATE_REFS_TYPE_INVALID'
+    }
     $candidateId = [string]$candidate.candidate_id
     if (-not ($trustedIds -ccontains $candidateId)) { return 'WORK_CANDIDATE_UNKNOWN' }
     if ($seenCandidates.ContainsKey($candidateId)) { return 'WORK_CANDIDATE_DUPLICATE' }
@@ -3212,8 +3260,16 @@ function Work-Error($case) {
     $criterionId = [string]$criterionResult.criterion_id
     if (-not $criteriaById.ContainsKey($criterionId)) { return 'WORK_CRITERION_UNKNOWN' }
     if ($seenCriteria.ContainsKey($criterionId)) { return 'WORK_CRITERION_DUPLICATE' }
-    if (-not (@('PASSED','FAILED','NOT_RUN') -ccontains $criterionResult.status)) {
-      return 'WORK_CRITERION_STATUS_INVALID'
+    if ($criterionResult.status -isnot [string] -or
+        -not (@('PASSED','FAILED','NOT_RUN') -ccontains $criterionResult.status)) {
+      return 'WORK_ACCEPTANCE_STATUS_INVALID'
+    }
+    if (-not (Raw-Array $criterionResult.evidence_refs)) {
+      switch -CaseSensitive ($criterionResult.status) {
+        'FAILED' { return 'WORK_FAILED_REFS_TYPE_INVALID' }
+        'NOT_RUN' { return 'WORK_NOT_RUN_REFS_TYPE_INVALID' }
+        default { return 'WORK_ACCEPTANCE_REFS_TYPE_INVALID' }
+      }
     }
     $seenCriteria[$criterionId] = $true
   }
@@ -3297,6 +3353,58 @@ function Mutate-Work($baseline, [string]$mutation) {
       $case.result.payload.validation_summary.passed = 0
       $case.result.payload.validation_summary.failed = 1
     }
+    'UNKNOWN_ENVELOPE_STATUS' { $case.result.status = 'DONE' }
+    'INVALID_CANDIDATE_DECISION' {
+      $case.result.status = 'FAILED'
+      $case.result.payload.proposed_transition = 'FAILED'
+      $case.result.payload.candidate_results[0].decision = 'SKIPPED'
+    }
+    'INVALID_ACCEPTANCE_STATUS' {
+      $case.result.status = 'FAILED'
+      $case.result.payload.proposed_transition = 'FAILED'
+      $case.result.payload.acceptance_results[0].status = 'BROKEN'
+      $case.result.payload.validation_summary.passed = 0
+    }
+    'INVALID_PROPOSED_TRANSITION' {
+      $case.result.status = 'FAILED'
+      $case.result.payload.proposed_transition = 'UNKNOWN'
+    }
+    'STATUS_TRANSITION_MISMATCH' {
+      $case.result.status = 'FAILED'
+      $case.result.payload.proposed_transition = 'SUCCEEDED'
+    }
+    'REJECTED_REFS_SCALAR' {
+      $case.result.status = 'FAILED'
+      $case.result.payload.proposed_transition = 'FAILED'
+      $case.result.payload.candidate_results[0].decision = 'REJECTED'
+      $case.result.payload.candidate_results[0].evidence_refs = 'EVID-1'
+    }
+    'FAILED_REFS_SCALAR' {
+      $case.result.status = 'FAILED'
+      $case.result.payload.proposed_transition = 'FAILED'
+      $case.result.payload.acceptance_results[0].status = 'FAILED'
+      $case.result.payload.acceptance_results[0].evidence_refs = 'EVID-2'
+      $case.result.payload.validation_summary.passed = 0
+      $case.result.payload.validation_summary.failed = 1
+    }
+    'NOT_RUN_REFS_SCALAR' {
+      $case.result.status = 'PARTIAL'
+      $case.result.payload.proposed_transition = 'PARTIAL'
+      $case.result.payload.acceptance_results[0].status = 'NOT_RUN'
+      $case.result.payload.acceptance_results[0].evidence_refs = 'EVID-2'
+      $case.result.payload.validation_summary.passed = 0
+      $case.result.payload.validation_summary.not_run = 1
+    }
+    'REVISION_TIME_ONLY' {
+      $entry = @($case.result.payload.evidence | Where-Object { $_.id -ceq 'EVID-1' })[0]
+      $entry.PSObject.Properties.Remove('observed_revision')
+      Add-Member -InputObject $entry -NotePropertyName observed_at -NotePropertyValue $case.context.validationAt
+    }
+    'TIME_REVISION_ONLY' {
+      $entry = @($case.result.payload.evidence | Where-Object { $_.id -ceq 'EVID-2' })[0]
+      $entry.PSObject.Properties.Remove('observed_at')
+      Add-Member -InputObject $entry -NotePropertyName observed_revision -NotePropertyValue ([int64]$case.context.base_revision)
+    }
     default { throw "unknown work mutation $mutation" }
   }
   return $case
@@ -3306,7 +3414,7 @@ function Shape-Hash($value) {
   $bytes = [Text.Encoding]::UTF8.GetBytes($json)
   return [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($bytes)).Replace('-','').ToLowerInvariant()
 }
-if (@($fx.work_positive).Count -ne 1 -or @($fx.work_negative).Count -ne 10) {
+if (@($fx.work_positive).Count -ne 1 -or @($fx.work_negative).Count -ne 20) {
   Write-Error 'work fixture counts invalid'; exit 1
 }
 $unexpectedPass = 0
@@ -3324,7 +3432,7 @@ foreach ($negative in @($fx.work_negative)) {
   if ($null -eq $actual) { $unexpectedPass++ }
   elseif ($actual -cne $negative.expected_error) { $unexpectedFail++ }
 }
-Write-Output "work_positive=1 work_negative=10 unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
+Write-Output "work_positive=1 work_negative=20 unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
 if ($unexpectedPass -ne 0 -or $unexpectedFail -ne 0) { exit 1 }
 ~~~
 
@@ -3768,8 +3876,8 @@ Freshness는 닫힌 두 variant다.
 - command, test, render, runtime, approval은 strict UTC observed_at만 가진다.
   main validator가 한 번 캡처한 trusted validationAt과 비교한 age가 0..300초다.
 - packet은 validationAt을 제공하거나 변경할 수 없다.
-- wrong-mode, missing, invalid, stale, future metadata는 stable priority로
-  fail closed한다.
+- required freshness field의 missing을 forbidden companion의 wrong-mode보다
+  먼저 판정하고, invalid, stale, future 순서로 stable하게 fail closed한다.
 
 NO_CANDIDATE의 inspected_sources는 원본 비어 있지 않은 JSON 배열이다. 각
 entry는 source_ref, observation, evidence_refs만 정확히 가진다. source_ref는
@@ -3781,9 +3889,16 @@ inspected_sources가 없을 수 있지만, 있으면 같은 schema를 만족해�
 WorkResult는 main이 제공한 trusted TaskPacket execution context만 사용한다.
 context는 protocol/task/correlation ID, base_revision, validationAt,
 approved_candidate_ids, candidate_evidence_floor, required criterion ID와
-criterion evidence_floor를 고정한다. candidate_results와
-acceptance_results는 trusted ID를 unknown, duplicate, missing 없이 각각
-정확히 한 번 포함한다. ACCEPTED와 PASSED의 refs는 비어 있지 않고 unique하며
+criterion evidence_floor를 고정한다. status는
+SUCCEEDED|FAILED|PARTIAL|BLOCKED, candidate decision은
+ACCEPTED|REJECTED|DEFERRED, acceptance status는 PASSED|FAILED|NOT_RUN,
+proposed_transition은 SUCCEEDED|FAILED|PARTIAL|BLOCKED|WAITING_FOR_HUMAN만
+허용한다. status/transition 호환은 SUCCEEDED→SUCCEEDED, FAILED→FAILED,
+PARTIAL→PARTIAL, BLOCKED→BLOCKED|WAITING_FOR_HUMAN이다.
+candidate_results와 acceptance_results는 trusted ID를 unknown, duplicate,
+missing 없이 각각
+정확히 한 번 포함하고 모든 decision/status의 evidence_refs를 원본 JSON
+배열로 검증한다. ACCEPTED와 PASSED의 refs는 추가로 비어 있지 않고 unique하며
 정확히 하나의 fresh evidence를 가리키고 요구 floor 이상이어야 한다.
 validation_summary는 실제 status count와 같아야 한다. SUCCEEDED는 모든
 candidate ACCEPTED, 모든 criterion PASSED, failed/not_run 0,
@@ -3835,12 +3950,12 @@ v2만 사용한다.
 | evidence catalog | 0 | 4 |
 | closed freshness union | 7 | 13 |
 | inspected_sources | 0 | 10 |
-| WorkResult matrix | 1 | 10 |
-| 합계 | 13 | 56 |
+| WorkResult matrix | 1 | 20 |
+| 합계 | 13 | 66 |
 
 세 packet example인 CANDIDATES_PROPOSED, NO_CANDIDATE, WorkResult도 별도
 양성으로 검사한다. 최종 기대값은 fixture_positive=13,
-fixture_negative=56, example_positive=3, unexpected_pass=0,
+fixture_negative=66, example_positive=3, unexpected_pass=0,
 unexpected_fail=0이다.
 
 ### 일반 응답
@@ -3887,8 +4002,10 @@ outcome의 합법적 absence 세 사례는 통과
 
 입력: empty ACCEPTED refs, unknown/duplicate/missing candidate ID,
 unknown/duplicate/missing criterion ID, below-floor evidence, summary mismatch,
-FAILED criterion을 가진 SUCCEEDED
-기대: 양성 1건 통과, 음성 10건이 지정된 WORK_* expected_error와 정확히
+FAILED criterion을 가진 SUCCEEDED, 네 closed enum 위반, status/transition
+불일치, REJECTED/FAILED/NOT_RUN scalar refs, REVISION/TIME required freshness
+누락과 forbidden companion이 함께 있는 priority 사례
+기대: 양성 1건 통과, 음성 20건이 지정된 WORK_* expected_error와 정확히
 일치하고 unexpected pass/fail은 0
 
 ### 권한 없는 변경
@@ -3960,7 +4077,7 @@ foreach ($path in $files) {
 성공 summary는 정확히 다음과 같다.
 
 ~~~text
-fixture_positive=13 fixture_negative=56 example_positive=3 unexpected_pass=0 unexpected_fail=0
+fixture_positive=13 fixture_negative=66 example_positive=3 unexpected_pass=0 unexpected_fail=0
 ~~~
 
 애플리케이션 테스트가 존재하면 project_profile에 등록된 실제 명령을 추가로
@@ -4122,8 +4239,17 @@ $workRequired = @(
   'trusted TaskPacket execution context',
   'validationAt',
   'raw JSON arrays',
+  '"status": "SUCCEEDED|FAILED|PARTIAL|BLOCKED"',
+  'ACCEPTED|REJECTED|DEFERRED',
+  '"status": "PASSED|FAILED|NOT_RUN"',
+  '"proposed_transition": "SUCCEEDED|FAILED|PARTIAL|BLOCKED|WAITING_FOR_HUMAN"',
+  'SUCCEEDED -> SUCCEEDED',
+  'FAILED -> FAILED',
+  'PARTIAL -> PARTIAL',
+  'BLOCKED -> BLOCKED|WAITING_FOR_HUMAN',
   'candidate_results contains every trusted approved candidate exactly once',
   'acceptance_results contains every trusted required criterion exactly once',
+  'regardless of result status, candidate decision, or acceptance status',
   'validation_summary',
   'then SUCCEEDED invariants'
 )
@@ -4235,7 +4361,7 @@ finally {
 
 $mainSummary = 'action_positive=5 action_negative=19 evidence_negative=4 freshness_positive=7 freshness_negative=13'
 $partSummary = 'inspected_sources_negative=10 outcome_absence_positive=3 no_candidate_required=1'
-$workSummary = 'work_positive=1 work_negative=10 unexpected_pass=0 unexpected_fail=0'
+$workSummary = 'work_positive=1 work_negative=20 unexpected_pass=0 unexpected_fail=0'
 if (-not $runOutput.main.Contains($mainSummary)) {
   Write-Error 'main semantic counts invalid'
   exit 1
@@ -4249,7 +4375,7 @@ if (-not $runOutput.work.Contains($workSummary)) {
   exit 1
 }
 $workCases = [regex]::Matches($runOutput.work, '(?m)^WORK_CASE ')
-if ($workCases.Count -ne 11) {
+if ($workCases.Count -ne 21) {
   Write-Error "work case line count=$($workCases.Count)"
   exit 1
 }
@@ -4425,7 +4551,7 @@ foreach ($token in @(
   'inspected_sources fixture',
   'WorkResult fixture',
   'fixture_positive=13',
-  'fixture_negative=56',
+  'fixture_negative=66',
   'example_positive=3',
   'unexpected_pass=0',
   'unexpected_fail=0'
@@ -4460,12 +4586,12 @@ if ($work.Contains('"assertions":') -or $work.Contains('"events":')) {
 }
 
 $fixturePositive = 5 + 7 + 1
-$fixtureNegative = 19 + 4 + 13 + 10 + 10
+$fixtureNegative = 19 + 4 + 13 + 10 + 20
 $unexpectedPass = 0
 $unexpectedFail = 0
 Write-Output "fixture_positive=$fixturePositive fixture_negative=$fixtureNegative example_positive=$examplePositive unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
 if ($fixturePositive -ne 13 -or
-    $fixtureNegative -ne 56 -or
+    $fixtureNegative -ne 66 -or
     $examplePositive -ne 3 -or
     $unexpectedPass -ne 0 -or
     $unexpectedFail -ne 0) {
@@ -4478,7 +4604,7 @@ if ($LASTEXITCODE -ne 0) {
 ~~~
 
 Expected: exit code 0 with role case evidence and the exact summary
-fixture_positive=13 fixture_negative=56 example_positive=3 unexpected_pass=0 unexpected_fail=0.
+fixture_positive=13 fixture_negative=66 example_positive=3 unexpected_pass=0 unexpected_fail=0.
 
 Run legacy-term location review:
 

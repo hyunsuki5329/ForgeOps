@@ -4478,7 +4478,7 @@ unknown/duplicate/missing criterion ID, below-floor evidence, summary mismatch,
 FAILED criterion을 가진 SUCCEEDED, 네 closed enum 위반, status/transition
 불일치, REJECTED/FAILED/NOT_RUN scalar refs, REVISION/TIME required freshness
 누락과 forbidden companion이 함께 있는 priority 사례
-기대: 양성 2건 통과, 음성 22건이 지정된 WORK_* expected_error와 정확히
+기대: 양성 2건 통과, 음성 38건(총 40 Work case)이 지정된 WORK_* expected_error와 정확히
 일치하고 unexpected pass/fail은 0
 
 ### 권한 없는 변경

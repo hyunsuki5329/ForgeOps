@@ -164,6 +164,11 @@ glob, regex, prefix/suffix matching, scheme inheritance, redirects, case
 folding, trimming, path resolution, default-port expansion, or any other
 implicit authority are invalid. An inconsistent scope/list pair is
 CONTRACT_ERROR and UNKNOWN fails closed.
+
+Closed-object property names are the original JSON names and are compared with
+StringComparer.Ordinal. Case variants are not aliases and fail required-field
+or exact-field validation.
+
 Canonical records are:
 
 - validation command: id, command, cwd, evidence_tier, required;
@@ -288,7 +293,11 @@ criterion references non-empty fresh evidence at or above its trusted floor.
 CandidatePacket payload.evidence is the canonical catalog for every candidate
 outcome. Evidence IDs and every evidence_refs value are original JSON arrays of
 non-empty ordinal-unique strings, and every evidence_ref resolves to exactly one
-catalog entry.
+catalog entry. payload.evidence, inspected_sources when present or required,
+and every nested evidence_refs value retain raw JSON-array type before any
+wrapper or cast. Scalar, null, and object substitutes fail with
+EVIDENCE_LIST_TYPE_INVALID, INSPECTED_SOURCES_TYPE_INVALID, and
+EVIDENCE_REFS_TYPE_INVALID respectively.
 
 Freshness is a closed union. file and diff evidence require only an original
 JSON integer observed_revision equal to packet base_revision and forbid
@@ -455,14 +464,20 @@ Implementation is accepted when:
 8. PROJECT versus NAMED authority is validated by separate branches and no
    project-wide execute or network scope exists.
 9. Every candidate has a valid action_type/action_identity discriminated union;
-   hybrids, missing identities, forbidden fields, and normalization attempts
-   fail executable positive/negative fixture checks.
+   closed-object property names use original JSON spelling with
+   StringComparer.Ordinal, so case variants, hybrids, missing identities,
+   forbidden fields, and normalization attempts fail executable
+   positive/negative fixture checks.
 10. Canonical-NetworkHost accepts a lower-case DNS host with optional port
     1..65535 and rejects every noncanonical host variant.
-11. Authority companion values, evidence_refs, inspected_sources,
-    candidate_results, and acceptance_results retain their original JSON array
-    type; every Work candidate and acceptance refs value is checked regardless
-    of decision or status, and scalar or null substitutes fail closed.
+11. Authority companion values, payload.evidence, evidence_refs,
+    inspected_sources, candidate_results, and acceptance_results retain their
+    original JSON array type. payload.evidence, inspected_sources when present
+    or required, and nested evidence_refs reject scalar, null, and object
+    substitutes before wrapping with EVIDENCE_LIST_TYPE_INVALID,
+    INSPECTED_SOURCES_TYPE_INVALID, and EVIDENCE_REFS_TYPE_INVALID; every Work
+    candidate and acceptance refs value is checked regardless of decision or
+    status.
 12. Freshness uses the closed REVISION/TIME union and trusted validationAt; a
     packet cannot choose the clock or mix modes, and missing required metadata
     takes priority over forbidden companion metadata.
@@ -475,7 +490,7 @@ Implementation is accepted when:
     trusted ID exactly once, closes every result enum, enforces compatibility and
     evidence floors, computes exact summary counts, and rejects inconsistent
     SUCCEEDED.
-15. The semantic fixture executes 14 positive and 80 negative cases with zero
+15. The semantic fixture executes 14 positive and 92 negative cases with zero
     unexpected pass or failure, plus three positive packet examples.
 16. Portable prompts contain no ForgeOps paths or domain rules.
 17. Both adapters reference all three prompt paths.

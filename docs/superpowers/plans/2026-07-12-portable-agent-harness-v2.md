@@ -432,6 +432,10 @@ Authority validation uses explicit, non-overlapping branches:
   redirect, or otherwise normalize an action identity to manufacture a match.
 - An inconsistent scope/list pair is CONTRACT_ERROR. UNKNOWN fails closed.
 
+Closed-object property names are the original JSON names and are compared with
+StringComparer.Ordinal. Case variants are distinct invalid names, never aliases,
+so required-field and exact-field validation fails closed.
+
 Canonical record schemas:
 
 ~~~json
@@ -496,6 +500,11 @@ action_identity is a closed discriminated union:
   decimal port from 1 through 65535. It rejects schemes, paths, queries,
   fragments, userinfo, uppercase, whitespace, empty labels, edge hyphens,
   multiple colons, and out-of-range ports.
+- payload.evidence, inspected_sources when present or required, and every
+  nested evidence_refs value retain raw JSON-array type. Before any @() wrapping
+  or reference resolution, scalar, null, and object substitutes fail closed with
+  EVIDENCE_LIST_TYPE_INVALID, INSPECTED_SOURCES_TYPE_INVALID, and
+  EVIDENCE_REFS_TYPE_INVALID respectively.
 - Every authority companion is the original JSON array. Items are non-empty
   strings, ordinal-unique, and wildcard-free. read/write PROJECT requires an
   empty list and an original JSON boolean root_contained=true; NAMED_RESOURCES
@@ -947,6 +956,24 @@ The following normative fixture suite is used by executable conformance checks:
                                                                         "api.example.com:0"
                                                                     ]
                                               }
+                            },
+                            {
+                                "id": "ACTION_IDENTITY_CASE_INVALID",
+                                "expected_error": "ACTION_IDENTITY_MISSING",
+                                "action_type": "READ_RESOURCE",
+                                "operation": "read",
+                                "root_contained": true,
+                                "Action_Identity": { "identity_kind": "RESOURCE", "resource_ref": "src/app.py" },
+                                "authority": { "read_scope": "PROJECT", "read_resources": [] }
+                            },
+                            {
+                                "id": "ACTION_IDENTITY_INNER_CASE_INVALID",
+                                "expected_error": "IDENTITY_FIELDS_INVALID",
+                                "action_type": "READ_RESOURCE",
+                                "operation": "read",
+                                "root_contained": true,
+                                "action_identity": { "IDENTITY_KIND": "RESOURCE", "RESOURCE_REF": "src/app.py" },
+                                "authority": { "read_scope": "PROJECT", "read_resources": [] }
                             }
                         ],
     "evidence_negative":  [
@@ -1041,6 +1068,78 @@ The following normative fixture suite is used by executable conformance checks:
                                   "evidence":  [
 
                                                ]
+                              },
+                              {
+                                  "id": "EVIDENCE_RAW_SCALAR",
+                                  "expected_error": "EVIDENCE_LIST_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": "EVID-1",
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":["EVID-1"]}]
+                              },
+                              {
+                                  "id": "EVIDENCE_RAW_NULL",
+                                  "expected_error": "EVIDENCE_LIST_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": null,
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":["EVID-1"]}]
+                              },
+                              {
+                                  "id": "EVIDENCE_RAW_OBJECT",
+                                  "expected_error": "EVIDENCE_LIST_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": {"id":"EVID-1"},
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":["EVID-1"]}]
+                              },
+                              {
+                                  "id": "INSPECTED_SOURCES_RAW_SCALAR",
+                                  "expected_error": "INSPECTED_SOURCES_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": "README.md"
+                              },
+                              {
+                                  "id": "INSPECTED_SOURCES_RAW_NULL",
+                                  "expected_error": "INSPECTED_SOURCES_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": null
+                              },
+                              {
+                                  "id": "INSPECTED_SOURCES_RAW_OBJECT",
+                                  "expected_error": "INSPECTED_SOURCES_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": {"source_ref":"README.md","observation":"checked","evidence_refs":["EVID-1"]}
+                              },
+                              {
+                                  "id": "EVIDENCE_REFS_RAW_SCALAR",
+                                  "expected_error": "EVIDENCE_REFS_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":"EVID-1"}]
+                              },
+                              {
+                                  "id": "EVIDENCE_REFS_RAW_NULL",
+                                  "expected_error": "EVIDENCE_REFS_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":null}]
+                              },
+                              {
+                                  "id": "EVIDENCE_REFS_RAW_OBJECT",
+                                  "expected_error": "EVIDENCE_REFS_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":{"id":"EVID-1"}}]
                               }
                           ],
     "freshness_positive":  [
@@ -1318,6 +1417,13 @@ The following normative fixture suite is used by executable conformance checks:
                                                     "observation":  "x",
                                                     "observed_at":  "2026-07-13T00:05:00Z"
                                                 }
+                               },
+                               {
+                                   "id": "FRESH_OBSERVED_REVISION_CASE",
+                                   "expected_error": "EVIDENCE_FRESHNESS_MISSING",
+                                   "base_revision": 2,
+                                   "validation_at": "2026-07-13T00:05:00Z",
+                                   "evidence": {"id":"E","tier":"E1","type":"file","source":"x","observation":"x","Observed_Revision":2}
                                }
                            ],
     "inspected_sources_negative":  [
@@ -1957,12 +2063,35 @@ $match = [regex]::Match($text, '(?ms)^~~~json\r?$\n(?<j>\{\s*"fixture_suite":\s*
 if (-not $match.Success) { Write-Error 'semantic fixture missing'; exit 1 }
 $fx = $match.Groups['j'].Value | ConvertFrom-Json
 
+function Get-Exact-Property($o, [string]$name) {
+  if ($null -eq $o) { return $null }
+  foreach ($property in $o.PSObject.Properties) {
+    if ([StringComparer]::Ordinal.Equals([string]$property.Name, $name)) {
+      return $property
+    }
+  }
+  return $null
+}
 function Has-Property($o, [string]$name) {
-  return $null -ne $o -and $o.PSObject.Properties.Name -contains $name
+  if ($null -eq $o) { return $false }
+  foreach ($property in $o.PSObject.Properties) {
+    if ([StringComparer]::Ordinal.Equals([string]$property.Name, $name)) { return $true }
+  }
+  return $false
 }
 function Exact-Props($o, [string[]]$expected) {
   if ($null -eq $o) { return $false }
-  return @(Compare-Object $expected @($o.PSObject.Properties.Name)).Count -eq 0
+  $expectedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($name in $expected) {
+    if ($name -isnot [string] -or -not $expectedSet.Add($name)) { return $false }
+  }
+  $actual = @($o.PSObject.Properties | ForEach-Object { [string]$_.Name })
+  if ($actual.Count -ne $expectedSet.Count) { return $false }
+  $actualSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($name in $actual) {
+    if (-not $actualSet.Add($name) -or -not $expectedSet.Contains($name)) { return $false }
+  }
+  return $true
 }
 function Canonical-Resource($value) {
   if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value) -or
@@ -1992,7 +2121,7 @@ function Canonical-NetworkHost($value) {
 }
 function Companion-ListError($authority, [string]$listName) {
   if (-not (Has-Property $authority $listName)) { return 'COMPANION_LIST_TYPE_INVALID' }
-  $raw = $authority.PSObject.Properties[$listName].Value
+  $raw = (Get-Exact-Property $authority $listName).Value
   if ($null -eq $raw -or $raw -isnot [System.Array]) { return 'COMPANION_LIST_TYPE_INVALID' }
   $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
   foreach ($item in $raw) {
@@ -2010,7 +2139,7 @@ function Resource-Error($c, [string]$operation, [string]$scopeName, [string]$lis
   $listError = Companion-ListError $c.authority $listName
   if ($null -ne $listError) { return $listError }
   $scope = $c.authority.$scopeName
-  $list = @($c.authority.PSObject.Properties[$listName].Value)
+  $list = @((Get-Exact-Property $c.authority $listName).Value)
   if ($scope -ceq 'PROJECT') {
     if ($list.Count -ne 0) { return 'PROJECT_COMPANION_NOT_EMPTY' }
     if (-not (Has-Property $c 'root_contained') -or $c.root_contained -isnot [bool] -or $c.root_contained -ne $true) { return 'PROJECT_ROOT_CONTAINMENT_FAILED' }
@@ -2037,7 +2166,7 @@ function Action-Error($c) {
       if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'COMMAND') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
       if (-not (Exact-Props $i @('identity_kind','command_id','command','cwd'))) { return 'IDENTITY_FIELDS_INVALID' }
       $listError = Companion-ListError $c.authority 'execute_commands'; if ($null -ne $listError) { return $listError }
-      $list = @($c.authority.PSObject.Properties['execute_commands'].Value)
+      $list = @((Get-Exact-Property $c.authority 'execute_commands').Value)
       if ($c.authority.execute_scope -cne 'NAMED_COMMANDS') {
         if (($c.authority.execute_scope -ceq 'NONE' -or $c.authority.execute_scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
         return 'EXECUTE_SCOPE_INVALID'
@@ -2053,7 +2182,7 @@ function Action-Error($c) {
       if (-not (Exact-Props $i @('identity_kind','network_host'))) { return 'IDENTITY_FIELDS_INVALID' }
       if (-not (Canonical-NetworkHost $i.network_host)) { return 'NETWORK_IDENTITY_NONCANONICAL' }
       $listError = Companion-ListError $c.authority 'network_hosts'; if ($null -ne $listError) { return $listError }
-      $list = @($c.authority.PSObject.Properties['network_hosts'].Value)
+      $list = @((Get-Exact-Property $c.authority 'network_hosts').Value)
       foreach ($item in $list) { if (-not (Canonical-NetworkHost $item)) { return 'NETWORK_ALLOWLIST_NONCANONICAL' } }
       if ($c.authority.network_scope -cne 'NAMED_HOSTS') {
         if (($c.authority.network_scope -ceq 'NONE' -or $c.authority.network_scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
@@ -2074,19 +2203,23 @@ function Parse-StrictUtc([string]$value, [ref]$parsed) {
 function Json-Integer($value) { return $value -is [int] -or $value -is [long] }
 function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
   $revisionTypes = @('file','diff'); $timeTypes = @('command','test','render','runtime','approval')
-  if (-not ($revisionTypes -ccontains $e.type) -and -not ($timeTypes -ccontains $e.type)) { return 'EVIDENCE_TYPE_INVALID' }
+  if (-not (Has-Property $e 'type')) { return 'EVIDENCE_TYPE_INVALID' }
+  $type = (Get-Exact-Property $e 'type').Value
+  if (-not ($revisionTypes -ccontains $type) -and -not ($timeTypes -ccontains $type)) { return 'EVIDENCE_TYPE_INVALID' }
   $hasRevision = Has-Property $e 'observed_revision'; $hasTime = Has-Property $e 'observed_at'
-  if ($revisionTypes -ccontains $e.type) {
+  $revision = if ($hasRevision) { (Get-Exact-Property $e 'observed_revision').Value } else { $null }
+  $observedAt = if ($hasTime) { (Get-Exact-Property $e 'observed_at').Value } else { $null }
+  if ($revisionTypes -ccontains $type) {
     if (-not $hasRevision) { return 'EVIDENCE_FRESHNESS_MISSING' }
     if ($hasTime) { return 'EVIDENCE_FRESHNESS_MODE_MISMATCH' }
-    if (-not (Json-Integer $e.observed_revision)) { return 'EVIDENCE_REVISION_INVALID' }
-    if ([long]$e.observed_revision -ne [long]$baseRevision) { return 'EVIDENCE_STALE' }
+    if (-not (Json-Integer $revision)) { return 'EVIDENCE_REVISION_INVALID' }
+    if ([long]$revision -ne [long]$baseRevision) { return 'EVIDENCE_STALE' }
     return $null
   }
   if (-not $hasTime) { return 'EVIDENCE_FRESHNESS_MISSING' }
   if ($hasRevision) { return 'EVIDENCE_FRESHNESS_MODE_MISMATCH' }
   $observed = [DateTimeOffset]::MinValue
-  if ($e.observed_at -isnot [string] -or -not (Parse-StrictUtc $e.observed_at ([ref]$observed))) { return 'EVIDENCE_TIMESTAMP_INVALID' }
+  if ($observedAt -isnot [string] -or -not (Parse-StrictUtc $observedAt ([ref]$observed))) { return 'EVIDENCE_TIMESTAMP_INVALID' }
   $age = ($validationAt - $observed).TotalSeconds
   if ($age -lt 0) { return 'EVIDENCE_FUTURE' }
   if ($age -gt 300) { return 'EVIDENCE_STALE' }
@@ -2098,12 +2231,32 @@ function Trusted-ValidationAt([string]$value) {
   return $parsed
 }
 function Catalog-Error($c) {
-  $evidence = @($c.evidence); $sources = @($c.inspected_sources)
-  if ($c.outcome_code -ceq 'NO_CANDIDATE' -and ($evidence.Count -eq 0 -or $sources.Count -eq 0)) { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
+  $outcome = if (Has-Property $c 'outcome_code') { (Get-Exact-Property $c 'outcome_code').Value } else { $null }
+  $hasEvidence = Has-Property $c 'evidence'
+  if (-not $hasEvidence) {
+    if ($outcome -ceq 'NO_CANDIDATE') { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
+    return 'EVIDENCE_LIST_TYPE_INVALID'
+  }
+  $rawEvidence = (Get-Exact-Property $c 'evidence').Value
+  if ($rawEvidence -isnot [System.Array]) { return 'EVIDENCE_LIST_TYPE_INVALID' }
+  $evidence = @($rawEvidence)
+  $hasSources = Has-Property $c 'inspected_sources'
+  if (-not $hasSources) {
+    if ($outcome -ceq 'NO_CANDIDATE') { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
+    $sources = @()
+  } else {
+    $rawSources = (Get-Exact-Property $c 'inspected_sources').Value
+    if ($rawSources -isnot [System.Array]) { return 'INSPECTED_SOURCES_TYPE_INVALID' }
+    $sources = @($rawSources)
+  }
+  if ($outcome -ceq 'NO_CANDIDATE' -and ($evidence.Count -eq 0 -or $sources.Count -eq 0)) { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
   $ids = @($evidence | ForEach-Object { $_.id })
   if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_ID_DUPLICATE' }
   foreach ($source in $sources) {
-    $refs = @($source.evidence_refs)
+    if (-not (Has-Property $source 'evidence_refs')) { return 'EVIDENCE_REF_MISSING' }
+    $rawRefs = (Get-Exact-Property $source 'evidence_refs').Value
+    if ($rawRefs -isnot [System.Array]) { return 'EVIDENCE_REFS_TYPE_INVALID' }
+    $refs = @($rawRefs)
     if ($refs.Count -eq 0) { return 'EVIDENCE_REF_MISSING' }
     if ($refs.Count -ne @($refs | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_REF_DUPLICATE' }
     foreach ($ref in $refs) {
@@ -2111,14 +2264,14 @@ function Catalog-Error($c) {
       if ($found.Count -eq 0) { return 'EVIDENCE_REF_UNRESOLVED' }
       if ($found.Count -gt 1) { return 'EVIDENCE_REF_MULTIPLE' }
       $at = [DateTimeOffset]::UtcNow
-      if (Has-Property $c 'validation_at') { $at = Trusted-ValidationAt $c.validation_at }
+      if (Has-Property $c 'validation_at') { $at = Trusted-ValidationAt (Get-Exact-Property $c 'validation_at').Value }
       $fresh = Freshness-Error $found[0] ([int]$c.base_revision) $at
       if ($null -ne $fresh) { return $fresh }
     }
   }
   return $null
 }
-$expected = [ordered]@{action_positive=5;action_negative=19;evidence_negative=4;freshness_positive=7;freshness_negative=13;inspected_sources_negative=10;work_positive=2;work_negative=34}
+$expected = [ordered]@{action_positive=5;action_negative=21;evidence_negative=13;freshness_positive=7;freshness_negative=14;inspected_sources_negative=10;work_positive=2;work_negative=34}
 foreach ($key in $expected.Keys) { if (@($fx.$key).Count -ne $expected[$key]) { Write-Error "$key count"; exit 1 } }
 foreach ($case in @($fx.action_positive)) {
   $actual = Action-Error $case; if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
@@ -2144,7 +2297,7 @@ foreach ($case in @($fx.action_negative)) {
       'EXECUTE_COMMAND' { 'execute_commands' }
       'CALL_NETWORK' { 'network_hosts' }
     }
-    $rawList = $copy.authority.PSObject.Properties[$listName].Value
+    $rawList = (Get-Exact-Property $copy.authority $listName).Value
     $rawType = if ($null -eq $rawList) { 'null' } else { $rawList.GetType().Name }
     $rawCount = if ($rawList -is [System.Array]) { $rawList.Count } else { -1 }
     Write-Output "ACTION_NEGATIVE id=$($case.id) input_sha256=$shapeHash list_type=$rawType list_count=$rawCount returned=$actual"
@@ -2164,7 +2317,7 @@ foreach ($case in @($fx.freshness_negative)) {
   $actual = Freshness-Error $case.evidence ([int]$case.base_revision) $validationAt
   if ($actual -cne $case.expected_error) { Write-Error "fresh negative $($case.id) expected $($case.expected_error), got $actual"; exit 1 }
 }
-Write-Output 'action_positive=5 action_negative=19 evidence_negative=4 freshness_positive=7 freshness_negative=13'
+Write-Output 'action_positive=5 action_negative=21 evidence_negative=13 freshness_positive=7 freshness_negative=14'
 ~~~
 
 Expected: exit code 0 and the exact fixture counts.
@@ -2520,12 +2673,35 @@ $none = $packets | Where-Object { $_.payload.outcome_code -ceq 'NO_CANDIDATE' } 
 $fixtureMatch = [regex]::Match($mainText, '(?ms)^~~~json\r?$\n(?<j>\{\s*"fixture_suite":\s*"portable_harness_v2_semantics".*?\})\r?\n^~~~\r?$')
 if ($null -eq $normal -or $null -eq $none -or -not $fixtureMatch.Success) { Write-Error 'part examples or fixture missing'; exit 1 }
 $fx = $fixtureMatch.Groups['j'].Value | ConvertFrom-Json
+function Get-Exact-Property($o, [string]$name) {
+  if ($null -eq $o) { return $null }
+  foreach ($property in $o.PSObject.Properties) {
+    if ([StringComparer]::Ordinal.Equals([string]$property.Name, $name)) {
+      return $property
+    }
+  }
+  return $null
+}
 function Has-Property($o, [string]$name) {
-  return $null -ne $o -and $o.PSObject.Properties.Name -contains $name
+  if ($null -eq $o) { return $false }
+  foreach ($property in $o.PSObject.Properties) {
+    if ([StringComparer]::Ordinal.Equals([string]$property.Name, $name)) { return $true }
+  }
+  return $false
 }
 function Exact-Props($o, [string[]]$expected) {
   if ($null -eq $o) { return $false }
-  return @(Compare-Object $expected @($o.PSObject.Properties.Name)).Count -eq 0
+  $expectedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($name in $expected) {
+    if ($name -isnot [string] -or -not $expectedSet.Add($name)) { return $false }
+  }
+  $actual = @($o.PSObject.Properties | ForEach-Object { [string]$_.Name })
+  if ($actual.Count -ne $expectedSet.Count) { return $false }
+  $actualSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($name in $actual) {
+    if (-not $actualSet.Add($name) -or -not $expectedSet.Contains($name)) { return $false }
+  }
+  return $true
 }
 function Canonical-Resource($value) {
   if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value) -or
@@ -2555,7 +2731,7 @@ function Canonical-NetworkHost($value) {
 }
 function Companion-ListError($authority, [string]$listName) {
   if (-not (Has-Property $authority $listName)) { return 'COMPANION_LIST_TYPE_INVALID' }
-  $raw = $authority.PSObject.Properties[$listName].Value
+  $raw = (Get-Exact-Property $authority $listName).Value
   if ($null -eq $raw -or $raw -isnot [System.Array]) { return 'COMPANION_LIST_TYPE_INVALID' }
   $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
   foreach ($item in $raw) {
@@ -2573,7 +2749,7 @@ function Resource-Error($c, [string]$operation, [string]$scopeName, [string]$lis
   $listError = Companion-ListError $c.authority $listName
   if ($null -ne $listError) { return $listError }
   $scope = $c.authority.$scopeName
-  $list = @($c.authority.PSObject.Properties[$listName].Value)
+  $list = @((Get-Exact-Property $c.authority $listName).Value)
   if ($scope -ceq 'PROJECT') {
     if ($list.Count -ne 0) { return 'PROJECT_COMPANION_NOT_EMPTY' }
     if (-not (Has-Property $c 'root_contained') -or $c.root_contained -isnot [bool] -or $c.root_contained -ne $true) { return 'PROJECT_ROOT_CONTAINMENT_FAILED' }
@@ -2600,7 +2776,7 @@ function Action-Error($c) {
       if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'COMMAND') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
       if (-not (Exact-Props $i @('identity_kind','command_id','command','cwd'))) { return 'IDENTITY_FIELDS_INVALID' }
       $listError = Companion-ListError $c.authority 'execute_commands'; if ($null -ne $listError) { return $listError }
-      $list = @($c.authority.PSObject.Properties['execute_commands'].Value)
+      $list = @((Get-Exact-Property $c.authority 'execute_commands').Value)
       if ($c.authority.execute_scope -cne 'NAMED_COMMANDS') {
         if (($c.authority.execute_scope -ceq 'NONE' -or $c.authority.execute_scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
         return 'EXECUTE_SCOPE_INVALID'
@@ -2616,7 +2792,7 @@ function Action-Error($c) {
       if (-not (Exact-Props $i @('identity_kind','network_host'))) { return 'IDENTITY_FIELDS_INVALID' }
       if (-not (Canonical-NetworkHost $i.network_host)) { return 'NETWORK_IDENTITY_NONCANONICAL' }
       $listError = Companion-ListError $c.authority 'network_hosts'; if ($null -ne $listError) { return $listError }
-      $list = @($c.authority.PSObject.Properties['network_hosts'].Value)
+      $list = @((Get-Exact-Property $c.authority 'network_hosts').Value)
       foreach ($item in $list) { if (-not (Canonical-NetworkHost $item)) { return 'NETWORK_ALLOWLIST_NONCANONICAL' } }
       if ($c.authority.network_scope -cne 'NAMED_HOSTS') {
         if (($c.authority.network_scope -ceq 'NONE' -or $c.authority.network_scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
@@ -2637,19 +2813,23 @@ function Parse-StrictUtc([string]$value, [ref]$parsed) {
 function Json-Integer($value) { return $value -is [int] -or $value -is [long] }
 function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
   $revisionTypes = @('file','diff'); $timeTypes = @('command','test','render','runtime','approval')
-  if (-not ($revisionTypes -ccontains $e.type) -and -not ($timeTypes -ccontains $e.type)) { return 'EVIDENCE_TYPE_INVALID' }
+  if (-not (Has-Property $e 'type')) { return 'EVIDENCE_TYPE_INVALID' }
+  $type = (Get-Exact-Property $e 'type').Value
+  if (-not ($revisionTypes -ccontains $type) -and -not ($timeTypes -ccontains $type)) { return 'EVIDENCE_TYPE_INVALID' }
   $hasRevision = Has-Property $e 'observed_revision'; $hasTime = Has-Property $e 'observed_at'
-  if ($revisionTypes -ccontains $e.type) {
+  $revision = if ($hasRevision) { (Get-Exact-Property $e 'observed_revision').Value } else { $null }
+  $observedAt = if ($hasTime) { (Get-Exact-Property $e 'observed_at').Value } else { $null }
+  if ($revisionTypes -ccontains $type) {
     if (-not $hasRevision) { return 'EVIDENCE_FRESHNESS_MISSING' }
     if ($hasTime) { return 'EVIDENCE_FRESHNESS_MODE_MISMATCH' }
-    if (-not (Json-Integer $e.observed_revision)) { return 'EVIDENCE_REVISION_INVALID' }
-    if ([long]$e.observed_revision -ne [long]$baseRevision) { return 'EVIDENCE_STALE' }
+    if (-not (Json-Integer $revision)) { return 'EVIDENCE_REVISION_INVALID' }
+    if ([long]$revision -ne [long]$baseRevision) { return 'EVIDENCE_STALE' }
     return $null
   }
   if (-not $hasTime) { return 'EVIDENCE_FRESHNESS_MISSING' }
   if ($hasRevision) { return 'EVIDENCE_FRESHNESS_MODE_MISMATCH' }
   $observed = [DateTimeOffset]::MinValue
-  if ($e.observed_at -isnot [string] -or -not (Parse-StrictUtc $e.observed_at ([ref]$observed))) { return 'EVIDENCE_TIMESTAMP_INVALID' }
+  if ($observedAt -isnot [string] -or -not (Parse-StrictUtc $observedAt ([ref]$observed))) { return 'EVIDENCE_TIMESTAMP_INVALID' }
   $age = ($validationAt - $observed).TotalSeconds
   if ($age -lt 0) { return 'EVIDENCE_FUTURE' }
   if ($age -gt 300) { return 'EVIDENCE_STALE' }
@@ -2661,12 +2841,32 @@ function Trusted-ValidationAt([string]$value) {
   return $parsed
 }
 function Catalog-Error($c) {
-  $evidence = @($c.evidence); $sources = @($c.inspected_sources)
-  if ($c.outcome_code -ceq 'NO_CANDIDATE' -and ($evidence.Count -eq 0 -or $sources.Count -eq 0)) { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
+  $outcome = if (Has-Property $c 'outcome_code') { (Get-Exact-Property $c 'outcome_code').Value } else { $null }
+  $hasEvidence = Has-Property $c 'evidence'
+  if (-not $hasEvidence) {
+    if ($outcome -ceq 'NO_CANDIDATE') { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
+    return 'EVIDENCE_LIST_TYPE_INVALID'
+  }
+  $rawEvidence = (Get-Exact-Property $c 'evidence').Value
+  if ($rawEvidence -isnot [System.Array]) { return 'EVIDENCE_LIST_TYPE_INVALID' }
+  $evidence = @($rawEvidence)
+  $hasSources = Has-Property $c 'inspected_sources'
+  if (-not $hasSources) {
+    if ($outcome -ceq 'NO_CANDIDATE') { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
+    $sources = @()
+  } else {
+    $rawSources = (Get-Exact-Property $c 'inspected_sources').Value
+    if ($rawSources -isnot [System.Array]) { return 'INSPECTED_SOURCES_TYPE_INVALID' }
+    $sources = @($rawSources)
+  }
+  if ($outcome -ceq 'NO_CANDIDATE' -and ($evidence.Count -eq 0 -or $sources.Count -eq 0)) { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
   $ids = @($evidence | ForEach-Object { $_.id })
   if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_ID_DUPLICATE' }
   foreach ($source in $sources) {
-    $refs = @($source.evidence_refs)
+    if (-not (Has-Property $source 'evidence_refs')) { return 'EVIDENCE_REF_MISSING' }
+    $rawRefs = (Get-Exact-Property $source 'evidence_refs').Value
+    if ($rawRefs -isnot [System.Array]) { return 'EVIDENCE_REFS_TYPE_INVALID' }
+    $refs = @($rawRefs)
     if ($refs.Count -eq 0) { return 'EVIDENCE_REF_MISSING' }
     if ($refs.Count -ne @($refs | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_REF_DUPLICATE' }
     foreach ($ref in $refs) {
@@ -2674,7 +2874,7 @@ function Catalog-Error($c) {
       if ($found.Count -eq 0) { return 'EVIDENCE_REF_UNRESOLVED' }
       if ($found.Count -gt 1) { return 'EVIDENCE_REF_MULTIPLE' }
       $at = [DateTimeOffset]::UtcNow
-      if (Has-Property $c 'validation_at') { $at = Trusted-ValidationAt $c.validation_at }
+      if (Has-Property $c 'validation_at') { $at = Trusted-ValidationAt (Get-Exact-Property $c 'validation_at').Value }
       $fresh = Freshness-Error $found[0] ([int]$c.base_revision) $at
       if ($null -ne $fresh) { return $fresh }
     }
@@ -2691,17 +2891,20 @@ function Inspected-Error($packet, [DateTimeOffset]$validationAt) {
     if ($absenceAllowed) { return $null }
     return 'INSPECTED_SOURCES_ABSENCE_INVALID'
   }
-  $rawSources = $packet.payload.PSObject.Properties['inspected_sources'].Value
+  $rawSources = (Get-Exact-Property $packet.payload 'inspected_sources').Value
   if ($null -eq $rawSources -or $rawSources -isnot [System.Array]) { return 'INSPECTED_SOURCES_TYPE_INVALID' }
   if ($rawSources.Count -eq 0) { return 'INSPECTED_SOURCES_EMPTY' }
-  $evidence = @($packet.payload.evidence)
+  if (-not (Has-Property $packet.payload 'evidence')) { return 'EVIDENCE_LIST_TYPE_INVALID' }
+  $rawEvidence = (Get-Exact-Property $packet.payload 'evidence').Value
+  if ($rawEvidence -isnot [System.Array]) { return 'EVIDENCE_LIST_TYPE_INVALID' }
+  $evidence = @($rawEvidence)
   $ids = @($evidence | ForEach-Object { $_.id })
   if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_ID_DUPLICATE' }
   foreach ($source in $rawSources) {
     if ($source -isnot [Management.Automation.PSCustomObject] -or -not (Exact-Props $source @('source_ref','observation','evidence_refs'))) { return 'INSPECTED_SOURCE_PROPERTIES_INVALID' }
     if (-not (Canonical-Resource $source.source_ref)) { return 'INSPECTED_SOURCE_REF_INVALID' }
     if ($source.observation -isnot [string] -or [string]::IsNullOrWhiteSpace($source.observation)) { return 'INSPECTED_SOURCE_OBSERVATION_INVALID' }
-    $rawRefs = $source.PSObject.Properties['evidence_refs'].Value
+    $rawRefs = (Get-Exact-Property $source 'evidence_refs').Value
     if ($null -eq $rawRefs -or $rawRefs -isnot [System.Array]) { return 'INSPECTED_SOURCE_REFS_TYPE_INVALID' }
     if ($rawRefs.Count -eq 0) { return 'INSPECTED_SOURCE_REFS_INVALID' }
     $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -2749,10 +2952,10 @@ function Invoke-InspectedNegative($sourceCase, [string]$variantJson) {
   }
   $rawType = 'ABSENT'; $rawCount = -1; $rawValues = ''
   if (Has-Property $copy.payload 'inspected_sources') {
-    $rawSources = $copy.payload.PSObject.Properties['inspected_sources'].Value
+    $rawSources = (Get-Exact-Property $copy.payload 'inspected_sources').Value
     if ($rawSources -is [System.Array] -and $rawSources.Count -gt 0 -and
         $null -ne $rawSources[0] -and (Has-Property $rawSources[0] 'evidence_refs')) {
-      $raw = $rawSources[0].PSObject.Properties['evidence_refs'].Value
+      $raw = (Get-Exact-Property $rawSources[0] 'evidence_refs').Value
       $rawType = if ($null -eq $raw) { 'NULL' } else { $raw.GetType().FullName }
       $rawCount = if ($raw -is [System.Array]) { $raw.Count } elseif ($null -eq $raw) { 0 } else { 1 }
       $rawValues = @($raw) -join '|'
@@ -3179,8 +3382,21 @@ $fixtureMatch = [regex]::Match($mainText, '(?ms)^~~~json\r?$\n(?<j>\{\s*"fixture
 if (-not $fixtureMatch.Success) { Write-Error 'semantic fixture missing'; exit 1 }
 $fx = $fixtureMatch.Groups['j'].Value | ConvertFrom-Json
 
+function Get-Exact-Property($o, [string]$name) {
+  if ($null -eq $o) { return $null }
+  foreach ($property in $o.PSObject.Properties) {
+    if ([StringComparer]::Ordinal.Equals([string]$property.Name, $name)) {
+      return $property
+    }
+  }
+  return $null
+}
 function Has-Property($o, [string]$name) {
-  return $null -ne $o -and $o.PSObject.Properties.Name -contains $name
+  if ($null -eq $o) { return $false }
+  foreach ($property in $o.PSObject.Properties) {
+    if ([StringComparer]::Ordinal.Equals([string]$property.Name, $name)) { return $true }
+  }
+  return $false
 }
 function Raw-Array($value) {
   return $value -is [System.Array]
@@ -3232,22 +3448,26 @@ function Tier-Rank($tier) {
 function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
   $revisionTypes = @('file','diff')
   $timeTypes = @('command','test','render','runtime','approval')
-  if (-not ($revisionTypes -ccontains $e.type) -and -not ($timeTypes -ccontains $e.type)) {
+  if (-not (Has-Property $e 'type')) { return 'WORK_EVIDENCE_TYPE_INVALID' }
+  $type = (Get-Exact-Property $e 'type').Value
+  if (-not ($revisionTypes -ccontains $type) -and -not ($timeTypes -ccontains $type)) {
     return 'WORK_EVIDENCE_TYPE_INVALID'
   }
   $hasRevision = Has-Property $e 'observed_revision'
   $hasTime = Has-Property $e 'observed_at'
-  if ($revisionTypes -ccontains $e.type) {
+  $revision = if ($hasRevision) { (Get-Exact-Property $e 'observed_revision').Value } else { $null }
+  $observedAt = if ($hasTime) { (Get-Exact-Property $e 'observed_at').Value } else { $null }
+  if ($revisionTypes -ccontains $type) {
     if (-not $hasRevision) { return 'WORK_EVIDENCE_FRESHNESS_MISSING' }
     if ($hasTime) { return 'WORK_EVIDENCE_FRESHNESS_MODE_MISMATCH' }
-    if (-not (Json-Integer $e.observed_revision)) { return 'WORK_EVIDENCE_REVISION_INVALID' }
-    if ([int64]$e.observed_revision -ne [int64]$baseRevision) { return 'WORK_EVIDENCE_STALE' }
+    if (-not (Json-Integer $revision)) { return 'WORK_EVIDENCE_REVISION_INVALID' }
+    if ([int64]$revision -ne [int64]$baseRevision) { return 'WORK_EVIDENCE_STALE' }
     return $null
   }
   if (-not $hasTime) { return 'WORK_EVIDENCE_FRESHNESS_MISSING' }
   if ($hasRevision) { return 'WORK_EVIDENCE_FRESHNESS_MODE_MISMATCH' }
   $observed = [DateTimeOffset]::MinValue
-  if ($e.observed_at -isnot [string] -or -not (Parse-StrictUtc $e.observed_at ([ref]$observed))) {
+  if ($observedAt -isnot [string] -or -not (Parse-StrictUtc $observedAt ([ref]$observed))) {
     return 'WORK_EVIDENCE_TIMESTAMP_INVALID'
   }
   $age = ($validationAt - $observed).TotalSeconds
@@ -4125,16 +4345,23 @@ v2만 사용한다.
 
 | fixture family | positive | negative |
 | --- | ---: | ---: |
-| action/authority/network identity | 5 | 19 |
-| evidence catalog | 0 | 4 |
-| closed freshness union | 7 | 13 |
+| action/authority/network identity | 5 | 21 |
+| evidence catalog | 0 | 13 |
+| closed freshness union | 7 | 14 |
 | inspected_sources | 0 | 10 |
 | WorkResult matrix | 2 | 34 |
-| 합계 | 14 | 80 |
+
+Closed-object property names retain their original JSON spelling and are
+compared case-sensitively with StringComparer.Ordinal; a case variant is not an
+alias. payload.evidence, inspected_sources when present or required, and nested
+evidence_refs are checked as raw JSON arrays before @() wrapping. Scalar, null,
+and object substitutes fail stably as EVIDENCE_LIST_TYPE_INVALID,
+INSPECTED_SOURCES_TYPE_INVALID, and EVIDENCE_REFS_TYPE_INVALID respectively.
+| 합계 | 14 | 92 |
 
 세 packet example인 CANDIDATES_PROPOSED, NO_CANDIDATE, WorkResult도 별도
 양성으로 검사한다. 최종 기대값은 fixture_positive=14,
-fixture_negative=80, example_positive=3, unexpected_pass=0,
+fixture_negative=92, example_positive=3, unexpected_pass=0,
 unexpected_fail=0이다.
 
 ### 일반 응답
@@ -4257,7 +4484,7 @@ foreach ($path in $files) {
 성공 summary는 정확히 다음과 같다.
 
 ~~~text
-fixture_positive=14 fixture_negative=80 example_positive=3 unexpected_pass=0 unexpected_fail=0
+fixture_positive=14 fixture_negative=92 example_positive=3 unexpected_pass=0 unexpected_fail=0
 ~~~
 
 애플리케이션 테스트가 존재하면 project_profile에 등록된 실제 명령을 추가로
@@ -4543,7 +4770,7 @@ finally {
   }
 }
 
-$mainSummary = 'action_positive=5 action_negative=19 evidence_negative=4 freshness_positive=7 freshness_negative=13'
+$mainSummary = 'action_positive=5 action_negative=21 evidence_negative=13 freshness_positive=7 freshness_negative=14'
 $partSummary = 'inspected_sources_negative=10 outcome_absence_positive=3 no_candidate_required=1'
 $workSummary = 'work_positive=2 work_negative=34 unexpected_pass=0 unexpected_fail=0'
 if (-not $runOutput.main.Contains($mainSummary)) {
@@ -4571,8 +4798,21 @@ foreach ($line in ($runOutput.work -split '\r?\n')) {
   }
 }
 
+function Get-Exact-Property($o, [string]$name) {
+  if ($null -eq $o) { return $null }
+  foreach ($property in $o.PSObject.Properties) {
+    if ([StringComparer]::Ordinal.Equals([string]$property.Name, $name)) {
+      return $property
+    }
+  }
+  return $null
+}
 function Has-Property($o, [string]$name) {
-  return $null -ne $o -and $o.PSObject.Properties.Name -contains $name
+  if ($null -eq $o) { return $false }
+  foreach ($property in $o.PSObject.Properties) {
+    if ([StringComparer]::Ordinal.Equals([string]$property.Name, $name)) { return $true }
+  }
+  return $false
 }
 function Raw-Array($value) {
   return $value -is [System.Array]
@@ -4594,24 +4834,28 @@ function Parse-StrictUtc([string]$value, [ref]$parsed) {
 function Example-Fresh($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
   $revisionTypes = @('file','diff')
   $timeTypes = @('command','test','render','runtime','approval')
-  if (-not ($revisionTypes -ccontains $e.type) -and
-      -not ($timeTypes -ccontains $e.type)) {
+  if (-not (Has-Property $e 'type')) { return $false }
+  $type = (Get-Exact-Property $e 'type').Value
+  if (-not ($revisionTypes -ccontains $type) -and
+      -not ($timeTypes -ccontains $type)) {
     return $false
   }
   $hasRevision = Has-Property $e 'observed_revision'
   $hasTime = Has-Property $e 'observed_at'
-  if ($revisionTypes -ccontains $e.type) {
+  $revision = if ($hasRevision) { (Get-Exact-Property $e 'observed_revision').Value } else { $null }
+  $observedAt = if ($hasTime) { (Get-Exact-Property $e 'observed_at').Value } else { $null }
+  if ($revisionTypes -ccontains $type) {
     return $hasRevision -and
       -not $hasTime -and
-      (Json-Integer $e.observed_revision) -and
-      [int64]$e.observed_revision -eq [int64]$baseRevision
+      (Json-Integer $revision) -and
+      [int64]$revision -eq [int64]$baseRevision
   }
   if (-not $hasTime -or $hasRevision) {
     return $false
   }
   $observed = [DateTimeOffset]::MinValue
-  if ($e.observed_at -isnot [string] -or
-      -not (Parse-StrictUtc $e.observed_at ([ref]$observed))) {
+  if ($observedAt -isnot [string] -or
+      -not (Parse-StrictUtc $observedAt ([ref]$observed))) {
     return $false
   }
   $age = ($validationAt - $observed).TotalSeconds
@@ -4738,7 +4982,7 @@ foreach ($token in @(
   'inspected_sources fixture',
   'WorkResult fixture',
   'fixture_positive=14',
-  'fixture_negative=80',
+  'fixture_negative=92',
   'example_positive=3',
   'unexpected_pass=0',
   'unexpected_fail=0'
@@ -4773,12 +5017,12 @@ if ($work.Contains('"assertions":') -or $work.Contains('"events":')) {
 }
 
 $fixturePositive = 5 + 7 + 2
-$fixtureNegative = 19 + 4 + 13 + 10 + 34
+$fixtureNegative = 21 + 13 + 14 + 10 + 34
 $unexpectedPass = 0
 $unexpectedFail = 0
 Write-Output "fixture_positive=$fixturePositive fixture_negative=$fixtureNegative example_positive=$examplePositive unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
 if ($fixturePositive -ne 14 -or
-    $fixtureNegative -ne 80 -or
+    $fixtureNegative -ne 92 -or
     $examplePositive -ne 3 -or
     $unexpectedPass -ne 0 -or
     $unexpectedFail -ne 0) {
@@ -4791,7 +5035,7 @@ if ($LASTEXITCODE -ne 0) {
 ~~~
 
 Expected: exit code 0 with role case evidence and the exact summary
-fixture_positive=14 fixture_negative=80 example_positive=3 unexpected_pass=0 unexpected_fail=0.
+fixture_positive=14 fixture_negative=92 example_positive=3 unexpected_pass=0 unexpected_fail=0.
 
 Run legacy-term location review:
 

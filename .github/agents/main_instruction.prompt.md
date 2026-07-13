@@ -164,6 +164,10 @@ Authority validation uses explicit, non-overlapping branches:
   redirect, or otherwise normalize an action identity to manufacture a match.
 - An inconsistent scope/list pair is CONTRACT_ERROR. UNKNOWN fails closed.
 
+Closed-object property names are the original JSON names and are compared with
+StringComparer.Ordinal. Case variants are distinct invalid names, never aliases,
+so required-field and exact-field validation fails closed.
+
 Canonical record schemas:
 
 ~~~json
@@ -228,6 +232,11 @@ action_identity is a closed discriminated union:
   decimal port from 1 through 65535. It rejects schemes, paths, queries,
   fragments, userinfo, uppercase, whitespace, empty labels, edge hyphens,
   multiple colons, and out-of-range ports.
+- payload.evidence, inspected_sources when present or required, and every
+  nested evidence_refs value retain raw JSON-array type. Before any @() wrapping
+  or reference resolution, scalar, null, and object substitutes fail closed with
+  EVIDENCE_LIST_TYPE_INVALID, INSPECTED_SOURCES_TYPE_INVALID, and
+  EVIDENCE_REFS_TYPE_INVALID respectively.
 - Every authority companion is the original JSON array. Items are non-empty
   strings, ordinal-unique, and wildcard-free. read/write PROJECT requires an
   empty list and an original JSON boolean root_contained=true; NAMED_RESOURCES
@@ -679,6 +688,24 @@ The following normative fixture suite is used by executable conformance checks:
                                                                         "api.example.com:0"
                                                                     ]
                                               }
+                            },
+                            {
+                                "id": "ACTION_IDENTITY_CASE_INVALID",
+                                "expected_error": "ACTION_IDENTITY_MISSING",
+                                "action_type": "READ_RESOURCE",
+                                "operation": "read",
+                                "root_contained": true,
+                                "Action_Identity": { "identity_kind": "RESOURCE", "resource_ref": "src/app.py" },
+                                "authority": { "read_scope": "PROJECT", "read_resources": [] }
+                            },
+                            {
+                                "id": "ACTION_IDENTITY_INNER_CASE_INVALID",
+                                "expected_error": "IDENTITY_FIELDS_INVALID",
+                                "action_type": "READ_RESOURCE",
+                                "operation": "read",
+                                "root_contained": true,
+                                "action_identity": { "IDENTITY_KIND": "RESOURCE", "RESOURCE_REF": "src/app.py" },
+                                "authority": { "read_scope": "PROJECT", "read_resources": [] }
                             }
                         ],
     "evidence_negative":  [
@@ -773,6 +800,78 @@ The following normative fixture suite is used by executable conformance checks:
                                   "evidence":  [
 
                                                ]
+                              },
+                              {
+                                  "id": "EVIDENCE_RAW_SCALAR",
+                                  "expected_error": "EVIDENCE_LIST_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": "EVID-1",
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":["EVID-1"]}]
+                              },
+                              {
+                                  "id": "EVIDENCE_RAW_NULL",
+                                  "expected_error": "EVIDENCE_LIST_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": null,
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":["EVID-1"]}]
+                              },
+                              {
+                                  "id": "EVIDENCE_RAW_OBJECT",
+                                  "expected_error": "EVIDENCE_LIST_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": {"id":"EVID-1"},
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":["EVID-1"]}]
+                              },
+                              {
+                                  "id": "INSPECTED_SOURCES_RAW_SCALAR",
+                                  "expected_error": "INSPECTED_SOURCES_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": "README.md"
+                              },
+                              {
+                                  "id": "INSPECTED_SOURCES_RAW_NULL",
+                                  "expected_error": "INSPECTED_SOURCES_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": null
+                              },
+                              {
+                                  "id": "INSPECTED_SOURCES_RAW_OBJECT",
+                                  "expected_error": "INSPECTED_SOURCES_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": {"source_ref":"README.md","observation":"checked","evidence_refs":["EVID-1"]}
+                              },
+                              {
+                                  "id": "EVIDENCE_REFS_RAW_SCALAR",
+                                  "expected_error": "EVIDENCE_REFS_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":"EVID-1"}]
+                              },
+                              {
+                                  "id": "EVIDENCE_REFS_RAW_NULL",
+                                  "expected_error": "EVIDENCE_REFS_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":null}]
+                              },
+                              {
+                                  "id": "EVIDENCE_REFS_RAW_OBJECT",
+                                  "expected_error": "EVIDENCE_REFS_TYPE_INVALID",
+                                  "base_revision": 2,
+                                  "outcome_code": "CANDIDATES_PROPOSED",
+                                  "evidence": [{"id":"EVID-1","tier":"E1","type":"file","source":"README.md","observation":"checked","observed_revision":2}],
+                                  "inspected_sources": [{"source_ref":"README.md","observation":"checked","evidence_refs":{"id":"EVID-1"}}]
                               }
                           ],
     "freshness_positive":  [
@@ -1050,6 +1149,13 @@ The following normative fixture suite is used by executable conformance checks:
                                                     "observation":  "x",
                                                     "observed_at":  "2026-07-13T00:05:00Z"
                                                 }
+                               },
+                               {
+                                   "id": "FRESH_OBSERVED_REVISION_CASE",
+                                   "expected_error": "EVIDENCE_FRESHNESS_MISSING",
+                                   "base_revision": 2,
+                                   "validation_at": "2026-07-13T00:05:00Z",
+                                   "evidence": {"id":"E","tier":"E1","type":"file","source":"x","observation":"x","Observed_Revision":2}
                                }
                            ],
     "inspected_sources_negative":  [

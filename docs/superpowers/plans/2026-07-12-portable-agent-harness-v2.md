@@ -1601,7 +1601,19 @@ The following normative fixture suite is used by executable conformance checks:
                           {"id":"WORK_REVISION_TIME_ONLY_PRIORITY","expected_error":"WORK_EVIDENCE_FRESHNESS_MISSING","mutation":"REVISION_TIME_ONLY"},
                           {"id":"WORK_TIME_REVISION_ONLY_PRIORITY","expected_error":"WORK_EVIDENCE_FRESHNESS_MISSING","mutation":"TIME_REVISION_ONLY"},
                           {"id":"WORK_CANDIDATE_ID_NUMERIC","expected_error":"WORK_CANDIDATE_ID_INVALID","mutation":"NUMERIC_CANDIDATE_ID"},
-                          {"id":"WORK_CRITERION_ID_NUMERIC","expected_error":"WORK_CRITERION_ID_INVALID","mutation":"NUMERIC_CRITERION_ID"}
+                          {"id":"WORK_CRITERION_ID_NUMERIC","expected_error":"WORK_CRITERION_ID_INVALID","mutation":"NUMERIC_CRITERION_ID"},
+                          {"id":"WORK_CANDIDATE_FLOOR_ARRAY","expected_error":"WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CANDIDATE_FLOOR_ARRAY"},
+                          {"id":"WORK_CANDIDATE_FLOOR_NULL","expected_error":"WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CANDIDATE_FLOOR_NULL"},
+                          {"id":"WORK_CANDIDATE_FLOOR_OBJECT","expected_error":"WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CANDIDATE_FLOOR_OBJECT"},
+                          {"id":"WORK_CANDIDATE_FLOOR_LOWERCASE","expected_error":"WORK_CANDIDATE_EVIDENCE_FLOOR_VALUE_INVALID","mutation":"CANDIDATE_FLOOR_LOWERCASE"},
+                          {"id":"WORK_CRITERION_FLOOR_ARRAY","expected_error":"WORK_CRITERION_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CRITERION_FLOOR_ARRAY"},
+                          {"id":"WORK_CRITERION_FLOOR_NULL","expected_error":"WORK_CRITERION_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CRITERION_FLOOR_NULL"},
+                          {"id":"WORK_CRITERION_FLOOR_OBJECT","expected_error":"WORK_CRITERION_EVIDENCE_FLOOR_TYPE_INVALID","mutation":"CRITERION_FLOOR_OBJECT"},
+                          {"id":"WORK_CRITERION_FLOOR_LOWERCASE","expected_error":"WORK_CRITERION_EVIDENCE_FLOOR_VALUE_INVALID","mutation":"CRITERION_FLOOR_LOWERCASE"},
+                          {"id":"WORK_EVIDENCE_TIER_ARRAY","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_ARRAY"},
+                          {"id":"WORK_EVIDENCE_TIER_NULL","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_NULL"},
+                          {"id":"WORK_EVIDENCE_TIER_OBJECT","expected_error":"WORK_EVIDENCE_TIER_TYPE_INVALID","mutation":"EVIDENCE_TIER_OBJECT"},
+                          {"id":"WORK_EVIDENCE_TIER_LOWERCASE","expected_error":"WORK_EVIDENCE_TIER_VALUE_INVALID","mutation":"EVIDENCE_TIER_LOWERCASE"}
                       ]
 }
 ~~~
@@ -2106,7 +2118,7 @@ function Catalog-Error($c) {
   }
   return $null
 }
-$expected = [ordered]@{action_positive=5;action_negative=19;evidence_negative=4;freshness_positive=7;freshness_negative=13;inspected_sources_negative=10;work_positive=2;work_negative=22}
+$expected = [ordered]@{action_positive=5;action_negative=19;evidence_negative=4;freshness_positive=7;freshness_negative=13;inspected_sources_negative=10;work_positive=2;work_negative=34}
 foreach ($key in $expected.Keys) { if (@($fx.$key).Count -ne $expected[$key]) { Write-Error "$key count"; exit 1 } }
 foreach ($case in @($fx.action_positive)) {
   $actual = Action-Error $case; if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
@@ -2967,6 +2979,18 @@ approved candidate exactly once with no unknown, duplicate, or missing
 candidate. acceptance_results contains every trusted required criterion exactly
 once with no unknown, duplicate, or missing criterion.
 
+candidate_evidence_floor, each trusted criterion evidence_floor, and every
+payload.evidence tier are likewise original non-empty JSON strings before any
+rank or comparison. E0|E1|E2|E3 is a closed enum looked up only through a
+.NET Dictionary constructed with StringComparer.Ordinal. For each surface, raw
+arrays, null, and objects fail with its stable *_TYPE_INVALID code; empty,
+lowercase, and every other non-enum string fail with its stable *_VALUE_INVALID
+code. The six codes are WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID and
+WORK_CANDIDATE_EVIDENCE_FLOOR_VALUE_INVALID,
+WORK_CRITERION_EVIDENCE_FLOOR_TYPE_INVALID and
+WORK_CRITERION_EVIDENCE_FLOOR_VALUE_INVALID, and
+WORK_EVIDENCE_TIER_TYPE_INVALID and WORK_EVIDENCE_TIER_VALUE_INVALID.
+
 WorkResult status is exactly SUCCEEDED|FAILED|PARTIAL|BLOCKED. Every candidate
 decision is exactly ACCEPTED|REJECTED|DEFERRED, every acceptance status is
 exactly PASSED|FAILED|NOT_RUN, and proposed_transition is exactly
@@ -3192,14 +3216,18 @@ function Parse-StrictUtc([string]$value, [ref]$parsed) {
   $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
   return [DateTimeOffset]::TryParseExact($value, "yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture, $styles, $parsed)
 }
-function Tier-Rank([string]$tier) {
-  switch -CaseSensitive ($tier) {
-    'E0' { return 0 }
-    'E1' { return 1 }
-    'E2' { return 2 }
-    'E3' { return 3 }
-    default { return -1 }
-  }
+$TierRanks = [Collections.Generic.Dictionary[string,int]]::new(
+  [StringComparer]::Ordinal
+)
+$TierRanks.Add('E0', 0)
+$TierRanks.Add('E1', 1)
+$TierRanks.Add('E2', 2)
+$TierRanks.Add('E3', 3)
+function Tier-Rank($tier) {
+  if ($tier -isnot [string]) { return -1 }
+  [int]$rank = -1
+  if ($TierRanks.TryGetValue($tier, [ref]$rank)) { return $rank }
+  return -1
 }
 function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
   $revisionTypes = @('file','diff')
@@ -3227,7 +3255,7 @@ function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) 
   if ($age -gt 300) { return 'WORK_EVIDENCE_STALE' }
   return $null
 }
-function Ref-Error($refs, [object[]]$evidence, [int]$baseRevision, [DateTimeOffset]$validationAt, [string]$floor) {
+function Ref-Error($refs, [object[]]$evidence, [int]$baseRevision, [DateTimeOffset]$validationAt, $floor) {
   if (-not (Raw-Array $refs)) { return 'WORK_EVIDENCE_REFS_TYPE_INVALID' }
   $items = @($refs)
   if ($items.Count -eq 0) { return 'WORK_EVIDENCE_REFS_EMPTY' }
@@ -3237,6 +3265,7 @@ function Ref-Error($refs, [object[]]$evidence, [int]$baseRevision, [DateTimeOffs
   if (@($items | Sort-Object -CaseSensitive -Unique).Count -ne $items.Count) {
     return 'WORK_EVIDENCE_REFS_DUPLICATE'
   }
+  if ($floor -isnot [string]) { return 'WORK_EVIDENCE_FLOOR_INVALID' }
   $floorRank = Tier-Rank $floor
   if ($floorRank -lt 0) { return 'WORK_EVIDENCE_FLOOR_INVALID' }
   foreach ($ref in $items) {
@@ -3245,7 +3274,10 @@ function Ref-Error($refs, [object[]]$evidence, [int]$baseRevision, [DateTimeOffs
     if ($found.Count -gt 1) { return 'WORK_EVIDENCE_REF_MULTIPLE' }
     $fresh = Freshness-Error $found[0] $baseRevision $validationAt
     if ($null -ne $fresh) { return $fresh }
-    if ((Tier-Rank ([string]$found[0].tier)) -lt $floorRank) {
+    if ($found[0].tier -isnot [string]) { return 'WORK_EVIDENCE_TIER_TYPE_INVALID' }
+    $tierRank = Tier-Rank $found[0].tier
+    if ($tierRank -lt 0) { return 'WORK_EVIDENCE_TIER_VALUE_INVALID' }
+    if ($tierRank -lt $floorRank) {
       return 'WORK_EVIDENCE_FLOOR_NOT_MET'
     }
   }
@@ -3262,9 +3294,14 @@ function Work-Error($case) {
     return 'WORK_CONTEXT_INVALID'
   }
   $validationAt = [DateTimeOffset]::MinValue
-  if ($context.validationAt -isnot [string] -or -not (Parse-StrictUtc $context.validationAt ([ref]$validationAt)) -or
-      (Tier-Rank ([string]$context.candidate_evidence_floor)) -lt 0) {
+  if ($context.validationAt -isnot [string] -or -not (Parse-StrictUtc $context.validationAt ([ref]$validationAt))) {
     return 'WORK_CONTEXT_INVALID'
+  }
+  if ($context.candidate_evidence_floor -isnot [string]) {
+    return 'WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID'
+  }
+  if ((Tier-Rank $context.candidate_evidence_floor) -lt 0) {
+    return 'WORK_CANDIDATE_EVIDENCE_FLOOR_VALUE_INVALID'
   }
   if ($result.protocol_version -cne $context.protocol_version -or
       $result.packet_type -cne 'work_result' -or $result.actor -cne 'work' -or
@@ -3313,9 +3350,14 @@ function Work-Error($case) {
   )
   foreach ($criterion in @($context.acceptance_criteria)) {
     if ($null -eq $criterion -or $criterion.criterion_id -isnot [string] -or
-        [string]::IsNullOrWhiteSpace($criterion.criterion_id) -or
-        (Tier-Rank ([string]$criterion.evidence_floor)) -lt 0) {
+        [string]::IsNullOrWhiteSpace($criterion.criterion_id)) {
       return 'WORK_CONTEXT_INVALID'
+    }
+    if ($criterion.evidence_floor -isnot [string]) {
+      return 'WORK_CRITERION_EVIDENCE_FLOOR_TYPE_INVALID'
+    }
+    if ((Tier-Rank $criterion.evidence_floor) -lt 0) {
+      return 'WORK_CRITERION_EVIDENCE_FLOOR_VALUE_INVALID'
     }
     $criterionId = $criterion.criterion_id
     if ($criteriaById.ContainsKey($criterionId)) { return 'WORK_CONTEXT_INVALID' }
@@ -3370,9 +3412,14 @@ function Work-Error($case) {
   $evidenceIds = @()
   foreach ($entry in $evidence) {
     if ($null -eq $entry -or $entry.id -isnot [string] -or
-        [string]::IsNullOrWhiteSpace($entry.id) -or
-        (Tier-Rank ([string]$entry.tier)) -lt 0) {
+        [string]::IsNullOrWhiteSpace($entry.id)) {
       return 'WORK_EVIDENCE_CATALOG_INVALID'
+    }
+    if ($entry.tier -isnot [string]) {
+      return 'WORK_EVIDENCE_TIER_TYPE_INVALID'
+    }
+    if ((Tier-Rank $entry.tier) -lt 0) {
+      return 'WORK_EVIDENCE_TIER_VALUE_INVALID'
     }
     $evidenceIds += [string]$entry.id
   }
@@ -3381,13 +3428,13 @@ function Work-Error($case) {
   }
   foreach ($candidate in @($result.payload.candidate_results)) {
     if ($candidate.decision -ceq 'ACCEPTED') {
-      $errorCode = Ref-Error $candidate.evidence_refs $evidence ([int]$context.base_revision) $validationAt ([string]$context.candidate_evidence_floor)
+      $errorCode = Ref-Error $candidate.evidence_refs $evidence ([int]$context.base_revision) $validationAt $context.candidate_evidence_floor
       if ($null -ne $errorCode) { return $errorCode }
     }
   }
   foreach ($criterionResult in @($result.payload.acceptance_results)) {
     if ($criterionResult.status -ceq 'PASSED') {
-      $floor = [string]$criteriaById[$criterionResult.criterion_id].evidence_floor
+      $floor = $criteriaById[$criterionResult.criterion_id].evidence_floor
       $errorCode = Ref-Error $criterionResult.evidence_refs $evidence ([int]$context.base_revision) $validationAt $floor
       if ($null -ne $errorCode) { return $errorCode }
     }
@@ -3505,6 +3552,18 @@ function Mutate-Work($baseline, [string]$mutation) {
       $case.context.acceptance_criteria[0].criterion_id = '1'
       $case.result.payload.acceptance_results[0].criterion_id = 1
     }
+    'CANDIDATE_FLOOR_ARRAY' { $case.context.candidate_evidence_floor = @('E1') }
+    'CANDIDATE_FLOOR_NULL' { $case.context.candidate_evidence_floor = $null }
+    'CANDIDATE_FLOOR_OBJECT' { $case.context.candidate_evidence_floor = [pscustomobject]@{ value = 'E1' } }
+    'CANDIDATE_FLOOR_LOWERCASE' { $case.context.candidate_evidence_floor = 'e1' }
+    'CRITERION_FLOOR_ARRAY' { $case.context.acceptance_criteria[0].evidence_floor = @('E2') }
+    'CRITERION_FLOOR_NULL' { $case.context.acceptance_criteria[0].evidence_floor = $null }
+    'CRITERION_FLOOR_OBJECT' { $case.context.acceptance_criteria[0].evidence_floor = [pscustomobject]@{ value = 'E2' } }
+    'CRITERION_FLOOR_LOWERCASE' { $case.context.acceptance_criteria[0].evidence_floor = 'e2' }
+    'EVIDENCE_TIER_ARRAY' { $case.result.payload.evidence[0].tier = @('E1') }
+    'EVIDENCE_TIER_NULL' { $case.result.payload.evidence[0].tier = $null }
+    'EVIDENCE_TIER_OBJECT' { $case.result.payload.evidence[0].tier = [pscustomobject]@{ value = 'E1' } }
+    'EVIDENCE_TIER_LOWERCASE' { $case.result.payload.evidence[0].tier = 'e1' }
     default { throw "unknown work mutation $mutation" }
   }
   return $case
@@ -3514,7 +3573,7 @@ function Shape-Hash($value) {
   $bytes = [Text.Encoding]::UTF8.GetBytes($json)
   return [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($bytes)).Replace('-','').ToLowerInvariant()
 }
-if (@($fx.work_positive).Count -ne 2 -or @($fx.work_negative).Count -ne 22) {
+if (@($fx.work_positive).Count -ne 2 -or @($fx.work_negative).Count -ne 34) {
   Write-Error 'work fixture counts invalid'; exit 1
 }
 $unexpectedPass = 0
@@ -3534,7 +3593,7 @@ foreach ($negative in @($fx.work_negative)) {
   if ($null -eq $actual) { $unexpectedPass++ }
   elseif ($actual -cne $negative.expected_error) { $unexpectedFail++ }
 }
-Write-Output "work_positive=2 work_negative=22 unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
+Write-Output "work_positive=2 work_negative=34 unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
 if ($unexpectedPass -ne 0 -or $unexpectedFail -ne 0) { exit 1 }
 ~~~
 
@@ -4004,6 +4063,17 @@ HashSet/Dictionary를 사용한다. 대소문자만 다른 ID는 서로 다른 �
 folding, trimming, 숫자-문자열 coercion과 다른 normalization은 금지한다.
 trusted acceptance_criteria는 criterion_id와 evidence_floor record의 원본
 배열로 유지하고 dictionary는 runtime lookup에만 사용한다.
+
+candidate_evidence_floor, 각 criterion evidence_floor, payload.evidence의
+각 tier도 rank 또는 비교 전에 원본 JSON 문자열이어야 하며 비어 있지 않아야 한다.
+E0|E1|E2|E3 lookup은 StringComparer.Ordinal로 만든 .NET Dictionary만
+사용한다. 배열·null·객체는 surface별 *_TYPE_INVALID, 빈 문자열·소문자·그 외
+enum 밖 문자열은 surface별 *_VALUE_INVALID로 stable하게 거절한다. 여섯 오류는
+WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID/
+WORK_CANDIDATE_EVIDENCE_FLOOR_VALUE_INVALID,
+WORK_CRITERION_EVIDENCE_FLOOR_TYPE_INVALID/
+WORK_CRITERION_EVIDENCE_FLOOR_VALUE_INVALID,
+WORK_EVIDENCE_TIER_TYPE_INVALID/WORK_EVIDENCE_TIER_VALUE_INVALID다.
 candidate_results와 acceptance_results는 trusted ID를 unknown, duplicate,
 missing 없이 각각 정확히 한 번 포함하고 모든 decision/status의
 evidence_refs를 원본 JSON 배열로 검증한다. ACCEPTED와 PASSED의 refs는 추가로
@@ -4059,12 +4129,12 @@ v2만 사용한다.
 | evidence catalog | 0 | 4 |
 | closed freshness union | 7 | 13 |
 | inspected_sources | 0 | 10 |
-| WorkResult matrix | 2 | 22 |
-| 합계 | 14 | 68 |
+| WorkResult matrix | 2 | 34 |
+| 합계 | 14 | 80 |
 
 세 packet example인 CANDIDATES_PROPOSED, NO_CANDIDATE, WorkResult도 별도
 양성으로 검사한다. 최종 기대값은 fixture_positive=14,
-fixture_negative=68, example_positive=3, unexpected_pass=0,
+fixture_negative=80, example_positive=3, unexpected_pass=0,
 unexpected_fail=0이다.
 
 ### 일반 응답
@@ -4187,7 +4257,7 @@ foreach ($path in $files) {
 성공 summary는 정확히 다음과 같다.
 
 ~~~text
-fixture_positive=14 fixture_negative=68 example_positive=3 unexpected_pass=0 unexpected_fail=0
+fixture_positive=14 fixture_negative=80 example_positive=3 unexpected_pass=0 unexpected_fail=0
 ~~~
 
 애플리케이션 테스트가 존재하면 project_profile에 등록된 실제 명령을 추가로
@@ -4475,7 +4545,7 @@ finally {
 
 $mainSummary = 'action_positive=5 action_negative=19 evidence_negative=4 freshness_positive=7 freshness_negative=13'
 $partSummary = 'inspected_sources_negative=10 outcome_absence_positive=3 no_candidate_required=1'
-$workSummary = 'work_positive=2 work_negative=22 unexpected_pass=0 unexpected_fail=0'
+$workSummary = 'work_positive=2 work_negative=34 unexpected_pass=0 unexpected_fail=0'
 if (-not $runOutput.main.Contains($mainSummary)) {
   Write-Error 'main semantic counts invalid'
   exit 1
@@ -4489,7 +4559,7 @@ if (-not $runOutput.work.Contains($workSummary)) {
   exit 1
 }
 $workCases = [regex]::Matches($runOutput.work, '(?m)^WORK_CASE ')
-if ($workCases.Count -ne 24) {
+if ($workCases.Count -ne 36) {
   Write-Error "work case line count=$($workCases.Count)"
   exit 1
 }
@@ -4662,10 +4732,13 @@ $guide = $textByPath['docs/agent-harness/PORTING_GUIDE.md']
 foreach ($token in @(
   'trusted validationAt',
   '원본 JSON 배열',
+  '원본 JSON 문자열',
+  'WORK_CANDIDATE_EVIDENCE_FLOOR_TYPE_INVALID',
+  'WORK_EVIDENCE_TIER_VALUE_INVALID',
   'inspected_sources fixture',
   'WorkResult fixture',
   'fixture_positive=14',
-  'fixture_negative=68',
+  'fixture_negative=80',
   'example_positive=3',
   'unexpected_pass=0',
   'unexpected_fail=0'
@@ -4700,12 +4773,12 @@ if ($work.Contains('"assertions":') -or $work.Contains('"events":')) {
 }
 
 $fixturePositive = 5 + 7 + 2
-$fixtureNegative = 19 + 4 + 13 + 10 + 22
+$fixtureNegative = 19 + 4 + 13 + 10 + 34
 $unexpectedPass = 0
 $unexpectedFail = 0
 Write-Output "fixture_positive=$fixturePositive fixture_negative=$fixtureNegative example_positive=$examplePositive unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
 if ($fixturePositive -ne 14 -or
-    $fixtureNegative -ne 68 -or
+    $fixtureNegative -ne 80 -or
     $examplePositive -ne 3 -or
     $unexpectedPass -ne 0 -or
     $unexpectedFail -ne 0) {
@@ -4718,7 +4791,7 @@ if ($LASTEXITCODE -ne 0) {
 ~~~
 
 Expected: exit code 0 with role case evidence and the exact summary
-fixture_positive=14 fixture_negative=68 example_positive=3 unexpected_pass=0 unexpected_fail=0.
+fixture_positive=14 fixture_negative=80 example_positive=3 unexpected_pass=0 unexpected_fail=0.
 
 Run legacy-term location review:
 

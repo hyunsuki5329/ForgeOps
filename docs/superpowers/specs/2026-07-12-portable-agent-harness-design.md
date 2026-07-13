@@ -228,6 +228,14 @@ result list fields remain raw JSON arrays. The trusted acceptance criteria stay
 as their original array of criterion_id and evidence_floor records; an ordinal
 dictionary is only a runtime lookup.
 
+candidate_evidence_floor, every trusted criterion evidence_floor, and every
+WorkResult evidence tier are also original non-empty JSON strings. E0|E1|E2|E3
+is a closed enum ranked only through a Dictionary constructed with
+StringComparer.Ordinal after raw type validation. Arrays, null, and objects fail
+with surface-specific *_TYPE_INVALID errors; lowercase, empty, and other
+non-enum strings fail with the matching *_VALUE_INVALID errors. The surfaces are
+candidate evidence floor, criterion evidence floor, and evidence tier.
+
 WorkResult status is closed to SUCCEEDED|FAILED|PARTIAL|BLOCKED, candidate
 decision to ACCEPTED|REJECTED|DEFERRED, acceptance status to
 PASSED|FAILED|NOT_RUN, and proposed_transition to
@@ -461,11 +469,13 @@ Implementation is accepted when:
 13. inspected_sources has exact fields, canonical source_ref, non-empty
     observation and refs, and exact fresh reference resolution.
 14. WorkResult requires original non-empty string candidate and criterion IDs,
-    applies ordinal uniqueness, membership, and lookup so case-distinct IDs stay
-    distinct, covers every trusted ID exactly once, closes every result enum,
-    enforces compatibility and evidence floors, computes exact summary counts,
-    and rejects inconsistent SUCCEEDED.
-15. The semantic fixture executes 14 positive and 68 negative cases with zero
+    plus original non-empty JSON strings for candidate/criterion evidence floors
+    and evidence tiers; it applies ordinal uniqueness, membership, lookup, and
+    closed E0|E1|E2|E3 ranking so case-distinct IDs stay distinct, covers every
+    trusted ID exactly once, closes every result enum, enforces compatibility and
+    evidence floors, computes exact summary counts, and rejects inconsistent
+    SUCCEEDED.
+15. The semantic fixture executes 14 positive and 80 negative cases with zero
     unexpected pass or failure, plus three positive packet examples.
 16. Portable prompts contain no ForgeOps paths or domain rules.
 17. Both adapters reference all three prompt paths.

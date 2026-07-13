@@ -145,15 +145,25 @@ project-wide execute or network authority does not exist. NAMED_COMMANDS and
 NAMED_HOSTS require non-empty exact companion lists. NONE and UNKNOWN require an
 empty companion list.
 
-Named resource values are canonical project-root-relative literals. Command
-authority names a validation-command ID whose command and root-relative cwd
-match exactly. Network authority names an exact canonical lower-case host[:port]
-identity. Empty values, duplicates, absolute paths, parent traversal, wildcard,
-glob, regex, prefix/suffix matching, scheme inheritance, redirects, case
-folding, path resolution to manufacture a match, or any other implicit
-authority are invalid. An inconsistent scope/list pair is CONTRACT_ERROR and
-UNKNOWN fails closed.
+Named resource values are canonical project-root-relative literals. Every
+authority companion is an original JSON array; null, scalar, or object values
+are invalid, even for one item. Items are non-empty strings, ordinal-unique, and
+wildcard-free. PROJECT read/write requires an empty list and an original JSON
+boolean root_contained=true; NAMED_RESOURCES requires a non-empty list and exact
+membership; NONE and UNKNOWN require an empty list.
 
+Command authority names a validation-command ID whose command and
+root-relative cwd match exactly. Canonical-NetworkHost is the single validator
+for a NETWORK identity and every network_hosts member. It accepts a lower-case
+ASCII DNS host of 1 through 253 characters with labels of 1 through 63
+characters, optionally followed by one decimal port from 1 through 65535. It
+rejects schemes, paths, queries, fragments, userinfo, uppercase, whitespace,
+empty labels, edge hyphens, trailing dots, multiple colons, and out-of-range
+ports. Empty values, duplicates, absolute paths, parent traversal, wildcard,
+glob, regex, prefix/suffix matching, scheme inheritance, redirects, case
+folding, trimming, path resolution, default-port expansion, or any other
+implicit authority are invalid. An inconsistent scope/list pair is
+CONTRACT_ERROR and UNKNOWN fails closed.
 Canonical records are:
 
 - validation command: id, command, cwd, evidence_tier, required;
@@ -207,9 +217,25 @@ containment only; NAMED_RESOURCES uses exact membership; command and network
 actions require exact NAMED_COMMANDS or NAMED_HOSTS authority. Work never
 normalizes an identity to manufacture a match. The candidate must also be
 approved, base_revision current, and protected-resource and dirty-workspace
-checks passing. Work makes the smallest authorized change, verifies each
-criterion, and returns WorkResult without updating accepted state.
+checks passing.
 
+WorkResult validation uses only trusted TaskPacket execution context supplied by
+main. That context fixes protocol_version, task_id, correlation_id,
+base_revision, validator-captured validationAt, approved_candidate_ids,
+candidate_evidence_floor, and every required acceptance criterion ID and
+evidence floor. WorkResult cannot supply or change this context. All context and
+result list fields remain raw JSON arrays.
+
+candidate_results covers every trusted approved candidate exactly once with no
+unknown, duplicate, or missing ID. acceptance_results covers every trusted
+required criterion exactly once with no unknown, duplicate, or missing ID.
+Every ACCEPTED candidate and PASSED criterion has non-empty, unique evidence
+references that resolve exactly once, are fresh under the closed evidence
+union, and meet the applicable evidence floor. validation_summary is exact.
+SUCCEEDED additionally requires every candidate ACCEPTED, every criterion
+PASSED, zero failed or not_run results, and proposed_transition SUCCEEDED. Work
+makes the smallest authorized change and returns WorkResult without updating
+accepted state.
 ## 9. Routing, evidence, and state
 
 | Condition | Route |
@@ -233,24 +259,43 @@ Evidence tiers:
 - E2: fresh test, lint, build, render, or command result.
 - E3: independent reproduction, isolation, deployment observation, or approval.
 
-Every acceptance criterion records PASSED, FAILED, or NOT_RUN. A passed
-criterion references fresh evidence. CandidatePacket payload.evidence is the
-canonical catalog for every candidate outcome. Evidence IDs and each
-evidence_refs array contain no duplicates, and every evidence_ref resolves to
-exactly one catalog entry. Project-state evidence is fresh only when its
-observed_revision equals the packet base_revision; E1-or-higher runtime evidence
-instead needs runtime-supplied observed_at or that matching observed_revision.
-Evidence without valid freshness metadata cannot support E1 or higher.
-NO_CANDIDATE means diagnostic discovery completed, so inspected_sources and
-payload.evidence are non-empty and every inspected-source evidence_ref resolves
-exactly once. WorkResult evidence contains every evidence ID referenced by
-candidate_results or acceptance_results. Duplicate, dangling, stale, or
-multiply resolving references and empty diagnostic discovery are invalid.
+Every acceptance criterion records PASSED, FAILED, or NOT_RUN. A PASSED
+criterion references non-empty fresh evidence at or above its trusted floor.
+CandidatePacket payload.evidence is the canonical catalog for every candidate
+outcome. Evidence IDs and every evidence_refs value are original JSON arrays of
+non-empty ordinal-unique strings, and every evidence_ref resolves to exactly one
+catalog entry.
+
+Freshness is a closed union. file and diff evidence require only an original
+JSON integer observed_revision equal to packet base_revision and forbid
+observed_at. command, test, render, runtime, and approval evidence require only
+observed_at in strict UTC yyyy-MM-dd'T'HH:mm:ss'Z' form and forbid
+observed_revision. Main captures trusted validator-supplied validationAt once;
+packet data cannot supply or change it. TIME evidence age is zero through 300
+seconds inclusive. Validation uses stable priority: invalid type; missing
+freshness; mode mismatch; invalid revision or timestamp; then stale or future.
+
+NO_CANDIDATE means diagnostic discovery completed. inspected_sources is
+required and is an original non-empty JSON array. Each entry contains exactly
+source_ref, observation, and evidence_refs. source_ref is a non-empty canonical
+project-root-relative reference, observation is non-empty, and evidence_refs is
+an original non-empty JSON array of non-empty ordinal-unique strings. Each
+reference resolves exactly once and is fresh. inspected_sources may be absent
+only for CANDIDATES_PROPOSED, BLOCKED_PROPOSAL, or CONTRACT_ERROR; when present,
+the same closed schema applies.
+
+WorkResult payload.evidence contains every ID referenced by ACCEPTED
+candidate_results and PASSED acceptance_results. Each reference array is
+non-empty and unique, resolves exactly once, is fresh relative to trusted
+base_revision and validationAt, and reaches candidate_evidence_floor or that
+criterion's evidence_floor. Duplicate, dangling, stale, future, wrong-mode,
+multiply resolving, below-floor, scalar-array, malformed inspected-source, and
+empty diagnostic discovery cases are invalid.
+
 Assertions always use a stable status plus violations array. Events are
 structured and owned by main; sub-agents return event_suggestions only. Runtime
 timestamps are optional and never invented. Secrets and oversized logs are
 excluded.
-
 Canonical transitions:
 
 ~~~text
@@ -378,27 +423,40 @@ Implementation is accepted when:
    preflight before mutation.
 6. UNKNOWN fails closed for safety-relevant actions, and authority scope/list
    pairs reject wildcards, duplicates, mismatches, and implicit authority.
-7. Every CandidatePacket outcome includes a unique, fresh payload.evidence
-   catalog and all evidence_ref values resolve exactly once; NO_CANDIDATE has
-   non-empty inspected_sources and evidence, and WorkResult resolves all refs.
+7. Every CandidatePacket outcome includes a unique payload.evidence catalog and
+   every evidence reference resolves exactly once.
 8. PROJECT versus NAMED authority is validated by separate branches and no
    project-wide execute or network scope exists.
 9. Every candidate has a valid action_type/action_identity discriminated union;
    hybrids, missing identities, forbidden fields, and normalization attempts
    fail executable positive/negative fixture checks.
-10. Portable prompts contain no ForgeOps paths or domain rules.
-11. Both adapters reference all three prompt paths.
-12. The guide covers copying, configuration, dry run, failure tests, migration,
-    and activation.
-13. Active project_profile fields are canonical; project-only fields are
+10. Canonical-NetworkHost accepts a lower-case DNS host with optional port
+    1..65535 and rejects every noncanonical host variant.
+11. Authority companion values, evidence_refs, inspected_sources,
+    candidate_results, and acceptance_results retain their original JSON array
+    type; scalar or null substitutes fail closed.
+12. Freshness uses the closed REVISION/TIME union and trusted validationAt; a
+    packet cannot choose the clock or mix modes.
+13. inspected_sources has exact fields, canonical source_ref, non-empty
+    observation and refs, and exact fresh reference resolution.
+14. WorkResult covers trusted approved candidate and required criterion IDs
+    exactly once, enforces candidate and criterion evidence floors, computes
+    exact validation_summary counts, and rejects inconsistent SUCCEEDED.
+15. The semantic fixture executes 13 positive and 56 negative cases with zero
+    unexpected pass or failure, plus three positive packet examples.
+16. Portable prompts contain no ForgeOps paths or domain rules.
+17. Both adapters reference all three prompt paths.
+18. The guide covers copying, configuration, dry run, failure tests, migration,
+    activation, and the complete semantic conformance matrix.
+19. Active project_profile fields are canonical; project-only fields are
     namespaced under extensions.
-14. Main alone normalizes v1 and owns payload.accepted_state.checkpoint_ref.
-15. No contradictory event grammar, scoring fast path, implicit permission, or
+20. Main alone normalizes v1 and owns
+    payload.accepted_state.checkpoint_ref.
+21. No contradictory event grammar, scoring fast path, implicit permission, or
     turn-count timeout remains.
-16. README links to all three prompts and every link resolves.
-17. Another project can reuse the harness by copying three prompts and defining
+22. README links to all three prompts and every link resolves.
+23. Another project can reuse the harness by copying three prompts and defining
     only its adapter/profile.
-
 ## 16. Scope boundary
 
 This change adds repository instructions, three portable prompt contracts, a

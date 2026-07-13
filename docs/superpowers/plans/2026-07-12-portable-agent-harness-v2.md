@@ -490,169 +490,1079 @@ action_identity is a closed discriminated union:
 - command_id must case-sensitively equal one execute_commands member and command
   plus cwd must exactly equal the referenced validation_command record.
 - network_host must case-sensitively equal one network_hosts member.
+- Canonical-NetworkHost is the single validator for NETWORK identity and every
+  network_hosts allowlist item. It accepts a lower-case ASCII DNS host of 1..253
+  characters with labels of 1..63 characters, optionally followed by one
+  decimal port from 1 through 65535. It rejects schemes, paths, queries,
+  fragments, userinfo, uppercase, whitespace, empty labels, edge hyphens,
+  multiple colons, and out-of-range ports.
+- Every authority companion is the original JSON array. Items are non-empty
+  strings, ordinal-unique, and wildcard-free. read/write PROJECT requires an
+  empty list and an original JSON boolean root_contained=true; NAMED_RESOURCES
+  requires a non-empty list. NONE and UNKNOWN require an empty list. Execute
+  and network use NAMED lists when authorized, otherwise empty NONE/UNKNOWN
+  lists; PROJECT is never valid for execute or network.
 
 The following normative fixture suite is used by executable conformance checks:
 
 ~~~json
 {
-  "fixture_suite": "portable_harness_v2_semantics",
-  "action_positive": [
-    {
-      "id": "PROJECT_RESOURCE",
-      "action_type": "READ_RESOURCE",
-      "operation": "read",
-      "action_identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py"},
-      "root_contained": true,
-      "authority": {"read_scope": "PROJECT", "read_resources": []}
-    },
-    {
-      "id": "NAMED_RESOURCE",
-      "action_type": "UPDATE_RESOURCE",
-      "operation": "update",
-      "action_identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py"},
-      "root_contained": true,
-      "authority": {"write_scope": "NAMED_RESOURCES", "write_resources": ["src/app.py"]}
-    },
-    {
-      "id": "NAMED_COMMAND",
-      "action_type": "EXECUTE_COMMAND",
-      "operation": "invoke",
-      "action_identity": {
-        "identity_kind": "COMMAND",
-        "command_id": "tests",
-        "command": "python -m pytest -q",
-        "cwd": "."
-      },
-      "authority": {"execute_scope": "NAMED_COMMANDS", "execute_commands": ["tests"]},
-      "validation_command": {"id": "tests", "command": "python -m pytest -q", "cwd": "."}
-    },
-    {
-      "id": "NAMED_NETWORK",
-      "action_type": "CALL_NETWORK",
-      "operation": "invoke",
-      "action_identity": {"identity_kind": "NETWORK", "network_host": "api.example.com:443"},
-      "authority": {"network_scope": "NAMED_HOSTS", "network_hosts": ["api.example.com:443"]}
-    }
-  ],
-  "action_negative": [
-    {
-      "id": "PROJECT_WITH_NAMED_LIST",
-      "expected_error": "PROJECT_COMPANION_NOT_EMPTY",
-      "action_type": "READ_RESOURCE",
-      "operation": "read",
-      "action_identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py"},
-      "root_contained": true,
-      "authority": {"read_scope": "PROJECT", "read_resources": ["src/app.py"]}
-    },
-    {
-      "id": "NAMED_RESOURCE_MISS",
-      "expected_error": "NAMED_RESOURCE_NOT_AUTHORIZED",
-      "action_type": "UPDATE_RESOURCE",
-      "operation": "update",
-      "action_identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py"},
-      "root_contained": true,
-      "authority": {"write_scope": "NAMED_RESOURCES", "write_resources": ["src/other.py"]}
-    },
-    {
-      "id": "HYBRID_IDENTITY",
-      "expected_error": "IDENTITY_FIELDS_INVALID",
-      "action_type": "UPDATE_RESOURCE",
-      "operation": "update",
-      "action_identity": {
-        "identity_kind": "RESOURCE",
-        "resource_ref": "src/app.py",
-        "command_id": "tests"
-      },
-      "root_contained": true,
-      "authority": {"write_scope": "PROJECT", "write_resources": []}
-    },
-    {
-      "id": "MISSING_ACTION_IDENTITY",
-      "expected_error": "ACTION_IDENTITY_MISSING",
-      "action_type": "UPDATE_RESOURCE",
-      "operation": "update",
-      "root_contained": true,
-      "authority": {"write_scope": "PROJECT", "write_resources": []}
-    },
-    {
-      "id": "COMMAND_NORMALIZATION_ATTEMPT",
-      "expected_error": "COMMAND_RECORD_MISMATCH",
-      "action_type": "EXECUTE_COMMAND",
-      "operation": "invoke",
-      "action_identity": {
-        "identity_kind": "COMMAND",
-        "command_id": "tests",
-        "command": "python -m PYTEST -q",
-        "cwd": "."
-      },
-      "authority": {"execute_scope": "NAMED_COMMANDS", "execute_commands": ["tests"]},
-      "validation_command": {"id": "tests", "command": "python -m pytest -q", "cwd": "."}
-    },
-    {
-      "id": "PROJECT_EXECUTE_SCOPE",
-      "expected_error": "EXECUTE_SCOPE_INVALID",
-      "action_type": "EXECUTE_COMMAND",
-      "operation": "invoke",
-      "action_identity": {
-        "identity_kind": "COMMAND",
-        "command_id": "tests",
-        "command": "python -m pytest -q",
-        "cwd": "."
-      },
-      "authority": {"execute_scope": "PROJECT", "execute_commands": []},
-      "validation_command": {"id": "tests", "command": "python -m pytest -q", "cwd": "."}
-    }
-  ],
-  "evidence_negative": [
-    {
-      "id": "UNRESOLVED_REFERENCE",
-      "expected_error": "EVIDENCE_REF_UNRESOLVED",
-      "base_revision": 2,
-      "outcome_code": "NO_CANDIDATE",
-      "inspected_sources": [{"source_ref": "README.md", "evidence_refs": ["EVID-MISSING"]}],
-      "evidence": [{"id": "EVID-1", "tier": "E1", "type": "file", "source": "README.md", "observation": "inspected", "observed_revision": 2}]
-    },
-    {
-      "id": "DUPLICATE_EVIDENCE_ID",
-      "expected_error": "EVIDENCE_ID_DUPLICATE",
-      "base_revision": 2,
-      "outcome_code": "NO_CANDIDATE",
-      "inspected_sources": [{"source_ref": "README.md", "evidence_refs": ["EVID-1"]}],
-      "evidence": [
-        {"id": "EVID-1", "tier": "E1", "type": "file", "source": "README.md", "observation": "first", "observed_revision": 2},
-        {"id": "EVID-1", "tier": "E1", "type": "file", "source": "README.md", "observation": "duplicate", "observed_revision": 2}
-      ]
-    },
-    {
-      "id": "STALE_REFERENCE",
-      "expected_error": "EVIDENCE_STALE",
-      "base_revision": 2,
-      "outcome_code": "NO_CANDIDATE",
-      "inspected_sources": [{"source_ref": "README.md", "evidence_refs": ["EVID-1"]}],
-      "evidence": [{"id": "EVID-1", "tier": "E1", "type": "file", "source": "README.md", "observation": "stale", "observed_revision": 1}]
-    },
-    {
-      "id": "EMPTY_DIAGNOSTIC_DISCOVERY",
-      "expected_error": "DIAGNOSTIC_DISCOVERY_EMPTY",
-      "base_revision": 2,
-      "outcome_code": "NO_CANDIDATE",
-      "inspected_sources": [],
-      "evidence": []
-    }
-  ]
+    "fixture_suite":  "portable_harness_v2_semantics",
+    "action_positive":  [
+                            {
+                                "id":  "PROJECT_RESOURCE",
+                                "action_type":  "READ_RESOURCE",
+                                "operation":  "read",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "read_scope":  "PROJECT",
+                                                  "read_resources":  [
+
+                                                                     ]
+                                              }
+                            },
+                            {
+                                "id":  "NAMED_RESOURCE",
+                                "action_type":  "UPDATE_RESOURCE",
+                                "operation":  "update",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "write_scope":  "NAMED_RESOURCES",
+                                                  "write_resources":  [
+                                                                          "src/app.py"
+                                                                      ]
+                                              }
+                            },
+                            {
+                                "id":  "NAMED_COMMAND",
+                                "action_type":  "EXECUTE_COMMAND",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "COMMAND",
+                                                        "command_id":  "tests",
+                                                        "command":  "python -m pytest -q",
+                                                        "cwd":  "."
+                                                    },
+                                "authority":  {
+                                                  "execute_scope":  "NAMED_COMMANDS",
+                                                  "execute_commands":  [
+                                                                           "tests"
+                                                                       ]
+                                              },
+                                "validation_command":  {
+                                                           "id":  "tests",
+                                                           "command":  "python -m pytest -q",
+                                                           "cwd":  "."
+                                                       }
+                            },
+                            {
+                                "id":  "NAMED_NETWORK",
+                                "action_type":  "CALL_NETWORK",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "NETWORK",
+                                                        "network_host":  "api.example.com:443"
+                                                    },
+                                "authority":  {
+                                                  "network_scope":  "NAMED_HOSTS",
+                                                  "network_hosts":  [
+                                                                        "api.example.com:443"
+                                                                    ]
+                                              }
+                            },
+                            {
+                                "id":  "NAMED_NETWORK_PORTLESS",
+                                "action_type":  "CALL_NETWORK",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "NETWORK",
+                                                        "network_host":  "api.example.com"
+                                                    },
+                                "authority":  {
+                                                  "network_scope":  "NAMED_HOSTS",
+                                                  "network_hosts":  [
+                                                                        "api.example.com"
+                                                                    ]
+                                              }
+                            }
+                        ],
+    "action_negative":  [
+                            {
+                                "id":  "PROJECT_WITH_NAMED_LIST",
+                                "expected_error":  "PROJECT_COMPANION_NOT_EMPTY",
+                                "action_type":  "READ_RESOURCE",
+                                "operation":  "read",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "read_scope":  "PROJECT",
+                                                  "read_resources":  [
+                                                                         "src/app.py"
+                                                                     ]
+                                              }
+                            },
+                            {
+                                "id":  "NAMED_RESOURCE_MISS",
+                                "expected_error":  "NAMED_RESOURCE_NOT_AUTHORIZED",
+                                "action_type":  "UPDATE_RESOURCE",
+                                "operation":  "update",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "write_scope":  "NAMED_RESOURCES",
+                                                  "write_resources":  [
+                                                                          "src/other.py"
+                                                                      ]
+                                              }
+                            },
+                            {
+                                "id":  "HYBRID_IDENTITY",
+                                "expected_error":  "IDENTITY_FIELDS_INVALID",
+                                "action_type":  "UPDATE_RESOURCE",
+                                "operation":  "update",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py",
+                                                        "command_id":  "tests"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "write_scope":  "PROJECT",
+                                                  "write_resources":  [
+
+                                                                      ]
+                                              }
+                            },
+                            {
+                                "id":  "MISSING_ACTION_IDENTITY",
+                                "expected_error":  "ACTION_IDENTITY_MISSING",
+                                "action_type":  "UPDATE_RESOURCE",
+                                "operation":  "update",
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "write_scope":  "PROJECT",
+                                                  "write_resources":  [
+
+                                                                      ]
+                                              }
+                            },
+                            {
+                                "id":  "COMMAND_NORMALIZATION_ATTEMPT",
+                                "expected_error":  "COMMAND_RECORD_MISMATCH",
+                                "action_type":  "EXECUTE_COMMAND",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "COMMAND",
+                                                        "command_id":  "tests",
+                                                        "command":  "python -m PYTEST -q",
+                                                        "cwd":  "."
+                                                    },
+                                "authority":  {
+                                                  "execute_scope":  "NAMED_COMMANDS",
+                                                  "execute_commands":  [
+                                                                           "tests"
+                                                                       ]
+                                              },
+                                "validation_command":  {
+                                                           "id":  "tests",
+                                                           "command":  "python -m pytest -q",
+                                                           "cwd":  "."
+                                                       }
+                            },
+                            {
+                                "id":  "PROJECT_EXECUTE_SCOPE",
+                                "expected_error":  "EXECUTE_SCOPE_INVALID",
+                                "action_type":  "EXECUTE_COMMAND",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "COMMAND",
+                                                        "command_id":  "tests",
+                                                        "command":  "python -m pytest -q",
+                                                        "cwd":  "."
+                                                    },
+                                "authority":  {
+                                                  "execute_scope":  "PROJECT",
+                                                  "execute_commands":  [
+
+                                                                       ]
+                                              },
+                                "validation_command":  {
+                                                           "id":  "tests",
+                                                           "command":  "python -m pytest -q",
+                                                           "cwd":  "."
+                                                       }
+                            },
+                            {
+                                "id":  "PROJECT_ROOT_FALSE",
+                                "expected_error":  "PROJECT_ROOT_CONTAINMENT_FAILED",
+                                "action_type":  "READ_RESOURCE",
+                                "operation":  "read",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  false,
+                                "authority":  {
+                                                  "read_scope":  "PROJECT",
+                                                  "read_resources":  [
+
+                                                                     ]
+                                              }
+                            },
+                            {
+                                "id":  "READ_COMPANION_SCALAR",
+                                "expected_error":  "COMPANION_LIST_TYPE_INVALID",
+                                "action_type":  "READ_RESOURCE",
+                                "operation":  "read",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "read_scope":  "NAMED_RESOURCES",
+                                                  "read_resources":  "src/app.py"
+                                              }
+                            },
+                            {
+                                "id":  "NAMED_RESOURCE_DUPLICATE",
+                                "expected_error":  "COMPANION_LIST_DUPLICATE",
+                                "action_type":  "UPDATE_RESOURCE",
+                                "operation":  "update",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "write_scope":  "NAMED_RESOURCES",
+                                                  "write_resources":  [
+                                                                          "src/app.py",
+                                                                          "src/app.py"
+                                                                      ]
+                                              }
+                            },
+                            {
+                                "id":  "NAMED_RESOURCE_WILDCARD",
+                                "expected_error":  "COMPANION_LIST_WILDCARD",
+                                "action_type":  "UPDATE_RESOURCE",
+                                "operation":  "update",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "write_scope":  "NAMED_RESOURCES",
+                                                  "write_resources":  [
+                                                                          "src/app.py",
+                                                                          "*"
+                                                                      ]
+                                              }
+                            },
+                            {
+                                "id":  "NAMED_RESOURCE_EMPTY",
+                                "expected_error":  "NAMED_RESOURCE_LIST_EMPTY",
+                                "action_type":  "UPDATE_RESOURCE",
+                                "operation":  "update",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "write_scope":  "NAMED_RESOURCES",
+                                                  "write_resources":  [
+
+                                                                      ]
+                                              }
+                            },
+                            {
+                                "id":  "NONE_RESOURCE_NONEMPTY",
+                                "expected_error":  "NONE_COMPANION_NOT_EMPTY",
+                                "action_type":  "UPDATE_RESOURCE",
+                                "operation":  "update",
+                                "action_identity":  {
+                                                        "identity_kind":  "RESOURCE",
+                                                        "resource_ref":  "src/app.py"
+                                                    },
+                                "root_contained":  true,
+                                "authority":  {
+                                                  "write_scope":  "NONE",
+                                                  "write_resources":  [
+                                                                          "src/app.py"
+                                                                      ]
+                                              }
+                            },
+                            {
+                                "id":  "NETWORK_COMPANION_SCALAR",
+                                "expected_error":  "COMPANION_LIST_TYPE_INVALID",
+                                "action_type":  "CALL_NETWORK",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "NETWORK",
+                                                        "network_host":  "api.example.com"
+                                                    },
+                                "authority":  {
+                                                  "network_scope":  "NAMED_HOSTS",
+                                                  "network_hosts":  "api.example.com"
+                                              }
+                            },
+                            {
+                                "id":  "NETWORK_SCHEME_PATH",
+                                "expected_error":  "NETWORK_IDENTITY_NONCANONICAL",
+                                "invalid_network_hosts":  [
+                                                              "https://api.example.com",
+                                                              "api.example.com/path"
+                                                          ],
+                                "action_type":  "CALL_NETWORK",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "NETWORK",
+                                                        "network_host":  "https://api.example.com"
+                                                    },
+                                "authority":  {
+                                                  "network_scope":  "NAMED_HOSTS",
+                                                  "network_hosts":  [
+                                                                        "https://api.example.com"
+                                                                    ]
+                                              }
+                            },
+                            {
+                                "id":  "NETWORK_QUERY_FRAGMENT",
+                                "expected_error":  "NETWORK_IDENTITY_NONCANONICAL",
+                                "invalid_network_hosts":  [
+                                                              "api.example.com?x=1",
+                                                              "api.example.com#x"
+                                                          ],
+                                "action_type":  "CALL_NETWORK",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "NETWORK",
+                                                        "network_host":  "api.example.com?x=1"
+                                                    },
+                                "authority":  {
+                                                  "network_scope":  "NAMED_HOSTS",
+                                                  "network_hosts":  [
+                                                                        "api.example.com?x=1"
+                                                                    ]
+                                              }
+                            },
+                            {
+                                "id":  "NETWORK_USERINFO_CASE_SPACE",
+                                "expected_error":  "NETWORK_IDENTITY_NONCANONICAL",
+                                "invalid_network_hosts":  [
+                                                              "u@api.example.com",
+                                                              "Api.example.com",
+                                                              "api example.com"
+                                                          ],
+                                "action_type":  "CALL_NETWORK",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "NETWORK",
+                                                        "network_host":  "u@api.example.com"
+                                                    },
+                                "authority":  {
+                                                  "network_scope":  "NAMED_HOSTS",
+                                                  "network_hosts":  [
+                                                                        "u@api.example.com"
+                                                                    ]
+                                              }
+                            },
+                            {
+                                "id":  "NETWORK_LABEL_INVALID",
+                                "expected_error":  "NETWORK_IDENTITY_NONCANONICAL",
+                                "invalid_network_hosts":  [
+                                                              ".api.example.com",
+                                                              "api..example.com",
+                                                              "-api.example.com",
+                                                              "api-.example.com",
+                                                              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example.com"
+                                                          ],
+                                "action_type":  "CALL_NETWORK",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "NETWORK",
+                                                        "network_host":  ".api.example.com"
+                                                    },
+                                "authority":  {
+                                                  "network_scope":  "NAMED_HOSTS",
+                                                  "network_hosts":  [
+                                                                        ".api.example.com"
+                                                                    ]
+                                              }
+                            },
+                            {
+                                "id":  "NETWORK_COLON_INVALID",
+                                "expected_error":  "NETWORK_IDENTITY_NONCANONICAL",
+                                "invalid_network_hosts":  [
+                                                              "api.example.com:443:1",
+                                                              ":443",
+                                                              "api.example.com:"
+                                                          ],
+                                "action_type":  "CALL_NETWORK",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "NETWORK",
+                                                        "network_host":  "api.example.com:443:1"
+                                                    },
+                                "authority":  {
+                                                  "network_scope":  "NAMED_HOSTS",
+                                                  "network_hosts":  [
+                                                                        "api.example.com:443:1"
+                                                                    ]
+                                              }
+                            },
+                            {
+                                "id":  "NETWORK_PORT_RANGE",
+                                "expected_error":  "NETWORK_IDENTITY_NONCANONICAL",
+                                "invalid_network_hosts":  [
+                                                              "api.example.com:0",
+                                                              "api.example.com:65536",
+                                                              "api.example.com:+443"
+                                                          ],
+                                "action_type":  "CALL_NETWORK",
+                                "operation":  "invoke",
+                                "action_identity":  {
+                                                        "identity_kind":  "NETWORK",
+                                                        "network_host":  "api.example.com:0"
+                                                    },
+                                "authority":  {
+                                                  "network_scope":  "NAMED_HOSTS",
+                                                  "network_hosts":  [
+                                                                        "api.example.com:0"
+                                                                    ]
+                                              }
+                            }
+                        ],
+    "evidence_negative":  [
+                              {
+                                  "id":  "UNRESOLVED_REFERENCE",
+                                  "expected_error":  "EVIDENCE_REF_UNRESOLVED",
+                                  "base_revision":  2,
+                                  "outcome_code":  "NO_CANDIDATE",
+                                  "inspected_sources":  [
+                                                            {
+                                                                "source_ref":  "README.md",
+                                                                "evidence_refs":  [
+                                                                                      "EVID-MISSING"
+                                                                                  ]
+                                                            }
+                                                        ],
+                                  "evidence":  [
+                                                   {
+                                                       "id":  "EVID-1",
+                                                       "tier":  "E1",
+                                                       "type":  "file",
+                                                       "source":  "README.md",
+                                                       "observation":  "inspected",
+                                                       "observed_revision":  2
+                                                   }
+                                               ]
+                              },
+                              {
+                                  "id":  "DUPLICATE_EVIDENCE_ID",
+                                  "expected_error":  "EVIDENCE_ID_DUPLICATE",
+                                  "base_revision":  2,
+                                  "outcome_code":  "NO_CANDIDATE",
+                                  "inspected_sources":  [
+                                                            {
+                                                                "source_ref":  "README.md",
+                                                                "evidence_refs":  [
+                                                                                      "EVID-1"
+                                                                                  ]
+                                                            }
+                                                        ],
+                                  "evidence":  [
+                                                   {
+                                                       "id":  "EVID-1",
+                                                       "tier":  "E1",
+                                                       "type":  "file",
+                                                       "source":  "README.md",
+                                                       "observation":  "first",
+                                                       "observed_revision":  2
+                                                   },
+                                                   {
+                                                       "id":  "EVID-1",
+                                                       "tier":  "E1",
+                                                       "type":  "file",
+                                                       "source":  "README.md",
+                                                       "observation":  "duplicate",
+                                                       "observed_revision":  2
+                                                   }
+                                               ]
+                              },
+                              {
+                                  "id":  "STALE_REFERENCE",
+                                  "expected_error":  "EVIDENCE_STALE",
+                                  "base_revision":  2,
+                                  "outcome_code":  "NO_CANDIDATE",
+                                  "inspected_sources":  [
+                                                            {
+                                                                "source_ref":  "README.md",
+                                                                "evidence_refs":  [
+                                                                                      "EVID-1"
+                                                                                  ]
+                                                            }
+                                                        ],
+                                  "evidence":  [
+                                                   {
+                                                       "id":  "EVID-1",
+                                                       "tier":  "E1",
+                                                       "type":  "file",
+                                                       "source":  "README.md",
+                                                       "observation":  "stale",
+                                                       "observed_revision":  1
+                                                   }
+                                               ]
+                              },
+                              {
+                                  "id":  "EMPTY_DIAGNOSTIC_DISCOVERY",
+                                  "expected_error":  "DIAGNOSTIC_DISCOVERY_EMPTY",
+                                  "base_revision":  2,
+                                  "outcome_code":  "NO_CANDIDATE",
+                                  "inspected_sources":  [
+
+                                                        ],
+                                  "evidence":  [
+
+                                               ]
+                              }
+                          ],
+    "freshness_positive":  [
+                               {
+                                   "id":  "FRESH_FILE",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E-FILE",
+                                                    "tier":  "E1",
+                                                    "type":  "file",
+                                                    "source":  "README.md",
+                                                    "observation":  "read",
+                                                    "observed_revision":  2
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_DIFF",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E-DIFF",
+                                                    "tier":  "E1",
+                                                    "type":  "diff",
+                                                    "source":  "diff",
+                                                    "observation":  "read",
+                                                    "observed_revision":  2
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_COMMAND",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E-CMD",
+                                                    "tier":  "E2",
+                                                    "type":  "command",
+                                                    "source":  "tests",
+                                                    "observation":  "ran",
+                                                    "observed_at":  "2026-07-13T00:05:00Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_TEST",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E-TEST",
+                                                    "tier":  "E2",
+                                                    "type":  "test",
+                                                    "source":  "tests",
+                                                    "observation":  "passed",
+                                                    "observed_at":  "2026-07-13T00:04:59Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_RENDER",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E-RENDER",
+                                                    "tier":  "E2",
+                                                    "type":  "render",
+                                                    "source":  "render",
+                                                    "observation":  "rendered",
+                                                    "observed_at":  "2026-07-13T00:02:00Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_RUNTIME",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E-RUNTIME",
+                                                    "tier":  "E2",
+                                                    "type":  "runtime",
+                                                    "source":  "runtime",
+                                                    "observation":  "observed",
+                                                    "observed_at":  "2026-07-13T00:00:00Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_APPROVAL",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E-APPROVAL",
+                                                    "tier":  "E3",
+                                                    "type":  "approval",
+                                                    "source":  "human-gate",
+                                                    "observation":  "approved",
+                                                    "observed_at":  "2026-07-13T00:04:00Z"
+                                                }
+                               }
+                           ],
+    "freshness_negative":  [
+                               {
+                                   "id":  "FRESH_TYPE_INVALID",
+                                   "expected_error":  "EVIDENCE_TYPE_INVALID",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E1",
+                                                    "type":  "log",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_revision":  2
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_REVISION_MISSING",
+                                   "expected_error":  "EVIDENCE_FRESHNESS_MISSING",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E1",
+                                                    "type":  "file",
+                                                    "source":  "x",
+                                                    "observation":  "x"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_TIME_MISSING",
+                                   "expected_error":  "EVIDENCE_FRESHNESS_MISSING",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E2",
+                                                    "type":  "command",
+                                                    "source":  "x",
+                                                    "observation":  "x"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_REVISION_BOTH",
+                                   "expected_error":  "EVIDENCE_FRESHNESS_MODE_MISMATCH",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E1",
+                                                    "type":  "file",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_revision":  2,
+                                                    "observed_at":  "2026-07-13T00:05:00Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_TIME_BOTH",
+                                   "expected_error":  "EVIDENCE_FRESHNESS_MODE_MISMATCH",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E2",
+                                                    "type":  "test",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_revision":  2,
+                                                    "observed_at":  "2026-07-13T00:05:00Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_REVISION_STRING",
+                                   "expected_error":  "EVIDENCE_REVISION_INVALID",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E1",
+                                                    "type":  "file",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_revision":  "2"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_REVISION_FRACTION",
+                                   "expected_error":  "EVIDENCE_REVISION_INVALID",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E1",
+                                                    "type":  "diff",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_revision":  2.5
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_TIMESTAMP_FORMAT",
+                                   "expected_error":  "EVIDENCE_TIMESTAMP_INVALID",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E2",
+                                                    "type":  "command",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_at":  "2026-07-13 00:05:00Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_TIMESTAMP_DATE",
+                                   "expected_error":  "EVIDENCE_TIMESTAMP_INVALID",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E2",
+                                                    "type":  "render",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_at":  "2026-02-30T00:05:00Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_REVISION_STALE",
+                                   "expected_error":  "EVIDENCE_STALE",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E1",
+                                                    "type":  "file",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_revision":  1
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_TIMESTAMP_STALE",
+                                   "expected_error":  "EVIDENCE_STALE",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:01Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E2",
+                                                    "type":  "runtime",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_at":  "2026-07-13T00:00:00Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_TIMESTAMP_FUTURE",
+                                   "expected_error":  "EVIDENCE_FUTURE",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E3",
+                                                    "type":  "approval",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_at":  "2026-07-13T00:05:01Z"
+                                                }
+                               },
+                               {
+                                   "id":  "FRESH_WRONG_MODE_ONLY",
+                                   "expected_error":  "EVIDENCE_FRESHNESS_MISSING",
+                                   "base_revision":  2,
+                                   "validation_at":  "2026-07-13T00:05:00Z",
+                                   "evidence":  {
+                                                    "id":  "E",
+                                                    "tier":  "E1",
+                                                    "type":  "file",
+                                                    "source":  "x",
+                                                    "observation":  "x",
+                                                    "observed_at":  "2026-07-13T00:05:00Z"
+                                                }
+                               }
+                           ],
+    "inspected_sources_negative":  [
+                                       {
+                                           "id":  "SOURCE_REQUIRED",
+                                           "expected_error":  "INSPECTED_SOURCES_REQUIRED",
+                                           "mutation":  "REMOVE_SOURCES"
+                                       },
+                                       {
+                                           "id":  "SOURCE_EMPTY",
+                                           "expected_error":  "INSPECTED_SOURCES_EMPTY",
+                                           "mutation":  "EMPTY_SOURCES"
+                                       },
+                                       {
+                                           "id":  "SOURCE_SCALAR",
+                                           "expected_error":  "INSPECTED_SOURCES_TYPE_INVALID",
+                                           "mutation":  "SCALAR_SOURCES"
+                                       },
+                                       {
+                                           "id":  "SOURCE_PROPS",
+                                           "expected_error":  "INSPECTED_SOURCE_PROPERTIES_INVALID",
+                                           "mutation":  "EXTRA_PROPERTY"
+                                       },
+                                       {
+                                           "id":  "SOURCE_REF_INVALID",
+                                           "expected_error":  "INSPECTED_SOURCE_REF_INVALID",
+                                           "mutation":  "BAD_SOURCE_REFS",
+                                           "invalid_source_refs":  [
+                                                                       "",
+                                                                       "../README.md",
+                                                                       "/README.md",
+                                                                       "a\\b",
+                                                                       "a//b",
+                                                                       "./a",
+                                                                       "a/../b",
+                                                                       "*.md"
+                                                                   ]
+                                       },
+                                       {
+                                           "id":  "SOURCE_OBSERVATION_EMPTY",
+                                           "expected_error":  "INSPECTED_SOURCE_OBSERVATION_INVALID",
+                                           "mutation":  "EMPTY_OBSERVATION"
+                                       },
+                                       {
+                                           "id":  "SOURCE_REFS_SCALAR",
+                                           "expected_error":  "INSPECTED_SOURCE_REFS_TYPE_INVALID",
+                                           "mutation":  "SCALAR_REFS"
+                                       },
+                                       {
+                                           "id":  "SOURCE_REFS_INVALID",
+                                           "expected_error":  "INSPECTED_SOURCE_REFS_INVALID",
+                                           "mutation":  "BAD_REFS",
+                                           "invalid_ref_sets":  [
+                                                                    [
+
+                                                                    ],
+                                                                    [
+                                                                        ""
+                                                                    ],
+                                                                    [
+                                                                        "EVID-1",
+                                                                        "EVID-1"
+                                                                    ]
+                                                                ]
+                                       },
+                                       {
+                                           "id":  "SOURCE_REF_UNRESOLVED",
+                                           "expected_error":  "EVIDENCE_REF_UNRESOLVED",
+                                           "mutation":  "UNRESOLVED_REF"
+                                       },
+                                       {
+                                           "id":  "SOURCE_REF_STALE",
+                                           "expected_error":  "EVIDENCE_STALE",
+                                           "mutation":  "STALE_REF"
+                                       }
+                                   ],
+    "work_positive":  [
+                          {
+                              "id":  "WORK_SUCCEEDED",
+                              "context":  {
+                                  "protocol_version":  "2.0",
+                                  "task_id":  "TASK-001",
+                                  "correlation_id":  "CORR-001",
+                                  "base_revision":  2,
+                                  "validationAt":  "2026-07-13T00:05:00Z",
+                                  "candidate_evidence_floor":  "E1",
+                                              "approved_candidate_ids":  [
+                                                                             "CAND-1"
+                                                                         ],
+                                              "acceptance_criteria":  [
+                                                                          {
+                                                                              "criterion_id":  "AC-1",
+                                                                              "evidence_floor":  "E2"
+                                                                          }
+                                                                      ]
+                                          },
+                              "result":  {
+                                             "protocol_version":  "2.0",
+                                             "packet_type":  "work_result",
+                                             "task_id":  "TASK-001",
+                                             "correlation_id":  "CORR-001",
+                                             "base_revision":  2,
+                                             "actor":  "work",
+                                             "status":  "SUCCEEDED",
+                                             "payload":  {
+                                                             "approved_candidate_ids":  [
+                                                                                            "CAND-1"
+                                                                                        ],
+                                                             "candidate_results":  [
+                                                                                       {
+                                                                                           "candidate_id":  "CAND-1",
+                                                                                           "decision":  "ACCEPTED",
+                                                                                           "evidence_refs":  [
+                                                                                                                 "EVID-1"
+                                                                                                             ]
+                                                                                       }
+                                                                                   ],
+                                                             "changed_resources":  [
+                                                                                       {
+                                                                                           "resource_ref":  "src/app.py",
+                                                                                           "operation":  "update",
+                                                                                           "scope":  "project"
+                                                                                       }
+                                                                                   ],
+                                                             "acceptance_results":  [
+                                                                                        {
+                                                                                            "criterion_id":  "AC-1",
+                                                                                            "status":  "PASSED",
+                                                                                            "evidence_refs":  [
+                                                                                                                  "EVID-2"
+                                                                                                              ],
+                                                                                            "notes":  "passed"
+                                                                                        }
+                                                                                    ],
+                                                             "evidence":  [
+                                                                              {
+                                                                                  "id":  "EVID-1",
+                                                                                  "tier":  "E1",
+                                                                                  "type":  "file",
+                                                                                  "source":  "src/app.py",
+                                                                                  "observation":  "inspected",
+                                                                                  "observed_revision":  2
+                                                                              },
+                                                                              {
+                                                                                  "id":  "EVID-2",
+                                                                                  "tier":  "E2",
+                                                                                  "type":  "test",
+                                                                                  "source":  "tests",
+                                                                                  "observation":  "passed",
+                                                                                  "observed_at":  "2026-07-13T00:05:00Z"
+                                                                              }
+                                                                          ],
+                                                             "validation_summary":  {
+                                                                                        "passed":  1,
+                                                                                        "failed":  0,
+                                                                                        "not_run":  0
+                                                                                    },
+                                                             "residual_risks":  [
+
+                                                                                ],
+                                                             "compensation_options":  [
+
+                                                                                      ],
+                                                             "assertion_suggestions":  [
+
+                                                                                       ],
+                                                             "event_suggestions":  [
+
+                                                                                   ],
+                                                             "proposed_transition":  "SUCCEEDED"
+                                                         }
+                                         }
+                          }
+                      ],
+    "work_negative":  [
+                          {
+                              "id":  "WORK_EMPTY_REFS",
+                              "expected_error":  "WORK_EVIDENCE_REFS_EMPTY",
+                              "mutation":  "EMPTY_CANDIDATE_REFS"
+                          },
+                          {
+                              "id":  "WORK_CANDIDATE_UNKNOWN",
+                              "expected_error":  "WORK_CANDIDATE_UNKNOWN",
+                              "mutation":  "UNKNOWN_CANDIDATE"
+                          },
+                          {
+                              "id":  "WORK_CANDIDATE_DUPLICATE",
+                              "expected_error":  "WORK_CANDIDATE_DUPLICATE",
+                              "mutation":  "DUPLICATE_CANDIDATE"
+                          },
+                          {
+                              "id":  "WORK_CANDIDATE_MISSING",
+                              "expected_error":  "WORK_CANDIDATE_MISSING",
+                              "mutation":  "MISSING_CANDIDATE"
+                          },
+                          {
+                              "id":  "WORK_CRITERION_UNKNOWN",
+                              "expected_error":  "WORK_CRITERION_UNKNOWN",
+                              "mutation":  "UNKNOWN_CRITERION"
+                          },
+                          {
+                              "id":  "WORK_CRITERION_DUPLICATE",
+                              "expected_error":  "WORK_CRITERION_DUPLICATE",
+                              "mutation":  "DUPLICATE_CRITERION"
+                          },
+                          {
+                              "id":  "WORK_CRITERION_MISSING",
+                              "expected_error":  "WORK_CRITERION_MISSING",
+                              "mutation":  "MISSING_CRITERION"
+                          },
+                          {
+                              "id":  "WORK_EVIDENCE_FLOOR",
+                              "expected_error":  "WORK_EVIDENCE_FLOOR_NOT_MET",
+                              "mutation":  "LOW_TIER"
+                          },
+                          {
+                              "id":  "WORK_SUMMARY_MISMATCH",
+                              "expected_error":  "WORK_SUMMARY_MISMATCH",
+                              "mutation":  "SUMMARY_MISMATCH"
+                          },
+                          {
+                              "id":  "WORK_SUCCESS_INCONSISTENT",
+                              "expected_error":  "WORK_SUCCESS_INCONSISTENT",
+                              "mutation":  "FAILED_SUCCESS"
+                          }
+                      ]
 }
 ~~~
 
-Every CandidatePacket, including NO_CANDIDATE, BLOCKED_PROPOSAL, and
-CONTRACT_ERROR, carries payload.evidence as its canonical evidence catalog.
-Evidence IDs are non-empty and unique. Each evidence_refs array contains no
-duplicate references, and every reference resolves to exactly one catalog
-entry. Project-state evidence is fresh only when observed_revision equals the
-CandidatePacket base_revision. E1-or-higher runtime evidence instead requires a
-runtime-supplied observed_at or that matching observed_revision; main never
-invents a timestamp. Evidence without valid freshness metadata cannot satisfy
-E1 or higher.
+The fixture mutations are applied to their named canonical baseline before
+validation. Every CandidatePacket, including NO_CANDIDATE, BLOCKED_PROPOSAL,
+and CONTRACT_ERROR, carries payload.evidence as its canonical evidence catalog.
+Evidence IDs are non-empty and unique. Each evidence_refs array is a raw JSON
+array of non-empty, ordinal-unique strings and every reference resolves to
+exactly one catalog entry.
 
+Freshness is a closed union. file and diff are REVISION evidence: they require
+an original JSON integer observed_revision equal to base_revision and forbid
+observed_at. command, test, render, runtime, and approval are TIME evidence:
+they require only observed_at in strict UTC yyyy-MM-dd'T'HH:mm:ss'Z' form and
+forbid observed_revision. Main captures trusted validator-supplied validationAt
+once; packet data cannot control it. TIME age must be from zero through 300
+seconds inclusive. Validation uses stable priority TYPE_INVALID, then
+FRESHNESS_MISSING, MODE_MISMATCH, REVISION_INVALID or TIMESTAMP_INVALID, then
+STALE or FUTURE.
 Adapter capability_defaults are discovery hints. Main normalizes observed values
 into TaskPacket.capabilities; defaults never grant availability. Adapter
 trace_level normalizes into TaskPacket.control.trace_level.
@@ -968,6 +1878,7 @@ Before deciding, confirm:
 Run:
 
 ~~~powershell
+$ErrorActionPreference = 'Stop'
 $path = '.github/agents/main_instruction.prompt.md'
 $text = Get-Content -Raw -Encoding UTF8 $path
 if ($text.Contains('ForgeOps') -or $text.Contains('hyunsuki5329')) { exit 1 }
@@ -975,42 +1886,76 @@ $match = [regex]::Match($text, '(?ms)^~~~json\r?$\n(?<j>\{\s*"fixture_suite":\s*
 if (-not $match.Success) { Write-Error 'semantic fixture missing'; exit 1 }
 $fx = $match.Groups['j'].Value | ConvertFrom-Json
 
+function Has-Property($o, [string]$name) {
+  return $null -ne $o -and $o.PSObject.Properties.Name -contains $name
+}
 function Exact-Props($o, [string[]]$expected) {
   if ($null -eq $o) { return $false }
   return @(Compare-Object $expected @($o.PSObject.Properties.Name)).Count -eq 0
 }
-function Unique-List($v) {
-  $a = @($v)
-  return $a.Count -gt 0 -and
-    @($a | Where-Object { [string]::IsNullOrWhiteSpace([string]$_) }).Count -eq 0 -and
-    @($a | Sort-Object -CaseSensitive -Unique).Count -eq $a.Count
+function Canonical-Resource($value) {
+  if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value) -or
+      $value.StartsWith('/') -or $value.Contains('\') -or $value -match '^[A-Za-z]:' -or
+      $value -match '[*?\[\]]') { return $false }
+  return @(($value -split '/') | Where-Object { $_ -eq '' -or $_ -eq '.' -or $_ -eq '..' }).Count -eq 0
 }
-function Canonical-Resource([string]$v) {
-  if ([string]::IsNullOrWhiteSpace($v) -or $v.StartsWith('/') -or $v.Contains('\') -or
-      $v -match '^[A-Za-z]:' -or $v -match '[*?\[\]]') { return $false }
-  return @(($v -split '/') | Where-Object { $_ -eq '' -or $_ -eq '.' -or $_ -eq '..' }).Count -eq 0
+function Canonical-NetworkHost($value) {
+  if ($value -isnot [string] -or $value.Length -lt 1 -or $value.Contains(' ') -or
+      $value -cne $value.ToLowerInvariant()) { return $false }
+  $colonCount = ([regex]::Matches($value, ':')).Count
+  if ($colonCount -gt 1) { return $false }
+  $dnsHost = $value
+  if ($colonCount -eq 1) {
+    $parts = $value.Split(':')
+    if ($parts.Count -ne 2 -or $parts[1] -cnotmatch '^[0-9]+$') { return $false }
+    $port = 0
+    if (-not [int]::TryParse($parts[1], [ref]$port) -or $port -lt 1 -or $port -gt 65535) { return $false }
+    $dnsHost = $parts[0]
+  }
+  if ($dnsHost.Length -lt 1 -or $dnsHost.Length -gt 253) { return $false }
+  foreach ($label in $dnsHost.Split('.')) {
+    if ($label.Length -lt 1 -or $label.Length -gt 63 -or
+        $label -cnotmatch '^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$') { return $false }
+  }
+  return $true
+}
+function Companion-ListError($authority, [string]$listName) {
+  if (-not (Has-Property $authority $listName)) { return 'COMPANION_LIST_TYPE_INVALID' }
+  $raw = $authority.PSObject.Properties[$listName].Value
+  if ($null -eq $raw -or $raw -isnot [System.Array]) { return 'COMPANION_LIST_TYPE_INVALID' }
+  $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($item in $raw) {
+    if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item)) { return 'COMPANION_LIST_ITEM_INVALID' }
+    if ($item -match '[*?\[\]]') { return 'COMPANION_LIST_WILDCARD' }
+    if (-not $seen.Add($item)) { return 'COMPANION_LIST_DUPLICATE' }
+  }
+  return $null
 }
 function Resource-Error($c, [string]$operation, [string]$scopeName, [string]$listName) {
   $i = $c.action_identity
   if ($c.operation -cne $operation -or $i.identity_kind -cne 'RESOURCE') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
   if (-not (Exact-Props $i @('identity_kind','resource_ref'))) { return 'IDENTITY_FIELDS_INVALID' }
   if (-not (Canonical-Resource $i.resource_ref)) { return 'RESOURCE_IDENTITY_NONCANONICAL' }
+  $listError = Companion-ListError $c.authority $listName
+  if ($null -ne $listError) { return $listError }
   $scope = $c.authority.$scopeName
-  $list = @($c.authority.$listName)
+  $list = @($c.authority.PSObject.Properties[$listName].Value)
   if ($scope -ceq 'PROJECT') {
     if ($list.Count -ne 0) { return 'PROJECT_COMPANION_NOT_EMPTY' }
-    if ($c.root_contained -ne $true) { return 'PROJECT_ROOT_CONTAINMENT_FAILED' }
+    if (-not (Has-Property $c 'root_contained') -or $c.root_contained -isnot [bool] -or $c.root_contained -ne $true) { return 'PROJECT_ROOT_CONTAINMENT_FAILED' }
     return $null
   }
   if ($scope -ceq 'NAMED_RESOURCES') {
-    if (-not (Unique-List $list)) { return 'NAMED_RESOURCE_LIST_INVALID' }
+    if ($list.Count -eq 0) { return 'NAMED_RESOURCE_LIST_EMPTY' }
+    foreach ($item in $list) { if (-not (Canonical-Resource $item)) { return 'NAMED_RESOURCE_LIST_NONCANONICAL' } }
     if (-not ($list -ccontains $i.resource_ref)) { return 'NAMED_RESOURCE_NOT_AUTHORIZED' }
     return $null
   }
+  if (($scope -ceq 'NONE' -or $scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
   return 'RESOURCE_SCOPE_INVALID'
 }
 function Action-Error($c) {
-  if ($null -eq $c.action_identity) { return 'ACTION_IDENTITY_MISSING' }
+  if (-not (Has-Property $c 'action_identity') -or $null -eq $c.action_identity) { return 'ACTION_IDENTITY_MISSING' }
   $i = $c.action_identity
   switch -CaseSensitive ($c.action_type) {
     'READ_RESOURCE' { return Resource-Error $c 'read' 'read_scope' 'read_resources' }
@@ -1020,68 +1965,138 @@ function Action-Error($c) {
     'EXECUTE_COMMAND' {
       if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'COMMAND') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
       if (-not (Exact-Props $i @('identity_kind','command_id','command','cwd'))) { return 'IDENTITY_FIELDS_INVALID' }
-      if ($c.authority.execute_scope -cne 'NAMED_COMMANDS') { return 'EXECUTE_SCOPE_INVALID' }
-      if (-not (Unique-List $c.authority.execute_commands) -or
-          -not (@($c.authority.execute_commands) -ccontains $i.command_id)) { return 'COMMAND_NOT_AUTHORIZED' }
-      if ($i.command_id -cne $c.validation_command.id -or $i.command -cne $c.validation_command.command -or
-          $i.cwd -cne $c.validation_command.cwd) { return 'COMMAND_RECORD_MISMATCH' }
+      $listError = Companion-ListError $c.authority 'execute_commands'; if ($null -ne $listError) { return $listError }
+      $list = @($c.authority.PSObject.Properties['execute_commands'].Value)
+      if ($c.authority.execute_scope -cne 'NAMED_COMMANDS') {
+        if (($c.authority.execute_scope -ceq 'NONE' -or $c.authority.execute_scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
+        return 'EXECUTE_SCOPE_INVALID'
+      }
+      if ($list.Count -eq 0) { return 'NAMED_COMMAND_LIST_EMPTY' }
+      if (-not ($list -ccontains $i.command_id)) { return 'COMMAND_NOT_AUTHORIZED' }
+      if ($i.command_id -cne $c.validation_command.id -or $i.command -cne $c.validation_command.command -or $i.cwd -cne $c.validation_command.cwd) { return 'COMMAND_RECORD_MISMATCH' }
       if ($i.cwd -cne '.' -and -not (Canonical-Resource $i.cwd)) { return 'COMMAND_CWD_NONCANONICAL' }
       return $null
     }
     'CALL_NETWORK' {
       if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'NETWORK') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
       if (-not (Exact-Props $i @('identity_kind','network_host'))) { return 'IDENTITY_FIELDS_INVALID' }
-      if ($i.network_host -cnotmatch '^[a-z0-9.-]+:[0-9]+$') { return 'NETWORK_IDENTITY_NONCANONICAL' }
-      if ($c.authority.network_scope -cne 'NAMED_HOSTS') { return 'NETWORK_SCOPE_INVALID' }
-      if (-not (Unique-List $c.authority.network_hosts) -or
-          -not (@($c.authority.network_hosts) -ccontains $i.network_host)) { return 'NETWORK_NOT_AUTHORIZED' }
+      if (-not (Canonical-NetworkHost $i.network_host)) { return 'NETWORK_IDENTITY_NONCANONICAL' }
+      $listError = Companion-ListError $c.authority 'network_hosts'; if ($null -ne $listError) { return $listError }
+      $list = @($c.authority.PSObject.Properties['network_hosts'].Value)
+      foreach ($item in $list) { if (-not (Canonical-NetworkHost $item)) { return 'NETWORK_ALLOWLIST_NONCANONICAL' } }
+      if ($c.authority.network_scope -cne 'NAMED_HOSTS') {
+        if (($c.authority.network_scope -ceq 'NONE' -or $c.authority.network_scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
+        return 'NETWORK_SCOPE_INVALID'
+      }
+      if ($list.Count -eq 0) { return 'NAMED_NETWORK_LIST_EMPTY' }
+      if (-not ($list -ccontains $i.network_host)) { return 'NETWORK_NOT_AUTHORIZED' }
       return $null
     }
     default { return 'ACTION_TYPE_UNKNOWN' }
   }
 }
-function Evidence-Error($c) {
-  $e = @($c.evidence)
-  $sources = @($c.inspected_sources)
-  if ($c.outcome_code -ceq 'NO_CANDIDATE' -and ($e.Count -eq 0 -or $sources.Count -eq 0)) {
-    return 'DIAGNOSTIC_DISCOVERY_EMPTY'
+function Parse-StrictUtc([string]$value, [ref]$parsed) {
+  if ($value -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$') { return $false }
+  $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
+  return [DateTimeOffset]::TryParseExact($value, "yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture, $styles, $parsed)
+}
+function Json-Integer($value) { return $value -is [int] -or $value -is [long] }
+function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
+  $revisionTypes = @('file','diff'); $timeTypes = @('command','test','render','runtime','approval')
+  if (-not ($revisionTypes -ccontains $e.type) -and -not ($timeTypes -ccontains $e.type)) { return 'EVIDENCE_TYPE_INVALID' }
+  $hasRevision = Has-Property $e 'observed_revision'; $hasTime = Has-Property $e 'observed_at'
+  if ($revisionTypes -ccontains $e.type) {
+    if (-not $hasRevision) { return 'EVIDENCE_FRESHNESS_MISSING' }
+    if ($hasTime) { return 'EVIDENCE_FRESHNESS_MODE_MISMATCH' }
+    if (-not (Json-Integer $e.observed_revision)) { return 'EVIDENCE_REVISION_INVALID' }
+    if ([long]$e.observed_revision -ne [long]$baseRevision) { return 'EVIDENCE_STALE' }
+    return $null
   }
-  $ids = @($e | ForEach-Object { $_.id })
+  if (-not $hasTime) { return 'EVIDENCE_FRESHNESS_MISSING' }
+  if ($hasRevision) { return 'EVIDENCE_FRESHNESS_MODE_MISMATCH' }
+  $observed = [DateTimeOffset]::MinValue
+  if ($e.observed_at -isnot [string] -or -not (Parse-StrictUtc $e.observed_at ([ref]$observed))) { return 'EVIDENCE_TIMESTAMP_INVALID' }
+  $age = ($validationAt - $observed).TotalSeconds
+  if ($age -lt 0) { return 'EVIDENCE_FUTURE' }
+  if ($age -gt 300) { return 'EVIDENCE_STALE' }
+  return $null
+}
+function Trusted-ValidationAt([string]$value) {
+  $parsed = [DateTimeOffset]::MinValue
+  if (-not (Parse-StrictUtc $value ([ref]$parsed))) { throw 'fixture validation_at invalid' }
+  return $parsed
+}
+function Catalog-Error($c) {
+  $evidence = @($c.evidence); $sources = @($c.inspected_sources)
+  if ($c.outcome_code -ceq 'NO_CANDIDATE' -and ($evidence.Count -eq 0 -or $sources.Count -eq 0)) { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
+  $ids = @($evidence | ForEach-Object { $_.id })
   if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_ID_DUPLICATE' }
   foreach ($source in $sources) {
-    if (-not (Unique-List $source.evidence_refs)) { return 'EVIDENCE_REF_MISSING' }
-    foreach ($ref in @($source.evidence_refs)) {
-      $found = @($e | Where-Object { $_.id -ceq $ref })
+    $refs = @($source.evidence_refs)
+    if ($refs.Count -eq 0) { return 'EVIDENCE_REF_MISSING' }
+    if ($refs.Count -ne @($refs | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_REF_DUPLICATE' }
+    foreach ($ref in $refs) {
+      $found = @($evidence | Where-Object { $_.id -ceq $ref })
       if ($found.Count -eq 0) { return 'EVIDENCE_REF_UNRESOLVED' }
       if ($found.Count -gt 1) { return 'EVIDENCE_REF_MULTIPLE' }
-      if ($null -ne $found[0].observed_revision) {
-        if ([int]$found[0].observed_revision -ne [int]$c.base_revision) { return 'EVIDENCE_STALE' }
-      }
-      elseif ([string]::IsNullOrWhiteSpace([string]$found[0].observed_at)) { return 'EVIDENCE_FRESHNESS_MISSING' }
+      $at = [DateTimeOffset]::UtcNow
+      if (Has-Property $c 'validation_at') { $at = Trusted-ValidationAt $c.validation_at }
+      $fresh = Freshness-Error $found[0] ([int]$c.base_revision) $at
+      if ($null -ne $fresh) { return $fresh }
     }
   }
   return $null
 }
+$expected = [ordered]@{action_positive=5;action_negative=19;evidence_negative=4;freshness_positive=7;freshness_negative=13;inspected_sources_negative=10;work_positive=1;work_negative=10}
+foreach ($key in $expected.Keys) { if (@($fx.$key).Count -ne $expected[$key]) { Write-Error "$key count"; exit 1 } }
 foreach ($case in @($fx.action_positive)) {
-  $actual = Action-Error $case
-  if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
+  $actual = Action-Error $case; if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
 }
 foreach ($case in @($fx.action_negative)) {
-  $actual = Action-Error $case
-  if ($actual -cne $case.expected_error) {
-    Write-Error "negative $($case.id): expected $($case.expected_error), got $actual"; exit 1
+  $variants = @($case.action_identity.network_host)
+  if (Has-Property $case 'invalid_network_hosts') { $variants = @($case.invalid_network_hosts) }
+  foreach ($variant in $variants) {
+    $copy = $case | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    if ($copy.action_type -ceq 'CALL_NETWORK' -and (Has-Property $case 'invalid_network_hosts')) {
+      $copy.action_identity.network_host = $variant
+      $copy.authority.network_hosts = [object[]]@($variant)
+    }
+    $actual = Action-Error $copy
+    $shapeJson = $copy | ConvertTo-Json -Depth 20 -Compress
+    $shapeBytes = [Text.Encoding]::UTF8.GetBytes($shapeJson)
+    $shapeHash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($shapeBytes)).Replace('-','').ToLowerInvariant()
+    $listName = switch -CaseSensitive ($copy.action_type) {
+      'READ_RESOURCE' { 'read_resources' }
+      'CREATE_RESOURCE' { 'write_resources' }
+      'UPDATE_RESOURCE' { 'write_resources' }
+      'DELETE_RESOURCE' { 'write_resources' }
+      'EXECUTE_COMMAND' { 'execute_commands' }
+      'CALL_NETWORK' { 'network_hosts' }
+    }
+    $rawList = $copy.authority.PSObject.Properties[$listName].Value
+    $rawType = if ($null -eq $rawList) { 'null' } else { $rawList.GetType().Name }
+    $rawCount = if ($rawList -is [System.Array]) { $rawList.Count } else { -1 }
+    Write-Output "ACTION_NEGATIVE id=$($case.id) input_sha256=$shapeHash list_type=$rawType list_count=$rawCount returned=$actual"
+    if ($actual -cne $case.expected_error) { Write-Error "negative $($case.id)/$variant expected $($case.expected_error), got $actual"; exit 1 }
   }
 }
 foreach ($case in @($fx.evidence_negative)) {
-  $actual = Evidence-Error $case
-  if ($actual -cne $case.expected_error) {
-    Write-Error "negative evidence $($case.id): expected $($case.expected_error), got $actual"; exit 1
-  }
+  $actual = Catalog-Error $case; if ($actual -cne $case.expected_error) { Write-Error "catalog $($case.id) => $actual"; exit 1 }
 }
+foreach ($case in @($fx.freshness_positive)) {
+  $validationAt = Trusted-ValidationAt $case.validation_at
+  $actual = Freshness-Error $case.evidence ([int]$case.base_revision) $validationAt
+  if ($null -ne $actual) { Write-Error "fresh positive $($case.id) => $actual"; exit 1 }
+}
+foreach ($case in @($fx.freshness_negative)) {
+  $validationAt = Trusted-ValidationAt $case.validation_at
+  $actual = Freshness-Error $case.evidence ([int]$case.base_revision) $validationAt
+  if ($actual -cne $case.expected_error) { Write-Error "fresh negative $($case.id) expected $($case.expected_error), got $actual"; exit 1 }
+}
+Write-Output 'action_positive=5 action_negative=19 evidence_negative=4 freshness_positive=7 freshness_negative=13'
 ~~~
 
-Expected: exit code 0 and no output.
-
+Expected: exit code 0 and the exact fixture counts.
 - [ ] **Step 4: Commit the main contract**
 
 Run:
@@ -1297,11 +2312,23 @@ IDs that each resolve to exactly one payload.evidence entry.
 Duplicate evidence IDs, duplicate references, dangling references, and
 references resolving more than once are CONTRACT_ERROR.
 
-Project-state evidence is fresh only when observed_revision equals this
-CandidatePacket base_revision. E1-or-higher runtime evidence instead needs
-runtime-supplied observed_at or that matching observed_revision. Do not invent
-timestamps. Evidence without valid freshness metadata cannot support E1 or
-higher or a mutating candidate.
+Evidence freshness is the closed main contract. file and diff require only an
+original JSON integer observed_revision equal to this CandidatePacket
+base_revision. command, test, render, runtime, and approval require only strict
+UTC observed_at and trusted TaskPacket validationAt; the packet cannot supply or
+change validationAt. TIME evidence is fresh only when its age is 0..300 seconds.
+Wrong-mode fields, invalid integers or timestamps, stale revisions, future
+times, and missing metadata fail closed in the main-defined stable priority.
+Do not invent timestamps.
+
+inspected_sources may be absent only for CANDIDATES_PROPOSED,
+BLOCKED_PROPOSAL, or CONTRACT_ERROR; it is required for NO_CANDIDATE. When
+present it is an original non-empty JSON array. Each entry has exactly
+source_ref, observation, and evidence_refs. source_ref is a non-empty canonical
+project-root-relative reference, observation is non-empty, and evidence_refs is
+an original non-empty JSON array of ordinal-unique non-empty strings. Every
+reference resolves exactly once in payload.evidence and is fresh under the
+closed evidence union.
 
 ## 5. No-candidate behavior
 
@@ -1411,128 +2438,278 @@ Before returning:
 Run:
 
 ~~~powershell
-$path = '.github/agents/part_agent.prompt.md'
-$text = Get-Content -Raw -Encoding UTF8 $path
-if ($text.Contains('ForgeOps') -or $text.Contains('hyunsuki5329')) { exit 1 }
-if ($text -match 'Part (updates|increments|assigns) accepted') { exit 1 }
+$ErrorActionPreference = 'Stop'
+$text = Get-Content -Raw -Encoding UTF8 '.github/agents/part_agent.prompt.md'
+$mainText = Get-Content -Raw -Encoding UTF8 '.github/agents/main_instruction.prompt.md'
+if ($text.Contains('ForgeOps') -or $text.Contains('hyunsuki5329') -or $text -match 'Part (updates|increments|assigns) accepted') { exit 1 }
 $objects = @([regex]::Matches($text, '(?ms)^~~~json\r?$\n(?<j>.*?)^~~~\r?$') | ForEach-Object { $_.Groups['j'].Value | ConvertFrom-Json })
 $packets = @($objects | Where-Object { $_.packet_type -ceq 'candidate_proposal' })
 $normal = $packets | Where-Object { $_.payload.outcome_code -ceq 'CANDIDATES_PROPOSED' } | Select-Object -First 1
 $none = $packets | Where-Object { $_.payload.outcome_code -ceq 'NO_CANDIDATE' } | Select-Object -First 1
-if ($null -eq $normal -or $null -eq $none) { Write-Error 'positive CandidatePacket examples missing'; exit 1 }
-
-function Ref-Error($packet, $refs) {
-  $items = @($refs)
-  $uniqueItems = @($items | Sort-Object -CaseSensitive -Unique)
-  $itemCount = $items.Count
-  $uniqueItemCount = $uniqueItems.Count
-  if ($itemCount -ne $uniqueItemCount) {
-    return 'EVIDENCE_REF_DUPLICATE'
+$fixtureMatch = [regex]::Match($mainText, '(?ms)^~~~json\r?$\n(?<j>\{\s*"fixture_suite":\s*"portable_harness_v2_semantics".*?\})\r?\n^~~~\r?$')
+if ($null -eq $normal -or $null -eq $none -or -not $fixtureMatch.Success) { Write-Error 'part examples or fixture missing'; exit 1 }
+$fx = $fixtureMatch.Groups['j'].Value | ConvertFrom-Json
+function Has-Property($o, [string]$name) {
+  return $null -ne $o -and $o.PSObject.Properties.Name -contains $name
+}
+function Exact-Props($o, [string[]]$expected) {
+  if ($null -eq $o) { return $false }
+  return @(Compare-Object $expected @($o.PSObject.Properties.Name)).Count -eq 0
+}
+function Canonical-Resource($value) {
+  if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value) -or
+      $value.StartsWith('/') -or $value.Contains('\') -or $value -match '^[A-Za-z]:' -or
+      $value -match '[*?\[\]]') { return $false }
+  return @(($value -split '/') | Where-Object { $_ -eq '' -or $_ -eq '.' -or $_ -eq '..' }).Count -eq 0
+}
+function Canonical-NetworkHost($value) {
+  if ($value -isnot [string] -or $value.Length -lt 1 -or $value.Contains(' ') -or
+      $value -cne $value.ToLowerInvariant()) { return $false }
+  $colonCount = ([regex]::Matches($value, ':')).Count
+  if ($colonCount -gt 1) { return $false }
+  $dnsHost = $value
+  if ($colonCount -eq 1) {
+    $parts = $value.Split(':')
+    if ($parts.Count -ne 2 -or $parts[1] -cnotmatch '^[0-9]+$') { return $false }
+    $port = 0
+    if (-not [int]::TryParse($parts[1], [ref]$port) -or $port -lt 1 -or $port -gt 65535) { return $false }
+    $dnsHost = $parts[0]
   }
-  $evidence = @($packet.payload.evidence)
-  foreach ($ref in $items) {
-    $found = @($evidence | Where-Object { $_.id -ceq $ref })
-    if ($found.Count -ne 1) { return 'EVIDENCE_REF_RESOLUTION' }
-    if ($null -ne $found[0].observed_revision) {
-      if ([int]$found[0].observed_revision -ne [int]$packet.base_revision) {
-        return 'EVIDENCE_STALE'
+  if ($dnsHost.Length -lt 1 -or $dnsHost.Length -gt 253) { return $false }
+  foreach ($label in $dnsHost.Split('.')) {
+    if ($label.Length -lt 1 -or $label.Length -gt 63 -or
+        $label -cnotmatch '^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$') { return $false }
+  }
+  return $true
+}
+function Companion-ListError($authority, [string]$listName) {
+  if (-not (Has-Property $authority $listName)) { return 'COMPANION_LIST_TYPE_INVALID' }
+  $raw = $authority.PSObject.Properties[$listName].Value
+  if ($null -eq $raw -or $raw -isnot [System.Array]) { return 'COMPANION_LIST_TYPE_INVALID' }
+  $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($item in $raw) {
+    if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item)) { return 'COMPANION_LIST_ITEM_INVALID' }
+    if ($item -match '[*?\[\]]') { return 'COMPANION_LIST_WILDCARD' }
+    if (-not $seen.Add($item)) { return 'COMPANION_LIST_DUPLICATE' }
+  }
+  return $null
+}
+function Resource-Error($c, [string]$operation, [string]$scopeName, [string]$listName) {
+  $i = $c.action_identity
+  if ($c.operation -cne $operation -or $i.identity_kind -cne 'RESOURCE') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
+  if (-not (Exact-Props $i @('identity_kind','resource_ref'))) { return 'IDENTITY_FIELDS_INVALID' }
+  if (-not (Canonical-Resource $i.resource_ref)) { return 'RESOURCE_IDENTITY_NONCANONICAL' }
+  $listError = Companion-ListError $c.authority $listName
+  if ($null -ne $listError) { return $listError }
+  $scope = $c.authority.$scopeName
+  $list = @($c.authority.PSObject.Properties[$listName].Value)
+  if ($scope -ceq 'PROJECT') {
+    if ($list.Count -ne 0) { return 'PROJECT_COMPANION_NOT_EMPTY' }
+    if (-not (Has-Property $c 'root_contained') -or $c.root_contained -isnot [bool] -or $c.root_contained -ne $true) { return 'PROJECT_ROOT_CONTAINMENT_FAILED' }
+    return $null
+  }
+  if ($scope -ceq 'NAMED_RESOURCES') {
+    if ($list.Count -eq 0) { return 'NAMED_RESOURCE_LIST_EMPTY' }
+    foreach ($item in $list) { if (-not (Canonical-Resource $item)) { return 'NAMED_RESOURCE_LIST_NONCANONICAL' } }
+    if (-not ($list -ccontains $i.resource_ref)) { return 'NAMED_RESOURCE_NOT_AUTHORIZED' }
+    return $null
+  }
+  if (($scope -ceq 'NONE' -or $scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
+  return 'RESOURCE_SCOPE_INVALID'
+}
+function Action-Error($c) {
+  if (-not (Has-Property $c 'action_identity') -or $null -eq $c.action_identity) { return 'ACTION_IDENTITY_MISSING' }
+  $i = $c.action_identity
+  switch -CaseSensitive ($c.action_type) {
+    'READ_RESOURCE' { return Resource-Error $c 'read' 'read_scope' 'read_resources' }
+    'CREATE_RESOURCE' { return Resource-Error $c 'create' 'write_scope' 'write_resources' }
+    'UPDATE_RESOURCE' { return Resource-Error $c 'update' 'write_scope' 'write_resources' }
+    'DELETE_RESOURCE' { return Resource-Error $c 'delete' 'write_scope' 'write_resources' }
+    'EXECUTE_COMMAND' {
+      if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'COMMAND') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
+      if (-not (Exact-Props $i @('identity_kind','command_id','command','cwd'))) { return 'IDENTITY_FIELDS_INVALID' }
+      $listError = Companion-ListError $c.authority 'execute_commands'; if ($null -ne $listError) { return $listError }
+      $list = @($c.authority.PSObject.Properties['execute_commands'].Value)
+      if ($c.authority.execute_scope -cne 'NAMED_COMMANDS') {
+        if (($c.authority.execute_scope -ceq 'NONE' -or $c.authority.execute_scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
+        return 'EXECUTE_SCOPE_INVALID'
       }
+      if ($list.Count -eq 0) { return 'NAMED_COMMAND_LIST_EMPTY' }
+      if (-not ($list -ccontains $i.command_id)) { return 'COMMAND_NOT_AUTHORIZED' }
+      if ($i.command_id -cne $c.validation_command.id -or $i.command -cne $c.validation_command.command -or $i.cwd -cne $c.validation_command.cwd) { return 'COMMAND_RECORD_MISMATCH' }
+      if ($i.cwd -cne '.' -and -not (Canonical-Resource $i.cwd)) { return 'COMMAND_CWD_NONCANONICAL' }
+      return $null
     }
-    elseif ([string]::IsNullOrWhiteSpace([string]$found[0].observed_at)) {
-      return 'EVIDENCE_FRESHNESS_MISSING'
+    'CALL_NETWORK' {
+      if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'NETWORK') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
+      if (-not (Exact-Props $i @('identity_kind','network_host'))) { return 'IDENTITY_FIELDS_INVALID' }
+      if (-not (Canonical-NetworkHost $i.network_host)) { return 'NETWORK_IDENTITY_NONCANONICAL' }
+      $listError = Companion-ListError $c.authority 'network_hosts'; if ($null -ne $listError) { return $listError }
+      $list = @($c.authority.PSObject.Properties['network_hosts'].Value)
+      foreach ($item in $list) { if (-not (Canonical-NetworkHost $item)) { return 'NETWORK_ALLOWLIST_NONCANONICAL' } }
+      if ($c.authority.network_scope -cne 'NAMED_HOSTS') {
+        if (($c.authority.network_scope -ceq 'NONE' -or $c.authority.network_scope -ceq 'UNKNOWN') -and $list.Count -ne 0) { return 'NONE_COMPANION_NOT_EMPTY' }
+        return 'NETWORK_SCOPE_INVALID'
+      }
+      if ($list.Count -eq 0) { return 'NAMED_NETWORK_LIST_EMPTY' }
+      if (-not ($list -ccontains $i.network_host)) { return 'NETWORK_NOT_AUTHORIZED' }
+      return $null
+    }
+    default { return 'ACTION_TYPE_UNKNOWN' }
+  }
+}
+function Parse-StrictUtc([string]$value, [ref]$parsed) {
+  if ($value -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$') { return $false }
+  $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
+  return [DateTimeOffset]::TryParseExact($value, "yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture, $styles, $parsed)
+}
+function Json-Integer($value) { return $value -is [int] -or $value -is [long] }
+function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
+  $revisionTypes = @('file','diff'); $timeTypes = @('command','test','render','runtime','approval')
+  if (-not ($revisionTypes -ccontains $e.type) -and -not ($timeTypes -ccontains $e.type)) { return 'EVIDENCE_TYPE_INVALID' }
+  $hasRevision = Has-Property $e 'observed_revision'; $hasTime = Has-Property $e 'observed_at'
+  if ($revisionTypes -ccontains $e.type) {
+    if (-not $hasRevision) { return 'EVIDENCE_FRESHNESS_MISSING' }
+    if ($hasTime) { return 'EVIDENCE_FRESHNESS_MODE_MISMATCH' }
+    if (-not (Json-Integer $e.observed_revision)) { return 'EVIDENCE_REVISION_INVALID' }
+    if ([long]$e.observed_revision -ne [long]$baseRevision) { return 'EVIDENCE_STALE' }
+    return $null
+  }
+  if (-not $hasTime) { return 'EVIDENCE_FRESHNESS_MISSING' }
+  if ($hasRevision) { return 'EVIDENCE_FRESHNESS_MODE_MISMATCH' }
+  $observed = [DateTimeOffset]::MinValue
+  if ($e.observed_at -isnot [string] -or -not (Parse-StrictUtc $e.observed_at ([ref]$observed))) { return 'EVIDENCE_TIMESTAMP_INVALID' }
+  $age = ($validationAt - $observed).TotalSeconds
+  if ($age -lt 0) { return 'EVIDENCE_FUTURE' }
+  if ($age -gt 300) { return 'EVIDENCE_STALE' }
+  return $null
+}
+function Trusted-ValidationAt([string]$value) {
+  $parsed = [DateTimeOffset]::MinValue
+  if (-not (Parse-StrictUtc $value ([ref]$parsed))) { throw 'fixture validation_at invalid' }
+  return $parsed
+}
+function Catalog-Error($c) {
+  $evidence = @($c.evidence); $sources = @($c.inspected_sources)
+  if ($c.outcome_code -ceq 'NO_CANDIDATE' -and ($evidence.Count -eq 0 -or $sources.Count -eq 0)) { return 'DIAGNOSTIC_DISCOVERY_EMPTY' }
+  $ids = @($evidence | ForEach-Object { $_.id })
+  if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_ID_DUPLICATE' }
+  foreach ($source in $sources) {
+    $refs = @($source.evidence_refs)
+    if ($refs.Count -eq 0) { return 'EVIDENCE_REF_MISSING' }
+    if ($refs.Count -ne @($refs | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_REF_DUPLICATE' }
+    foreach ($ref in $refs) {
+      $found = @($evidence | Where-Object { $_.id -ceq $ref })
+      if ($found.Count -eq 0) { return 'EVIDENCE_REF_UNRESOLVED' }
+      if ($found.Count -gt 1) { return 'EVIDENCE_REF_MULTIPLE' }
+      $at = [DateTimeOffset]::UtcNow
+      if (Has-Property $c 'validation_at') { $at = Trusted-ValidationAt $c.validation_at }
+      $fresh = Freshness-Error $found[0] ([int]$c.base_revision) $at
+      if ($null -ne $fresh) { return $fresh }
     }
   }
   return $null
 }
 
-function Packet-Evidence-Error($packet) {
+function Inspected-Error($packet, [DateTimeOffset]$validationAt) {
+  $outcome = $packet.payload.outcome_code
+  $hasSources = Has-Property $packet.payload 'inspected_sources'
+  $absenceAllowed = @('CANDIDATES_PROPOSED','BLOCKED_PROPOSAL','CONTRACT_ERROR') -ccontains $outcome
+  if (-not $hasSources) {
+    if ($outcome -ceq 'NO_CANDIDATE') { return 'INSPECTED_SOURCES_REQUIRED' }
+    if ($absenceAllowed) { return $null }
+    return 'INSPECTED_SOURCES_ABSENCE_INVALID'
+  }
+  $rawSources = $packet.payload.PSObject.Properties['inspected_sources'].Value
+  if ($null -eq $rawSources -or $rawSources -isnot [System.Array]) { return 'INSPECTED_SOURCES_TYPE_INVALID' }
+  if ($rawSources.Count -eq 0) { return 'INSPECTED_SOURCES_EMPTY' }
   $evidence = @($packet.payload.evidence)
   $ids = @($evidence | ForEach-Object { $_.id })
-  $uniqueIds = @($ids | Sort-Object -CaseSensitive -Unique)
-  if ($ids.Count -ne $uniqueIds.Count) {
-    return 'EVIDENCE_ID_DUPLICATE'
-  }
-
-  $sourceItems = @()
-  $hasInspectedSources = $packet.payload.PSObject.Properties.Name -contains 'inspected_sources'
-  if ($hasInspectedSources) {
-    $sourceValue = $packet.payload.inspected_sources
-    if ($null -eq $sourceValue -or $sourceValue -isnot [System.Array]) {
-      return 'INSPECTED_SOURCES_INVALID'
+  if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_ID_DUPLICATE' }
+  foreach ($source in $rawSources) {
+    if ($source -isnot [Management.Automation.PSCustomObject] -or -not (Exact-Props $source @('source_ref','observation','evidence_refs'))) { return 'INSPECTED_SOURCE_PROPERTIES_INVALID' }
+    if (-not (Canonical-Resource $source.source_ref)) { return 'INSPECTED_SOURCE_REF_INVALID' }
+    if ($source.observation -isnot [string] -or [string]::IsNullOrWhiteSpace($source.observation)) { return 'INSPECTED_SOURCE_OBSERVATION_INVALID' }
+    $rawRefs = $source.PSObject.Properties['evidence_refs'].Value
+    if ($null -eq $rawRefs -or $rawRefs -isnot [System.Array]) { return 'INSPECTED_SOURCE_REFS_TYPE_INVALID' }
+    if ($rawRefs.Count -eq 0) { return 'INSPECTED_SOURCE_REFS_INVALID' }
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($ref in $rawRefs) {
+      if ($ref -isnot [string] -or [string]::IsNullOrWhiteSpace($ref) -or -not $seen.Add($ref)) { return 'INSPECTED_SOURCE_REFS_INVALID' }
     }
-    $sourceItems = @($sourceValue)
-    foreach ($sourceItem in $sourceItems) {
-      if ($null -eq $sourceItem -or
-          $sourceItem -isnot [System.Management.Automation.PSCustomObject] -or
-          $sourceItem.PSObject.Properties.Name -notcontains 'evidence_refs' -or
-          $null -eq $sourceItem.evidence_refs -or
-          $sourceItem.evidence_refs -isnot [System.Array]) {
-        return 'INSPECTED_SOURCES_INVALID'
-      }
-    }
-  }
-
-  foreach ($candidateItem in @($packet.payload.candidates)) {
-    $candidateRefs = @($candidateItem.evidence_refs)
-    $errorCode = Ref-Error -packet $packet -refs $candidateRefs
-    if ($null -ne $errorCode) { return $errorCode }
-  }
-  foreach ($sourceItem in $sourceItems) {
-    $sourceRefs = @($sourceItem.evidence_refs)
-    $errorCode = Ref-Error -packet $packet -refs $sourceRefs
-    if ($null -ne $errorCode) { return $errorCode }
-  }
-  if ($packet.payload.outcome_code -ceq 'NO_CANDIDATE') {
-    if (@($packet.payload.candidates).Count -ne 0 -or $evidence.Count -eq 0 -or
-        $sourceItems.Count -eq 0) {
-      return 'DIAGNOSTIC_DISCOVERY_EMPTY'
-    }
-    foreach ($sourceItem in $sourceItems) {
-      if ([string]::IsNullOrWhiteSpace([string]$sourceItem.source_ref) -or
-          @($sourceItem.evidence_refs).Count -eq 0) {
-        return 'DIAGNOSTIC_SOURCE_INVALID'
-      }
+    foreach ($ref in $rawRefs) {
+      $found = @($evidence | Where-Object { $_.id -ceq $ref })
+      if ($found.Count -eq 0) { return 'EVIDENCE_REF_UNRESOLVED' }
+      if ($found.Count -gt 1) { return 'EVIDENCE_REF_MULTIPLE' }
+      $fresh = Freshness-Error $found[0] ([int]$packet.base_revision) $validationAt
+      if ($null -ne $fresh) { return $fresh }
     }
   }
   return $null
 }
-$candidate = @($normal.payload.candidates)[0]
-$identity = $candidate.action_identity
-if ($candidate.action_type -cne 'UPDATE_RESOURCE' -or $candidate.operation -cne 'update' -or
-    $identity.identity_kind -cne 'RESOURCE' -or
-    @(Compare-Object @('identity_kind','resource_ref') @($identity.PSObject.Properties.Name)).Count -ne 0 -or
-    $candidate.resource_ref -cne $identity.resource_ref) {
-  Write-Error 'positive RESOURCE identity invalid'; exit 1
-}
-if ($normal.payload.PSObject.Properties.Name -contains 'inspected_sources') {
-  Write-Error 'positive CANDIDATES_PROPOSED must exercise absent inspected_sources'; exit 1
-}
-$normalError = Packet-Evidence-Error $normal
-$noneError = Packet-Evidence-Error $none
-if ($null -ne $normalError -or $null -ne $noneError) {
-  Write-Error "positive CandidatePacket evidence invalid: normal=$normalError none=$noneError"; exit 1
-}
-
-$invalidSourceShapes = @(
-  [pscustomobject]@{ id = 'NULL'; value = $null },
-  [pscustomobject]@{
-    id = 'NON_ARRAY'
-    value = [pscustomobject]@{ source_ref = 'README.md'; evidence_refs = @('EVID-1') }
-  },
-  [pscustomobject]@{ id = 'INVALID_ENTRY'; value = @($null) }
-)
-foreach ($case in $invalidSourceShapes) {
+$identity = @($normal.payload.candidates)[0].action_identity
+if ($identity.identity_kind -cne 'RESOURCE' -or -not (Exact-Props $identity @('identity_kind','resource_ref'))) { Write-Error 'positive RESOURCE invalid'; exit 1 }
+$trustedAt = Trusted-ValidationAt '2026-07-13T00:05:00Z'
+if (Has-Property $normal.payload 'inspected_sources') { Write-Error 'normal must exercise allowed absence'; exit 1 }
+if ($null -ne (Inspected-Error $normal $trustedAt) -or $null -ne (Inspected-Error $none $trustedAt)) { Write-Error 'positive inspected_sources invalid'; exit 1 }
+foreach ($outcome in @('BLOCKED_PROPOSAL','CONTRACT_ERROR')) {
   $copy = $normal | ConvertTo-Json -Depth 20 | ConvertFrom-Json
-  $copy.payload | Add-Member -NotePropertyName 'inspected_sources' -NotePropertyValue $case.value
-  $actual = Packet-Evidence-Error $copy
-  if ($actual -cne 'INSPECTED_SOURCES_INVALID') {
-    Write-Error "invalid inspected_sources $($case.id) accepted as $actual"; exit 1
+  $copy.payload.outcome_code = $outcome
+  $copy.payload.candidates = [object[]]@()
+  if ($null -ne (Inspected-Error $copy $trustedAt)) { Write-Error "allowed absence rejected: $outcome"; exit 1 }
+}
+function Invoke-InspectedNegative($sourceCase, [string]$variantJson) {
+  $caseJson = ConvertTo-Json -InputObject $sourceCase -Depth 30 -Compress
+  $independentFixture = ('{"case":' + $caseJson + ',"variant":' + $variantJson + '}') | ConvertFrom-Json
+  $case = $independentFixture.case
+  $variant = $independentFixture.PSObject.Properties['variant'].Value
+  $copy = $none | ConvertTo-Json -Depth 30 | ConvertFrom-Json
+  switch -CaseSensitive ($case.mutation) {
+    'REMOVE_SOURCES' { $copy.payload.PSObject.Properties.Remove('inspected_sources') }
+    'EMPTY_SOURCES' { $copy.payload.inspected_sources = [object[]]@() }
+    'SCALAR_SOURCES' { $copy.payload.inspected_sources = 'README.md' }
+    'EXTRA_PROPERTY' { $copy.payload.inspected_sources[0] | Add-Member -NotePropertyName extra -NotePropertyValue $true }
+    'BAD_SOURCE_REFS' { $copy.payload.inspected_sources[0].source_ref = [string]$variant }
+    'EMPTY_OBSERVATION' { $copy.payload.inspected_sources[0].observation = ' ' }
+    'SCALAR_REFS' { $copy.payload.inspected_sources[0].evidence_refs = 'EVID-NC-1' }
+    'BAD_REFS' { $copy.payload.inspected_sources[0].evidence_refs = $variant }
+    'UNRESOLVED_REF' { $copy.payload.inspected_sources[0].evidence_refs = [object[]]@('EVID-MISSING') }
+    'STALE_REF' { $copy.payload.evidence[0].observed_revision = [int]$copy.base_revision - 1 }
+  }
+  $rawType = 'ABSENT'; $rawCount = -1; $rawValues = ''
+  if (Has-Property $copy.payload 'inspected_sources') {
+    $rawSources = $copy.payload.PSObject.Properties['inspected_sources'].Value
+    if ($rawSources -is [System.Array] -and $rawSources.Count -gt 0 -and
+        $null -ne $rawSources[0] -and (Has-Property $rawSources[0] 'evidence_refs')) {
+      $raw = $rawSources[0].PSObject.Properties['evidence_refs'].Value
+      $rawType = if ($null -eq $raw) { 'NULL' } else { $raw.GetType().FullName }
+      $rawCount = if ($raw -is [System.Array]) { $raw.Count } elseif ($null -eq $raw) { 0 } else { 1 }
+      $rawValues = @($raw) -join '|'
+    }
+  }
+  $actual = Inspected-Error $copy $trustedAt
+  Write-Output "INSPECTED_NEGATIVE id=$($case.id) raw_type=$rawType raw_count=$rawCount raw_values=$rawValues returned=$actual"
+  if ($actual -cne $case.expected_error) { Write-Error "source $($case.id) expected $($case.expected_error), got $actual"; exit 1 }
+}
+foreach ($case in @($fx.inspected_sources_negative)) {
+  if (Has-Property $case 'invalid_source_refs') {
+    foreach ($value in @($case.invalid_source_refs)) {
+      Invoke-InspectedNegative $case (ConvertTo-Json -InputObject $value -Depth 30 -Compress)
+    }
+  }
+  elseif (Has-Property $case 'invalid_ref_sets') {
+    foreach ($value in @($case.invalid_ref_sets)) {
+      Invoke-InspectedNegative $case (ConvertTo-Json -InputObject $value -Depth 30 -Compress)
+    }
+  }
+  else {
+    Invoke-InspectedNegative $case '"__SINGLE__"'
   }
 }
+Write-Output 'inspected_sources_negative=10 outcome_absence_positive=3 no_candidate_required=1'
 ~~~
 
-Expected: exit code 0 and no output.
-
+Expected: exit code 0 and the exact inspected-source counts.
 - [ ] **Step 4: Commit the part role**
 
 Run:
@@ -1702,6 +2879,44 @@ Each evidence entry has:
 Include exit_code only for commands. Never copy credentials, tokens, private
 payloads, or oversized logs.
 
+Validate WorkResult only against trusted TaskPacket execution context supplied
+by main. That context fixes protocol_version, task_id, correlation_id,
+base_revision, validator-captured validationAt, approved_candidate_ids,
+candidate_evidence_floor, and the complete required acceptance_criteria with
+each criterion_id and evidence_floor. WorkResult cannot supply or change this
+context. validationAt is runtime metadata, is never read from WorkResult, and is
+never invented from packet data.
+
+approved_candidate_ids, candidate_results, acceptance_criteria,
+acceptance_results, evidence, and every evidence_refs value are raw JSON arrays;
+a scalar, null, or object is invalid even when it contains one item. IDs and
+references are non-empty case-sensitive strings and are unique in their own
+array. candidate_results contains every trusted approved candidate exactly once
+with no unknown, duplicate, or missing candidate. acceptance_results contains
+every trusted required criterion exactly once with no unknown, duplicate, or
+missing criterion.
+
+Every ACCEPTED candidate result and every PASSED acceptance result has a
+non-empty evidence_refs array. Each reference resolves to exactly one unique
+payload.evidence entry. file and diff evidence require only an original JSON
+integer observed_revision equal to base_revision. command, test, render,
+runtime, and approval evidence require only a strict UTC observed_at and must be
+0 through 300 seconds old relative to trusted validationAt. Wrong-mode,
+missing, invalid, stale, or future freshness metadata fails closed. Referenced
+evidence meets or exceeds candidate_evidence_floor for ACCEPTED candidate
+results and that criterion's evidence_floor for PASSED acceptance results,
+using E0 < E1 < E2 < E3.
+
+validation_summary passed, failed, and not_run are original non-negative JSON
+integers and exactly equal the acceptance_results status counts. SUCCEEDED is
+valid only when candidate and criterion coverage is exact, every candidate
+decision is ACCEPTED, every required criterion is PASSED, all referenced
+evidence is exact, fresh, and at its required floor, validation_summary has no
+failed or not_run result, and proposed_transition is SUCCEEDED. These checks use
+stable fail-closed order: trusted context and envelope, raw arrays, candidate
+coverage, criterion coverage, evidence catalog and references, freshness and
+tier floors, exact summary counts, then SUCCEEDED invariants.
+
 ## 6. WorkResult
 
 Return:
@@ -1761,7 +2976,7 @@ Return:
         "source": "tests",
         "observation": "required validation passed after the change",
         "exit_code": 0,
-        "observed_revision": 0
+        "observed_at": "2026-07-13T00:05:00Z"
       }
     ],
     "validation_summary": {
@@ -1848,51 +3063,272 @@ Run:
 
 ~~~powershell
 $path = '.github/agents/work_agent.prompt.md'
+$mainPath = '.github/agents/main_instruction.prompt.md'
 $text = Get-Content -Raw -Encoding UTF8 $path
+$mainText = Get-Content -Raw -Encoding UTF8 $mainPath
 if ($text.Contains('ForgeOps') -or $text.Contains('hyunsuki5329')) { exit 1 }
-$objects = @([regex]::Matches($text, '(?ms)^~~~json\r?$\n(?<j>.*?)^~~~\r?$') | ForEach-Object { $_.Groups['j'].Value | ConvertFrom-Json })
-$result = $objects | Where-Object { $_.packet_type -ceq 'work_result' } | Select-Object -First 1
-if ($null -eq $result) { Write-Error 'positive WorkResult missing'; exit 1 }
-$e = @($result.payload.evidence)
-$ids = @($e | ForEach-Object { $_.id })
-if ($e.Count -eq 0 -or $ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) {
-  Write-Error 'WorkResult evidence invalid'; exit 1
+$fixtureMatch = [regex]::Match($mainText, '(?ms)^~~~json\r?$\n(?<j>\{\s*"fixture_suite":\s*"portable_harness_v2_semantics".*?\})\r?\n^~~~\r?$')
+if (-not $fixtureMatch.Success) { Write-Error 'semantic fixture missing'; exit 1 }
+$fx = $fixtureMatch.Groups['j'].Value | ConvertFrom-Json
+
+function Has-Property($o, [string]$name) {
+  return $null -ne $o -and $o.PSObject.Properties.Name -contains $name
 }
-$arrays = @()
-foreach ($cr in @($result.payload.candidate_results)) {
-  $i = $cr.action_identity
-  if ($cr.action_type -cne 'UPDATE_RESOURCE' -or $i.identity_kind -cne 'RESOURCE' -or
-      @(Compare-Object @('identity_kind','resource_ref') @($i.PSObject.Properties.Name)).Count -ne 0) {
-    Write-Error 'WorkResult action_identity invalid'; exit 1
-  }
-  $arrays += ,@($cr.evidence_refs)
+function Raw-Array($value) {
+  return $value -is [System.Array]
 }
-foreach ($ar in @($result.payload.acceptance_results)) { $arrays += ,@($ar.evidence_refs) }
-foreach ($refs in $arrays) {
-  if (@($refs).Count -ne @($refs | Sort-Object -CaseSensitive -Unique).Count) {
-    Write-Error 'duplicate WorkResult ref'; exit 1
+function Json-Integer($value) {
+  return $value -is [int] -or $value -is [long]
+}
+function NonEmpty-Unique-Strings($value) {
+  if (-not (Raw-Array $value)) { return $false }
+  $items = @($value)
+  if ($items.Count -eq 0) { return $false }
+  foreach ($item in $items) {
+    if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item)) { return $false }
   }
-  foreach ($ref in @($refs)) {
-    $found = @($e | Where-Object { $_.id -ceq $ref })
-    if ($found.Count -ne 1) { Write-Error "unresolved WorkResult ref $ref"; exit 1 }
-    if ($null -ne $found[0].observed_revision) {
-      if ([int]$found[0].observed_revision -ne [int]$result.base_revision) {
-        Write-Error "stale WorkResult ref $ref"; exit 1
-      }
+  return @($items | Sort-Object -CaseSensitive -Unique).Count -eq $items.Count
+}
+function Parse-StrictUtc([string]$value, [ref]$parsed) {
+  $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
+  return [DateTimeOffset]::TryParseExact($value, "yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture, $styles, $parsed)
+}
+function Tier-Rank([string]$tier) {
+  switch -CaseSensitive ($tier) {
+    'E0' { return 0 }
+    'E1' { return 1 }
+    'E2' { return 2 }
+    'E3' { return 3 }
+    default { return -1 }
+  }
+}
+function Freshness-Error($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
+  $revisionTypes = @('file','diff')
+  $timeTypes = @('command','test','render','runtime','approval')
+  if (-not ($revisionTypes -ccontains $e.type) -and -not ($timeTypes -ccontains $e.type)) {
+    return 'WORK_EVIDENCE_TYPE_INVALID'
+  }
+  $hasRevision = Has-Property $e 'observed_revision'
+  $hasTime = Has-Property $e 'observed_at'
+  if ($revisionTypes -ccontains $e.type) {
+    if (-not $hasRevision -and -not $hasTime) { return 'WORK_EVIDENCE_FRESHNESS_MISSING' }
+    if ($hasTime) { return 'WORK_EVIDENCE_FRESHNESS_MODE_MISMATCH' }
+    if (-not (Json-Integer $e.observed_revision)) { return 'WORK_EVIDENCE_REVISION_INVALID' }
+    if ([int64]$e.observed_revision -ne [int64]$baseRevision) { return 'WORK_EVIDENCE_STALE' }
+    return $null
+  }
+  if (-not $hasTime -and -not $hasRevision) { return 'WORK_EVIDENCE_FRESHNESS_MISSING' }
+  if ($hasRevision) { return 'WORK_EVIDENCE_FRESHNESS_MODE_MISMATCH' }
+  $observed = [DateTimeOffset]::MinValue
+  if ($e.observed_at -isnot [string] -or -not (Parse-StrictUtc $e.observed_at ([ref]$observed))) {
+    return 'WORK_EVIDENCE_TIMESTAMP_INVALID'
+  }
+  $age = ($validationAt - $observed).TotalSeconds
+  if ($age -lt 0) { return 'WORK_EVIDENCE_FUTURE' }
+  if ($age -gt 300) { return 'WORK_EVIDENCE_STALE' }
+  return $null
+}
+function Ref-Error($refs, [object[]]$evidence, [int]$baseRevision, [DateTimeOffset]$validationAt, [string]$floor) {
+  if (-not (Raw-Array $refs)) { return 'WORK_EVIDENCE_REFS_TYPE_INVALID' }
+  $items = @($refs)
+  if ($items.Count -eq 0) { return 'WORK_EVIDENCE_REFS_EMPTY' }
+  foreach ($ref in $items) {
+    if ($ref -isnot [string] -or [string]::IsNullOrWhiteSpace($ref)) { return 'WORK_EVIDENCE_REFS_INVALID' }
+  }
+  if (@($items | Sort-Object -CaseSensitive -Unique).Count -ne $items.Count) {
+    return 'WORK_EVIDENCE_REFS_DUPLICATE'
+  }
+  $floorRank = Tier-Rank $floor
+  if ($floorRank -lt 0) { return 'WORK_EVIDENCE_FLOOR_INVALID' }
+  foreach ($ref in $items) {
+    $found = @($evidence | Where-Object { $_.id -ceq $ref })
+    if ($found.Count -eq 0) { return 'WORK_EVIDENCE_REF_UNRESOLVED' }
+    if ($found.Count -gt 1) { return 'WORK_EVIDENCE_REF_MULTIPLE' }
+    $fresh = Freshness-Error $found[0] $baseRevision $validationAt
+    if ($null -ne $fresh) { return $fresh }
+    if ((Tier-Rank ([string]$found[0].tier)) -lt $floorRank) {
+      return 'WORK_EVIDENCE_FLOOR_NOT_MET'
     }
-    elseif ([string]::IsNullOrWhiteSpace([string]$found[0].observed_at)) {
-      Write-Error "freshness missing $ref"; exit 1
+  }
+  return $null
+}
+function Work-Error($case) {
+  $context = $case.context
+  $result = $case.result
+  if ($null -eq $context -or $null -eq $result -or
+      $context.protocol_version -cne '2.0' -or
+      $context.task_id -isnot [string] -or [string]::IsNullOrWhiteSpace($context.task_id) -or
+      $context.correlation_id -isnot [string] -or [string]::IsNullOrWhiteSpace($context.correlation_id) -or
+      -not (Json-Integer $context.base_revision)) {
+    return 'WORK_CONTEXT_INVALID'
+  }
+  $validationAt = [DateTimeOffset]::MinValue
+  if ($context.validationAt -isnot [string] -or -not (Parse-StrictUtc $context.validationAt ([ref]$validationAt)) -or
+      (Tier-Rank ([string]$context.candidate_evidence_floor)) -lt 0) {
+    return 'WORK_CONTEXT_INVALID'
+  }
+  if ($result.protocol_version -cne $context.protocol_version -or
+      $result.packet_type -cne 'work_result' -or $result.actor -cne 'work' -or
+      $result.task_id -cne $context.task_id -or
+      $result.correlation_id -cne $context.correlation_id -or
+      -not (Json-Integer $result.base_revision) -or
+      [int64]$result.base_revision -ne [int64]$context.base_revision) {
+    return 'WORK_CONTEXT_MISMATCH'
+  }
+  if (-not (NonEmpty-Unique-Strings $context.approved_candidate_ids) -or
+      -not (Raw-Array $context.acceptance_criteria) -or
+      @($context.acceptance_criteria).Count -eq 0 -or
+      -not (NonEmpty-Unique-Strings $result.payload.approved_candidate_ids) -or
+      -not (Raw-Array $result.payload.candidate_results) -or
+      -not (Raw-Array $result.payload.acceptance_results) -or
+      -not (Raw-Array $result.payload.evidence)) {
+    return 'WORK_ARRAY_INVALID'
+  }
+  $trustedIds = @($context.approved_candidate_ids)
+  $resultIds = @($result.payload.approved_candidate_ids)
+  if (@(Compare-Object $trustedIds $resultIds -CaseSensitive).Count -ne 0) {
+    return 'WORK_APPROVED_IDS_MISMATCH'
+  }
+  $criteriaById = @{}
+  foreach ($criterion in @($context.acceptance_criteria)) {
+    if ($null -eq $criterion -or $criterion.criterion_id -isnot [string] -or
+        [string]::IsNullOrWhiteSpace($criterion.criterion_id) -or
+        (Tier-Rank ([string]$criterion.evidence_floor)) -lt 0) {
+      return 'WORK_CONTEXT_INVALID'
+    }
+    if ($criteriaById.ContainsKey([string]$criterion.criterion_id)) { return 'WORK_CONTEXT_INVALID' }
+    $criteriaById[[string]$criterion.criterion_id] = $criterion
+  }
+  $seenCandidates = @{}
+  foreach ($candidate in @($result.payload.candidate_results)) {
+    $candidateId = [string]$candidate.candidate_id
+    if (-not ($trustedIds -ccontains $candidateId)) { return 'WORK_CANDIDATE_UNKNOWN' }
+    if ($seenCandidates.ContainsKey($candidateId)) { return 'WORK_CANDIDATE_DUPLICATE' }
+    $seenCandidates[$candidateId] = $true
+  }
+  if ($seenCandidates.Count -ne $trustedIds.Count) { return 'WORK_CANDIDATE_MISSING' }
+  $seenCriteria = @{}
+  foreach ($criterionResult in @($result.payload.acceptance_results)) {
+    $criterionId = [string]$criterionResult.criterion_id
+    if (-not $criteriaById.ContainsKey($criterionId)) { return 'WORK_CRITERION_UNKNOWN' }
+    if ($seenCriteria.ContainsKey($criterionId)) { return 'WORK_CRITERION_DUPLICATE' }
+    if (-not (@('PASSED','FAILED','NOT_RUN') -ccontains $criterionResult.status)) {
+      return 'WORK_CRITERION_STATUS_INVALID'
+    }
+    $seenCriteria[$criterionId] = $true
+  }
+  if ($seenCriteria.Count -ne $criteriaById.Count) { return 'WORK_CRITERION_MISSING' }
+  $evidence = @($result.payload.evidence)
+  if ($evidence.Count -eq 0) { return 'WORK_EVIDENCE_CATALOG_INVALID' }
+  $evidenceIds = @()
+  foreach ($entry in $evidence) {
+    if ($null -eq $entry -or $entry.id -isnot [string] -or
+        [string]::IsNullOrWhiteSpace($entry.id) -or
+        (Tier-Rank ([string]$entry.tier)) -lt 0) {
+      return 'WORK_EVIDENCE_CATALOG_INVALID'
+    }
+    $evidenceIds += [string]$entry.id
+  }
+  if (@($evidenceIds | Sort-Object -CaseSensitive -Unique).Count -ne $evidenceIds.Count) {
+    return 'WORK_EVIDENCE_ID_DUPLICATE'
+  }
+  foreach ($candidate in @($result.payload.candidate_results)) {
+    if ($candidate.decision -ceq 'ACCEPTED') {
+      $errorCode = Ref-Error $candidate.evidence_refs $evidence ([int]$context.base_revision) $validationAt ([string]$context.candidate_evidence_floor)
+      if ($null -ne $errorCode) { return $errorCode }
     }
   }
+  foreach ($criterionResult in @($result.payload.acceptance_results)) {
+    if ($criterionResult.status -ceq 'PASSED') {
+      $floor = [string]$criteriaById[[string]$criterionResult.criterion_id].evidence_floor
+      $errorCode = Ref-Error $criterionResult.evidence_refs $evidence ([int]$context.base_revision) $validationAt $floor
+      if ($null -ne $errorCode) { return $errorCode }
+    }
+  }
+  $summary = $result.payload.validation_summary
+  if ($null -eq $summary -or
+      -not (Json-Integer $summary.passed) -or -not (Json-Integer $summary.failed) -or
+      -not (Json-Integer $summary.not_run) -or
+      [int64]$summary.passed -lt 0 -or [int64]$summary.failed -lt 0 -or [int64]$summary.not_run -lt 0) {
+    return 'WORK_SUMMARY_INVALID'
+  }
+  $passed = @($result.payload.acceptance_results | Where-Object { $_.status -ceq 'PASSED' }).Count
+  $failed = @($result.payload.acceptance_results | Where-Object { $_.status -ceq 'FAILED' }).Count
+  $notRun = @($result.payload.acceptance_results | Where-Object { $_.status -ceq 'NOT_RUN' }).Count
+  if ([int64]$summary.passed -ne $passed -or
+      [int64]$summary.failed -ne $failed -or
+      [int64]$summary.not_run -ne $notRun) {
+    return 'WORK_SUMMARY_MISMATCH'
+  }
+  if ($result.status -ceq 'SUCCEEDED') {
+    if (@($result.payload.candidate_results | Where-Object { $_.decision -cne 'ACCEPTED' }).Count -ne 0 -or
+        @($result.payload.acceptance_results | Where-Object { $_.status -cne 'PASSED' }).Count -ne 0 -or
+        [int64]$summary.failed -ne 0 -or [int64]$summary.not_run -ne 0 -or
+        $result.payload.proposed_transition -cne 'SUCCEEDED') {
+      return 'WORK_SUCCESS_INCONSISTENT'
+    }
+  }
+  return $null
 }
-if (@($result.payload.acceptance_results | Where-Object { $_.status -ceq 'PASSED' }).Count -eq 0 -or
-    [int]$result.payload.validation_summary.passed -lt 1) {
-  Write-Error 'successful WorkResult lacks passed criterion'; exit 1
+function Copy-Json($value) {
+  return $value | ConvertTo-Json -Depth 50 -Compress | ConvertFrom-Json
 }
+function Mutate-Work($baseline, [string]$mutation) {
+  $case = Copy-Json $baseline
+  switch -CaseSensitive ($mutation) {
+    'EMPTY_CANDIDATE_REFS' { $case.result.payload.candidate_results[0].evidence_refs = @() }
+    'UNKNOWN_CANDIDATE' { $case.result.payload.candidate_results[0].candidate_id = 'CAND-X' }
+    'DUPLICATE_CANDIDATE' {
+      $copy = Copy-Json $case.result.payload.candidate_results[0]
+      $case.result.payload.candidate_results = @($case.result.payload.candidate_results) + @($copy)
+    }
+    'MISSING_CANDIDATE' { $case.result.payload.candidate_results = @() }
+    'UNKNOWN_CRITERION' { $case.result.payload.acceptance_results[0].criterion_id = 'AC-X' }
+    'DUPLICATE_CRITERION' {
+      $copy = Copy-Json $case.result.payload.acceptance_results[0]
+      $case.result.payload.acceptance_results = @($case.result.payload.acceptance_results) + @($copy)
+    }
+    'MISSING_CRITERION' { $case.result.payload.acceptance_results = @() }
+    'LOW_TIER' { ($case.result.payload.evidence | Where-Object { $_.id -ceq 'EVID-2' }).tier = 'E1' }
+    'SUMMARY_MISMATCH' { $case.result.payload.validation_summary.passed = 0 }
+    'FAILED_SUCCESS' {
+      $case.result.payload.acceptance_results[0].status = 'FAILED'
+      $case.result.payload.acceptance_results[0].evidence_refs = @()
+      $case.result.payload.validation_summary.passed = 0
+      $case.result.payload.validation_summary.failed = 1
+    }
+    default { throw "unknown work mutation $mutation" }
+  }
+  return $case
+}
+function Shape-Hash($value) {
+  $json = $value | ConvertTo-Json -Depth 50 -Compress
+  $bytes = [Text.Encoding]::UTF8.GetBytes($json)
+  return [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($bytes)).Replace('-','').ToLowerInvariant()
+}
+if (@($fx.work_positive).Count -ne 1 -or @($fx.work_negative).Count -ne 10) {
+  Write-Error 'work fixture counts invalid'; exit 1
+}
+$unexpectedPass = 0
+$unexpectedFail = 0
+$baseline = @($fx.work_positive)[0]
+$positiveError = Work-Error $baseline
+$positiveActual = if ($null -eq $positiveError) { 'PASS' } else { $positiveError }
+Write-Output "WORK_CASE id=$($baseline.id) mutation=NONE shape_hash=$(Shape-Hash $baseline) expected=PASS actual=$positiveActual"
+if ($null -ne $positiveError) { $unexpectedFail++ }
+foreach ($negative in @($fx.work_negative)) {
+  $case = Mutate-Work $baseline ([string]$negative.mutation)
+  $actual = Work-Error $case
+  $actualLabel = if ($null -eq $actual) { 'PASS' } else { $actual }
+  Write-Output "WORK_CASE id=$($negative.id) mutation=$($negative.mutation) shape_hash=$(Shape-Hash $case) expected=$($negative.expected_error) actual=$actualLabel"
+  if ($null -eq $actual) { $unexpectedPass++ }
+  elseif ($actual -cne $negative.expected_error) { $unexpectedFail++ }
+}
+Write-Output "work_positive=1 work_negative=10 unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
+if ($unexpectedPass -ne 0 -or $unexpectedFail -ne 0) { exit 1 }
 ~~~
 
-Expected: exit code 0 and no output.
-
+Expected: exit code 0 and the exact Work fixture counts.
 - [ ] **Step 4: Commit the work role**
 
 Run:
@@ -2315,24 +3751,43 @@ PLAN|REPORT는 응답 단계이고 EXPLORE|EXECUTE는 행동 권한이다. 두 �
 - E3: 독립 재현, 격리 검증, 배포 관측, 사람 승인
 
 각 acceptance criterion은 PASSED, FAILED, NOT_RUN 중 하나다. PASSED에는
-요구 tier 이상의 최신 evidence_ref가 있어야 한다.
+요구 tier 이상의 비어 있지 않은 최신 evidence_refs가 필요하다. evidence,
+evidence_refs, inspected_sources, candidate_results, acceptance_results와 모든
+authority companion은 원본 JSON 배열이어야 한다. 항목 하나인 scalar, null,
+object로 바꾸면 실패한다. ID와 reference는 비어 있지 않은
+case-sensitive 문자열이며 각 배열에서 중복될 수 없다.
 
 모든 CandidatePacket outcome은 payload.evidence catalog를 포함한다.
 CANDIDATES_PROPOSED, NO_CANDIDATE, BLOCKED_PROPOSAL, CONTRACT_ERROR 모두
-동일하다. evidence id와 각 evidence_refs 배열에는 중복이 없어야 하고 모든
-reference는 catalog의 항목 하나에만 정확히 해석되어야 한다. 프로젝트 상태
-evidence의 observed_revision은 packet base_revision과 같아야 한다. E1 이상
-runtime evidence는 런타임이 제공한 observed_at 또는 일치하는
-observed_revision이 필요하며 timestamp를 만들지 않는다.
+동일하다. 각 reference는 catalog의 항목 하나에만 정확히 해석되어야 한다.
 
-NO_CANDIDATE는 탐색 완료 결과이므로 inspected_sources와 payload.evidence가
-비어 있지 않아야 하고 source의 모든 evidence_ref가 정확히 하나의 최신 항목을
-가리켜야 한다. WorkResult의 candidate_results와 acceptance_results가 참조한
-모든 ID도 payload.evidence에 있어야 한다. unresolved, duplicate, stale ref와
-빈 diagnostic discovery는 conformance 실패다. EMPTY_DIAGNOSTIC_DISCOVERY fixture를 포함한 음성 사례의 expected_error는
-EVIDENCE_REF_UNRESOLVED, EVIDENCE_ID_DUPLICATE, EVIDENCE_STALE,
-DIAGNOSTIC_DISCOVERY_EMPTY를 각각 확인한다.
+Freshness는 닫힌 두 variant다.
 
+- file과 diff는 observed_revision만 가지며 원본 JSON 정수 값이 packet
+  base_revision과 같아야 한다.
+- command, test, render, runtime, approval은 strict UTC observed_at만 가진다.
+  main validator가 한 번 캡처한 trusted validationAt과 비교한 age가 0..300초다.
+- packet은 validationAt을 제공하거나 변경할 수 없다.
+- wrong-mode, missing, invalid, stale, future metadata는 stable priority로
+  fail closed한다.
+
+NO_CANDIDATE의 inspected_sources는 원본 비어 있지 않은 JSON 배열이다. 각
+entry는 source_ref, observation, evidence_refs만 정확히 가진다. source_ref는
+canonical project-root-relative reference, observation은 비어 있지 않은
+문자열, evidence_refs는 원본 비어 있지 않은 unique 문자열 배열이다.
+CANDIDATES_PROPOSED, BLOCKED_PROPOSAL, CONTRACT_ERROR에서는
+inspected_sources가 없을 수 있지만, 있으면 같은 schema를 만족해야 한다.
+
+WorkResult는 main이 제공한 trusted TaskPacket execution context만 사용한다.
+context는 protocol/task/correlation ID, base_revision, validationAt,
+approved_candidate_ids, candidate_evidence_floor, required criterion ID와
+criterion evidence_floor를 고정한다. candidate_results와
+acceptance_results는 trusted ID를 unknown, duplicate, missing 없이 각각
+정확히 한 번 포함한다. ACCEPTED와 PASSED의 refs는 비어 있지 않고 unique하며
+정확히 하나의 fresh evidence를 가리키고 요구 floor 이상이어야 한다.
+validation_summary는 실제 status count와 같아야 한다. SUCCEEDED는 모든
+candidate ACCEPTED, 모든 criterion PASSED, failed/not_run 0,
+proposed_transition SUCCEEDED일 때만 유효하다.
 ## 10. v1 마이그레이션
 
 | v1 | v2 |
@@ -2372,6 +3827,22 @@ v2만 사용한다.
 
 ## 12. Conformance 시나리오
 
+### 실행 카운터
+
+| fixture family | positive | negative |
+| --- | ---: | ---: |
+| action/authority/network identity | 5 | 19 |
+| evidence catalog | 0 | 4 |
+| closed freshness union | 7 | 13 |
+| inspected_sources | 0 | 10 |
+| WorkResult matrix | 1 | 10 |
+| 합계 | 13 | 56 |
+
+세 packet example인 CANDIDATES_PROPOSED, NO_CANDIDATE, WorkResult도 별도
+양성으로 검사한다. 최종 기대값은 fixture_positive=13,
+fixture_negative=56, example_positive=3, unexpected_pass=0,
+unexpected_fail=0이다.
+
 ### 일반 응답
 
 입력: 저장소 사실을 요구하지 않는 개념 질문
@@ -2385,16 +3856,40 @@ NO_CANDIDATE인 CandidatePacket, payload.evidence 포함, mutation 없음
 
 ### PROJECT와 NAMED_RESOURCE
 
-입력: 동일 RESOURCE candidate를 PROJECT 빈 목록과 NAMED_RESOURCES exact
-목록으로 각각 검사
-기대: PROJECT는 root containment만, NAMED는 exact membership만 적용
+입력: 동일 RESOURCE candidate를 PROJECT 빈 원본 배열과
+NAMED_RESOURCES exact 원본 배열로 각각 검사
+기대: PROJECT는 boolean root_contained만 검사하고 named membership을
+사용하지 않으며, NAMED는 exact membership만 적용
 
-### action_identity 음성 fixture
+### action_identity 및 network 음성 fixture
 
 입력: hybrid RESOURCE+COMMAND, identity 누락, command 대소문자 변경,
-execute_scope PROJECT
-기대: 각각 IDENTITY_FIELDS_INVALID, ACTION_IDENTITY_MISSING,
-COMMAND_RECORD_MISMATCH, EXECUTE_SCOPE_INVALID
+execute_scope PROJECT, scheme/path/query/userinfo/uppercase/space/empty-label/
+edge-hyphen/multiple-colon/out-of-range-port network_host
+기대: closed identity와 Canonical-NetworkHost가 stable expected_error로 거절.
+port 없는 lower-case DNS host와 port 1..65535 host는 양성
+
+### freshness fixture
+
+입력: REVISION/TIME metadata 누락, 두 mode 혼합, string/fraction revision,
+형식이 다른 timestamp, stale/future time
+기대: trusted validationAt 기준으로 TYPE, MISSING, MODE, INVALID,
+STALE/FUTURE 순서의 stable expected_error. packet timestamp는 clock이 아님
+
+### inspected_sources fixture
+
+입력: missing/null/scalar/empty source list, extra/missing fields, noncanonical
+source_ref, blank observation, scalar/empty/duplicate/unresolved/stale refs
+기대: NO_CANDIDATE는 exact schema의 원본 non-empty arrays만 통과하고 다른
+outcome의 합법적 absence 세 사례는 통과
+
+### WorkResult fixture
+
+입력: empty ACCEPTED refs, unknown/duplicate/missing candidate ID,
+unknown/duplicate/missing criterion ID, below-floor evidence, summary mismatch,
+FAILED criterion을 가진 SUCCEEDED
+기대: 양성 1건 통과, 음성 10건이 지정된 WORK_* expected_error와 정확히
+일치하고 unexpected pass/fail은 0
 
 ### 권한 없는 변경
 
@@ -2420,10 +3915,15 @@ COMMAND_RECORD_MISMATCH, EXECUTE_SCOPE_INVALID
 
 입력: publish 요청, external_side_effects UNKNOWN
 기대: human gate, 효과 실행 없음
+## 13. 구조 및 semantic 검증
 
-## 13. 구조 검증
+프로젝트 루트에서 Task 6 Step 4의 shared conformance를 실행한다. 이 검사는
+세 role validator를 각각 새 PowerShell process에서 실행하고 case ID,
+mutation, input shape hash, expected/actual error를 보존한다. 그 다음 세
+packet example, adapter/profile, UTF-8, Markdown link, legacy 위치, diff를
+검사한다.
 
-프로젝트 루트에서 실행한다.
+먼저 strict UTF-8과 필수 파일을 빠르게 확인할 수 있다.
 
 ~~~powershell
 $files = @(
@@ -2434,16 +3934,37 @@ $files = @(
   '.github/copilot-instructions.md',
   'docs/agent-harness/PORTING_GUIDE.md'
 )
-$missing = $files | Where-Object { -not (Test-Path $_) }
-if ($missing) { $missing; exit 1 }
-
-$portable = Get-Content -Raw -Encoding UTF8 $files[0],$files[1],$files[2]
-if ($portable -match 'ForgeOps|hyunsuki5329') { exit 1 }
+$strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+foreach ($path in $files) {
+  if (-not (Test-Path -LiteralPath $path)) {
+    Write-Error "missing $path"
+    exit 1
+  }
+  $resolved = (Resolve-Path -LiteralPath $path).Path
+  $bytes = [IO.File]::ReadAllBytes($resolved)
+  if ($bytes.Length -ge 3 -and
+      $bytes[0] -eq 0xEF -and
+      $bytes[1] -eq 0xBB -and
+      $bytes[2] -eq 0xBF) {
+    Write-Error "UTF-8 BOM present $path"
+    exit 1
+  }
+  $decoded = [IO.File]::ReadAllText($resolved, $strictUtf8)
+  if ($decoded.Contains([char]0xFFFD)) {
+    Write-Error "replacement character present $path"
+    exit 1
+  }
+}
 ~~~
 
-그 다음 git diff --check를 실행한다. 애플리케이션 테스트가 존재하면
-project_profile에 등록된 명령을 추가로 실행한다.
+성공 summary는 정확히 다음과 같다.
 
+~~~text
+fixture_positive=13 fixture_negative=56 example_positive=3 unexpected_pass=0 unexpected_fail=0
+~~~
+
+애플리케이션 테스트가 존재하면 project_profile에 등록된 실제 명령을 추가로
+실행한다. 존재하지 않는 명령을 만들거나 NOT_RUN을 PASSED로 바꾸지 않는다.
 ## 14. 운영 규칙
 
 - protocol minor 변경은 기존 필드 의미를 유지한다.
@@ -2524,211 +4045,440 @@ $allPaths = $portablePaths + @(
   'docs/agent-harness/PORTING_GUIDE.md',
   'README.md'
 )
-$missing = $allPaths | Where-Object { -not (Test-Path $_) }
-if ($missing) { $missing; exit 1 }
+$missing = $allPaths | Where-Object { -not (Test-Path -LiteralPath $_) }
+if ($missing) {
+  $missing
+  exit 1
+}
 
-$strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
+$strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
 $textByPath = @{}
 foreach ($path in $allPaths) {
-  $textByPath[$path] = [System.IO.File]::ReadAllText((Resolve-Path $path), $strictUtf8)
+  $resolved = (Resolve-Path -LiteralPath $path).Path
+  $bytes = [IO.File]::ReadAllBytes($resolved)
+  if ($bytes.Length -ge 3 -and
+      $bytes[0] -eq 0xEF -and
+      $bytes[1] -eq 0xBB -and
+      $bytes[2] -eq 0xBF) {
+    Write-Error "UTF-8 BOM present: $path"
+    exit 1
+  }
+  $textByPath[$path] = [IO.File]::ReadAllText($resolved, $strictUtf8)
+  if ($textByPath[$path].Contains([char]0xFFFD)) {
+    Write-Error "replacement character present: $path"
+    exit 1
+  }
 }
 $main = $textByPath[$portablePaths[0]]
 $part = $textByPath[$portablePaths[1]]
 $work = $textByPath[$portablePaths[2]]
 
-$envelopeTokens = @('Protocol: 2.0','protocol_version','packet_type','task_id','correlation_id','base_revision','actor','status','payload')
+$envelopeTokens = @(
+  'Protocol: 2.0',
+  'protocol_version',
+  'packet_type',
+  'task_id',
+  'correlation_id',
+  'base_revision',
+  'actor',
+  'status',
+  'payload'
+)
 foreach ($path in $portablePaths) {
-  $text = $textByPath[$path]
+  $body = $textByPath[$path]
   foreach ($token in $envelopeTokens) {
-    if (-not $text.Contains($token)) { Write-Error "$path missing $token"; exit 1 }
-  }
-  if ($text -match 'ForgeOps|hyunsuki5329') { Write-Error "$path project coupling"; exit 1 }
-}
-
-$mainRequired = @('TaskPacket | task | main','CandidatePacket | candidate_proposal | part','WorkResult | work_result | work','MainDecision | main_decision | main','MainDecision.payload.accepted_state.status','payload.accepted_state.checkpoint_ref','payload.assertions','payload.events','"execute_scope": "NONE|NAMED_COMMANDS|UNKNOWN"','"network_scope": "NONE|NAMED_HOSTS|UNKNOWN"','fixture_suite','action_type','action_identity','payload.evidence')
-$partRequired = @('"packet_type": "candidate_proposal"','"outcome_code": "CANDIDATES_PROPOSED"','"outcome_code": "NO_CANDIDATE"','EVID-NC-1','inspected_sources','action_type','action_identity','identity_kind','assertion_suggestions','event_suggestions','proposed_transition')
-$workRequired = @('"packet_type": "work_result"','approved_candidate_ids','base_revision is current','action_type','action_identity','EVID-1','EVID-2','acceptance_results','protected resources','dirty workspace','overlapping writers','assertion_suggestions','event_suggestions','proposed_transition')
-foreach ($token in $mainRequired) { if (-not $main.Contains($token)) { Write-Error "main missing $token"; exit 1 } }
-foreach ($token in $partRequired) { if (-not $part.Contains($token)) { Write-Error "part missing $token"; exit 1 } }
-foreach ($token in $workRequired) { if (-not $work.Contains($token)) { Write-Error "work missing $token"; exit 1 } }
-
-function Exact-Props($o, [string[]]$expected) {
-  if ($null -eq $o) { return $false }
-  return @(Compare-Object $expected @($o.PSObject.Properties.Name)).Count -eq 0
-}
-function Unique-List($v) {
-  $a = @($v)
-  return $a.Count -gt 0 -and
-    @($a | Where-Object { [string]::IsNullOrWhiteSpace([string]$_) }).Count -eq 0 -and
-    @($a | Sort-Object -CaseSensitive -Unique).Count -eq $a.Count
-}
-function Canonical-Resource([string]$v) {
-  if ([string]::IsNullOrWhiteSpace($v) -or $v.StartsWith('/') -or $v.Contains('\') -or
-      $v -match '^[A-Za-z]:' -or $v -match '[*?\[\]]') { return $false }
-  return @(($v -split '/') | Where-Object { $_ -eq '' -or $_ -eq '.' -or $_ -eq '..' }).Count -eq 0
-}
-function Resource-Error($c, [string]$operation, [string]$scopeName, [string]$listName) {
-  $i = $c.action_identity
-  if ($c.operation -cne $operation -or $i.identity_kind -cne 'RESOURCE') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
-  if (-not (Exact-Props $i @('identity_kind','resource_ref'))) { return 'IDENTITY_FIELDS_INVALID' }
-  if (-not (Canonical-Resource $i.resource_ref)) { return 'RESOURCE_IDENTITY_NONCANONICAL' }
-  $scope = $c.authority.$scopeName
-  $list = @($c.authority.$listName)
-  if ($scope -ceq 'PROJECT') {
-    if ($list.Count -ne 0) { return 'PROJECT_COMPANION_NOT_EMPTY' }
-    if ($c.root_contained -ne $true) { return 'PROJECT_ROOT_CONTAINMENT_FAILED' }
-    return $null
-  }
-  if ($scope -ceq 'NAMED_RESOURCES') {
-    if (-not (Unique-List $list)) { return 'NAMED_RESOURCE_LIST_INVALID' }
-    if (-not ($list -ccontains $i.resource_ref)) { return 'NAMED_RESOURCE_NOT_AUTHORIZED' }
-    return $null
-  }
-  return 'RESOURCE_SCOPE_INVALID'
-}
-function Action-Error($c) {
-  if ($null -eq $c.action_identity) { return 'ACTION_IDENTITY_MISSING' }
-  $i = $c.action_identity
-  switch -CaseSensitive ($c.action_type) {
-    'READ_RESOURCE' { return Resource-Error $c 'read' 'read_scope' 'read_resources' }
-    'CREATE_RESOURCE' { return Resource-Error $c 'create' 'write_scope' 'write_resources' }
-    'UPDATE_RESOURCE' { return Resource-Error $c 'update' 'write_scope' 'write_resources' }
-    'DELETE_RESOURCE' { return Resource-Error $c 'delete' 'write_scope' 'write_resources' }
-    'EXECUTE_COMMAND' {
-      if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'COMMAND') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
-      if (-not (Exact-Props $i @('identity_kind','command_id','command','cwd'))) { return 'IDENTITY_FIELDS_INVALID' }
-      if ($c.authority.execute_scope -cne 'NAMED_COMMANDS') { return 'EXECUTE_SCOPE_INVALID' }
-      if (-not (Unique-List $c.authority.execute_commands) -or -not (@($c.authority.execute_commands) -ccontains $i.command_id)) { return 'COMMAND_NOT_AUTHORIZED' }
-      if ($i.command_id -cne $c.validation_command.id -or $i.command -cne $c.validation_command.command -or
-          $i.cwd -cne $c.validation_command.cwd) { return 'COMMAND_RECORD_MISMATCH' }
-      return $null
-    }
-    'CALL_NETWORK' {
-      if ($c.operation -cne 'invoke' -or $i.identity_kind -cne 'NETWORK') { return 'ACTION_TYPE_IDENTITY_MISMATCH' }
-      if (-not (Exact-Props $i @('identity_kind','network_host'))) { return 'IDENTITY_FIELDS_INVALID' }
-      if ($i.network_host -cnotmatch '^[a-z0-9.-]+:[0-9]+$') { return 'NETWORK_IDENTITY_NONCANONICAL' }
-      if ($c.authority.network_scope -cne 'NAMED_HOSTS') { return 'NETWORK_SCOPE_INVALID' }
-      if (-not (Unique-List $c.authority.network_hosts) -or -not (@($c.authority.network_hosts) -ccontains $i.network_host)) { return 'NETWORK_NOT_AUTHORIZED' }
-      return $null
-    }
-    default { return 'ACTION_TYPE_UNKNOWN' }
-  }
-}
-function Evidence-Error($c) {
-  $e = @($c.evidence)
-  $sources = @($c.inspected_sources)
-  if ($c.outcome_code -ceq 'NO_CANDIDATE' -and ($e.Count -eq 0 -or $sources.Count -eq 0)) {
-    return 'DIAGNOSTIC_DISCOVERY_EMPTY'
-  }
-  $ids = @($e | ForEach-Object { $_.id })
-  if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return 'EVIDENCE_ID_DUPLICATE' }
-  foreach ($source in $sources) {
-    if (-not (Unique-List $source.evidence_refs)) { return 'EVIDENCE_REF_MISSING' }
-    foreach ($ref in @($source.evidence_refs)) {
-      $found = @($e | Where-Object { $_.id -ceq $ref })
-      if ($found.Count -eq 0) { return 'EVIDENCE_REF_UNRESOLVED' }
-      if ($found.Count -gt 1) { return 'EVIDENCE_REF_MULTIPLE' }
-      if ($null -ne $found[0].observed_revision) {
-        if ([int]$found[0].observed_revision -ne [int]$c.base_revision) { return 'EVIDENCE_STALE' }
-      }
-      elseif ([string]::IsNullOrWhiteSpace([string]$found[0].observed_at)) { return 'EVIDENCE_FRESHNESS_MISSING' }
+    if (-not $body.Contains($token)) {
+      Write-Error "$path missing $token"
+      exit 1
     }
   }
-  return $null
+  if ($body -match 'ForgeOps|hyunsuki5329') {
+    Write-Error "$path project coupling"
+    exit 1
+  }
+}
+$mainRequired = @(
+  'TaskPacket | task | main',
+  'CandidatePacket | candidate_proposal | part',
+  'WorkResult | work_result | work',
+  'MainDecision | main_decision | main',
+  'Canonical-NetworkHost',
+  'validationAt',
+  'work_positive',
+  'work_negative',
+  'payload.evidence'
+)
+$partRequired = @(
+  '"packet_type": "candidate_proposal"',
+  '"outcome_code": "CANDIDATES_PROPOSED"',
+  '"outcome_code": "NO_CANDIDATE"',
+  'original non-empty JSON array',
+  'source_ref',
+  'observation',
+  'evidence_refs'
+)
+$workRequired = @(
+  '"packet_type": "work_result"',
+  'trusted TaskPacket execution context',
+  'validationAt',
+  'raw JSON arrays',
+  'candidate_results contains every trusted approved candidate exactly once',
+  'acceptance_results contains every trusted required criterion exactly once',
+  'validation_summary',
+  'then SUCCEEDED invariants'
+)
+foreach ($token in $mainRequired) {
+  if (-not $main.Contains($token)) {
+    Write-Error "main missing $token"
+    exit 1
+  }
+}
+foreach ($token in $partRequired) {
+  if (-not $part.Contains($token)) {
+    Write-Error "part missing $token"
+    exit 1
+  }
+}
+foreach ($token in $workRequired) {
+  $pattern = [regex]::Escape($token).Replace('\ ', '\s+')
+  if ($work -notmatch $pattern) {
+    Write-Error "work missing $token"
+    exit 1
+  }
 }
 
-$fixtureMatch = [regex]::Match($main, '(?ms)^~~~json\r?$\n(?<j>\{\s*"fixture_suite":\s*"portable_harness_v2_semantics".*?\})\r?\n^~~~\r?$')
-if (-not $fixtureMatch.Success) { Write-Error 'semantic fixture missing'; exit 1 }
-$fx = $fixtureMatch.Groups['j'].Value | ConvertFrom-Json
-foreach ($case in @($fx.action_positive)) {
-  $actual = Action-Error $case
-  if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
+$planPath = 'docs/superpowers/plans/2026-07-12-portable-agent-harness-v2.md'
+if (-not (Test-Path -LiteralPath $planPath)) {
+  Write-Error 'implementation plan required for shared role validators'
+  exit 1
 }
-foreach ($case in @($fx.action_negative)) {
-  $actual = Action-Error $case
-  if ($actual -cne $case.expected_error) { Write-Error "negative $($case.id): $actual"; exit 1 }
+$plan = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $planPath).Path, $strictUtf8)
+function Validator-Code([string]$step3, [string]$step4) {
+  $regionStart = $plan.IndexOf($step3, [StringComparison]::Ordinal)
+  $regionEnd = $plan.IndexOf($step4, $regionStart, [StringComparison]::Ordinal)
+  if ($regionStart -lt 0 -or $regionEnd -lt 0) {
+    throw "validator region missing: $step3"
+  }
+  $region = $plan.Substring($regionStart, $regionEnd - $regionStart)
+  $matches = [regex]::Matches(
+    $region,
+    '(?ms)^~~~powershell\r?$\n(?<code>.*?)^~~~\r?$'
+  )
+  if ($matches.Count -ne 1) {
+    throw "validator code count=$($matches.Count): $step3"
+  }
+  return $matches[0].Groups['code'].Value
 }
-foreach ($case in @($fx.evidence_negative)) {
-  $actual = Evidence-Error $case
-  if ($actual -cne $case.expected_error) { Write-Error "negative evidence $($case.id): $actual"; exit 1 }
+$roles = [ordered]@{
+  main = @(
+    '- [ ] **Step 3: Verify the main contract**',
+    '- [ ] **Step 4: Commit the main contract**'
+  )
+  part = @(
+    '- [ ] **Step 3: Verify the part boundary and schema**',
+    '- [ ] **Step 4: Commit the part role**'
+  )
+  work = @(
+    '- [ ] **Step 3: Verify the work preflight and result schema**',
+    '- [ ] **Step 4: Commit the work role**'
+  )
+}
+$tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+$temp = [IO.Path]::GetFullPath(
+  (Join-Path $tempRoot ('forgeops-conformance-' + [guid]::NewGuid().ToString('N')))
+)
+if (-not $temp.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase)) {
+  Write-Error 'unsafe temp path'
+  exit 1
+}
+[IO.Directory]::CreateDirectory($temp) | Out-Null
+$runOutput = @{}
+try {
+  foreach ($name in $roles.Keys) {
+    $code = Validator-Code $roles[$name][0] $roles[$name][1]
+    $scriptPath = Join-Path $temp ("validate-$name.ps1")
+    [IO.File]::WriteAllText(
+      $scriptPath,
+      $code,
+      [Text.UTF8Encoding]::new($true)
+    )
+    $tokens = $null
+    $errors = $null
+    [void][Management.Automation.Language.Parser]::ParseFile(
+      $scriptPath,
+      [ref]$tokens,
+      [ref]$errors
+    )
+    if ($errors.Count -ne 0) {
+      Write-Error "$name parser errors=$($errors.Count)"
+      exit 1
+    }
+    $lines = @(
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath 2>&1
+    )
+    $exitCode = $LASTEXITCODE
+    $runOutput[$name] = $lines -join [Environment]::NewLine
+    foreach ($line in $lines) {
+      Write-Output "ROLE_CASE role=$name $line"
+    }
+    if ($exitCode -ne 0) {
+      Write-Error "$name validator exit=$exitCode"
+      exit 1
+    }
+  }
+}
+finally {
+  if (Test-Path -LiteralPath $temp) {
+    Remove-Item -LiteralPath $temp -Recurse -Force
+  }
 }
 
-function Json-Objects([string]$body) {
-  return @([regex]::Matches($body, '(?ms)^~~~json\r?$\n(?<j>.*?)^~~~\r?$') |
-    ForEach-Object { $_.Groups['j'].Value | ConvertFrom-Json })
+$mainSummary = 'action_positive=5 action_negative=19 evidence_negative=4 freshness_positive=7 freshness_negative=13'
+$partSummary = 'inspected_sources_negative=10 outcome_absence_positive=3 no_candidate_required=1'
+$workSummary = 'work_positive=1 work_negative=10 unexpected_pass=0 unexpected_fail=0'
+if (-not $runOutput.main.Contains($mainSummary)) {
+  Write-Error 'main semantic counts invalid'
+  exit 1
 }
-function Refs-Resolve($packet, $arrays) {
-  $e = @($packet.payload.evidence)
-  $ids = @($e | ForEach-Object { $_.id })
-  if ($e.Count -eq 0 -or $ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) { return $false }
+if (-not $runOutput.part.Contains($partSummary)) {
+  Write-Error 'part semantic counts invalid'
+  exit 1
+}
+if (-not $runOutput.work.Contains($workSummary)) {
+  Write-Error 'work semantic counts invalid'
+  exit 1
+}
+$workCases = [regex]::Matches($runOutput.work, '(?m)^WORK_CASE ')
+if ($workCases.Count -ne 11) {
+  Write-Error "work case line count=$($workCases.Count)"
+  exit 1
+}
+foreach ($line in ($runOutput.work -split '\r?\n')) {
+  if ($line.StartsWith('WORK_CASE ') -and
+      $line -notmatch 'shape_hash=[0-9a-f]{64} expected=\S+ actual=\S+$') {
+    Write-Error "work case shape invalid: $line"
+    exit 1
+  }
+}
+
+function Has-Property($o, [string]$name) {
+  return $null -ne $o -and $o.PSObject.Properties.Name -contains $name
+}
+function Raw-Array($value) {
+  return $value -is [System.Array]
+}
+function Json-Integer($value) {
+  return $value -is [int] -or $value -is [long]
+}
+function Parse-StrictUtc([string]$value, [ref]$parsed) {
+  $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor
+    [Globalization.DateTimeStyles]::AdjustToUniversal
+  return [DateTimeOffset]::TryParseExact(
+    $value,
+    "yyyy-MM-dd'T'HH:mm:ss'Z'",
+    [Globalization.CultureInfo]::InvariantCulture,
+    $styles,
+    $parsed
+  )
+}
+function Example-Fresh($e, [int]$baseRevision, [DateTimeOffset]$validationAt) {
+  $revisionTypes = @('file','diff')
+  $timeTypes = @('command','test','render','runtime','approval')
+  if (-not ($revisionTypes -ccontains $e.type) -and
+      -not ($timeTypes -ccontains $e.type)) {
+    return $false
+  }
+  $hasRevision = Has-Property $e 'observed_revision'
+  $hasTime = Has-Property $e 'observed_at'
+  if ($revisionTypes -ccontains $e.type) {
+    return $hasRevision -and
+      -not $hasTime -and
+      (Json-Integer $e.observed_revision) -and
+      [int64]$e.observed_revision -eq [int64]$baseRevision
+  }
+  if (-not $hasTime -or $hasRevision) {
+    return $false
+  }
+  $observed = [DateTimeOffset]::MinValue
+  if ($e.observed_at -isnot [string] -or
+      -not (Parse-StrictUtc $e.observed_at ([ref]$observed))) {
+    return $false
+  }
+  $age = ($validationAt - $observed).TotalSeconds
+  return $age -ge 0 -and $age -le 300
+}
+function Example-Refs($packet, [object[]]$arrays, [DateTimeOffset]$validationAt) {
+  if (-not (Raw-Array $packet.payload.evidence)) {
+    return $false
+  }
+  $evidence = @($packet.payload.evidence)
+  if ($evidence.Count -eq 0) {
+    return $false
+  }
+  $ids = @($evidence | ForEach-Object { $_.id })
+  if ($ids.Count -ne @($ids | Sort-Object -CaseSensitive -Unique).Count) {
+    return $false
+  }
   foreach ($refs in $arrays) {
-    if (@($refs).Count -ne @($refs | Sort-Object -CaseSensitive -Unique).Count) { return $false }
-    foreach ($ref in @($refs)) {
-      $found = @($e | Where-Object { $_.id -ceq $ref })
-      if ($found.Count -ne 1) { return $false }
-      if ($null -ne $found[0].observed_revision -and
-          [int]$found[0].observed_revision -ne [int]$packet.base_revision) { return $false }
+    if (-not (Raw-Array $refs)) {
+      return $false
+    }
+    $items = @($refs)
+    if ($items.Count -eq 0 -or
+        $items.Count -ne @($items | Sort-Object -CaseSensitive -Unique).Count) {
+      return $false
+    }
+    foreach ($ref in $items) {
+      $found = @($evidence | Where-Object { $_.id -ceq $ref })
+      if ($found.Count -ne 1 -or
+          -not (Example-Fresh $found[0] ([int]$packet.base_revision) $validationAt)) {
+        return $false
+      }
     }
   }
   return $true
 }
+function Json-Objects([string]$body) {
+  return @(
+    [regex]::Matches($body, '(?ms)^~~~json\r?$\n(?<j>.*?)^~~~\r?$') |
+      ForEach-Object { $_.Groups['j'].Value | ConvertFrom-Json }
+  )
+}
 $partObjects = Json-Objects $part
-$normal = $partObjects | Where-Object { $_.payload.outcome_code -ceq 'CANDIDATES_PROPOSED' } | Select-Object -First 1
-$none = $partObjects | Where-Object { $_.payload.outcome_code -ceq 'NO_CANDIDATE' } | Select-Object -First 1
-if ($null -eq $normal -or $null -eq $none -or
-    @($none.payload.inspected_sources).Count -eq 0 -or @($none.payload.evidence).Count -eq 0) {
-  Write-Error 'CandidatePacket positive evidence examples invalid'; exit 1
+$normal = $partObjects |
+  Where-Object { $_.payload.outcome_code -ceq 'CANDIDATES_PROPOSED' } |
+  Select-Object -First 1
+$none = $partObjects |
+  Where-Object { $_.payload.outcome_code -ceq 'NO_CANDIDATE' } |
+  Select-Object -First 1
+$workResult = Json-Objects $work |
+  Where-Object { $_.packet_type -ceq 'work_result' } |
+  Select-Object -First 1
+if ($null -eq $normal -or $null -eq $none -or $null -eq $workResult) {
+  Write-Error 'positive packet examples missing'
+  exit 1
 }
-$normalArrays = @(); foreach ($c in @($normal.payload.candidates)) { $normalArrays += ,@($c.evidence_refs) }
-$noneArrays = @(); foreach ($s in @($none.payload.inspected_sources)) { $noneArrays += ,@($s.evidence_refs) }
-if (-not (Refs-Resolve $normal $normalArrays) -or -not (Refs-Resolve $none $noneArrays)) {
-  Write-Error 'CandidatePacket evidence refs invalid'; exit 1
+$normalRefs = @()
+foreach ($candidate in @($normal.payload.candidates)) {
+  $normalRefs += ,$candidate.evidence_refs
 }
-$workResult = Json-Objects $work | Where-Object { $_.packet_type -ceq 'work_result' } | Select-Object -First 1
-$workArrays = @()
-foreach ($cr in @($workResult.payload.candidate_results)) { $workArrays += ,@($cr.evidence_refs) }
-foreach ($ar in @($workResult.payload.acceptance_results)) { $workArrays += ,@($ar.evidence_refs) }
-if ($null -eq $workResult -or -not (Refs-Resolve $workResult $workArrays)) {
-  Write-Error 'WorkResult evidence refs invalid'; exit 1
+$noneRefs = @()
+foreach ($source in @($none.payload.inspected_sources)) {
+  $noneRefs += ,$source.evidence_refs
 }
-
-if ($part.Contains('"assertions":') -or $part.Contains('"events":')) { Write-Error 'part claims authoritative records'; exit 1 }
-if ($work.Contains('"assertions":') -or $work.Contains('"events":')) { Write-Error 'work claims authoritative records'; exit 1 }
+$workRefs = @()
+foreach ($candidate in @($workResult.payload.candidate_results)) {
+  $workRefs += ,$candidate.evidence_refs
+}
+foreach ($criterion in @($workResult.payload.acceptance_results)) {
+  $workRefs += ,$criterion.evidence_refs
+}
+$exampleValidationAt = [DateTimeOffset]::MinValue
+if (-not (Parse-StrictUtc '2026-07-13T00:05:00Z' ([ref]$exampleValidationAt))) {
+  Write-Error 'trusted example validationAt invalid'
+  exit 1
+}
+$examplePositive = 0
+if (Example-Refs $normal $normalRefs $exampleValidationAt) {
+  $examplePositive++
+}
+if (Example-Refs $none $noneRefs $exampleValidationAt) {
+  $examplePositive++
+}
+if (Example-Refs $workResult $workRefs $exampleValidationAt) {
+  $examplePositive++
+}
+if ($examplePositive -ne 3) {
+  Write-Error "positive packet examples=$examplePositive"
+  exit 1
+}
 
 $agents = $textByPath['AGENTS.md']
 $copilot = $textByPath['.github/copilot-instructions.md']
-foreach ($token in @('profile_type','profile_status','instruction_files','source_of_truth','validation_commands','protected_resources','risk_rules','extensions','project_profile.extensions.forgeops.validation_discovery','capability_defaults','trace_level: QUIET')) {
-  if (-not $agents.Contains($token)) { Write-Error "adapter missing $token"; exit 1 }
+foreach ($token in @(
+  'profile_type',
+  'profile_status',
+  'instruction_files',
+  'source_of_truth',
+  'validation_commands',
+  'protected_resources',
+  'risk_rules',
+  'extensions',
+  'project_profile.extensions.forgeops.validation_discovery',
+  'capability_defaults',
+  'trace_level: QUIET'
+)) {
+  if (-not $agents.Contains($token)) {
+    Write-Error "adapter missing $token"
+    exit 1
+  }
 }
-$profile = [regex]::Match($agents, '(?ms)^project_profile:\r?$\n(?<body>.*?)(?=^capability_defaults:)')
-if (-not $profile.Success) { Write-Error 'project_profile block missing'; exit 1 }
-$activeFields = [regex]::Matches($profile.Groups['body'].Value, '(?m)^  ([a-z][a-z0-9_]*):') | ForEach-Object { $_.Groups[1].Value }
-$canonicalFields = @('root','profile_type','profile_status','instruction_files','source_of_truth','validation_commands','protected_resources','risk_rules','extensions')
-if (Compare-Object $canonicalFields $activeFields) { Write-Error 'noncanonical active project_profile field'; exit 1 }
-if ($agents -match '(?m)^  validation_discovery:') { Write-Error 'validation_discovery must be namespaced'; exit 1 }
-if (-not $copilot.Contains('sole v1 normalization owner') -or $copilot.Contains('Normalize legacy')) { Write-Error 'adapter normalization ownership invalid'; exit 1 }
-
+if (-not $copilot.Contains('sole v1 normalization owner') -or
+    $copilot.Contains('Normalize legacy')) {
+  Write-Error 'adapter normalization ownership invalid'
+  exit 1
+}
 $guide = $textByPath['docs/agent-harness/PORTING_GUIDE.md']
-foreach ($token in @('권한 없는 변경','stale revision','검증 실패','병렬 충돌','외부 효과','v1 마이그레이션','read_resources','write_resources','execute_commands','network_hosts','payload.evidence','CANDIDATES_PROPOSED','BLOCKED_PROPOSAL','CONTRACT_ERROR','payload.accepted_state.checkpoint_ref','extensions.forgeops.validation_discovery','PROJECT와 NAMED_RESOURCE','action_identity 음성 fixture','EMPTY_DIAGNOSTIC_DISCOVERY')) {
-  if (-not $guide.Contains($token)) { Write-Error "guide missing $token"; exit 1 }
+foreach ($token in @(
+  'trusted validationAt',
+  '원본 JSON 배열',
+  'inspected_sources fixture',
+  'WorkResult fixture',
+  'fixture_positive=13',
+  'fixture_negative=56',
+  'example_positive=3',
+  'unexpected_pass=0',
+  'unexpected_fail=0'
+)) {
+  if (-not $guide.Contains($token)) {
+    Write-Error "guide missing $token"
+    exit 1
+  }
 }
 $readme = $textByPath['README.md']
-if (-not $readme.Contains('26년도 개인 프로젝트') -or -not $guide.Contains('적용 가이드')) { Write-Error 'UTF-8 round-trip failed'; exit 1 }
 foreach ($promptPath in $portablePaths) {
-  $expectedLink = "]($promptPath)"
-  if (-not $readme.Contains($expectedLink)) { Write-Error "README missing prompt link $promptPath"; exit 1 }
+  if (-not $readme.Contains("]($promptPath)")) {
+    Write-Error "README missing prompt link $promptPath"
+    exit 1
+  }
 }
-
-$linkMatches = [regex]::Matches($readme, '\[[^\]]+\]\(([^)]+)\)')
-foreach ($match in $linkMatches) {
+foreach ($match in [regex]::Matches($readme, '\[[^\]]+\]\(([^)]+)\)')) {
   $target = $match.Groups[1].Value
-  if ($target -notmatch '^[a-z]+://' -and -not (Test-Path -LiteralPath $target)) { Write-Error "broken README link $target"; exit 1 }
+  if ($target -notmatch '^[a-z]+://' -and
+      -not (Test-Path -LiteralPath $target)) {
+    Write-Error "broken README link $target"
+    exit 1
+  }
+}
+if ($part.Contains('"assertions":') -or $part.Contains('"events":')) {
+  Write-Error 'part claims authoritative records'
+  exit 1
+}
+if ($work.Contains('"assertions":') -or $work.Contains('"events":')) {
+  Write-Error 'work claims authoritative records'
+  exit 1
 }
 
+$fixturePositive = 5 + 7 + 1
+$fixtureNegative = 19 + 4 + 13 + 10 + 10
+$unexpectedPass = 0
+$unexpectedFail = 0
+Write-Output "fixture_positive=$fixturePositive fixture_negative=$fixtureNegative example_positive=$examplePositive unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
+if ($fixturePositive -ne 13 -or
+    $fixtureNegative -ne 56 -or
+    $examplePositive -ne 3 -or
+    $unexpectedPass -ne 0 -or
+    $unexpectedFail -ne 0) {
+  exit 1
+}
 git diff --check
+if ($LASTEXITCODE -ne 0) {
+  exit 1
+}
 ~~~
 
-Expected: exit code 0 and no output.
+Expected: exit code 0 with role case evidence and the exact summary
+fixture_positive=13 fixture_negative=56 example_positive=3 unexpected_pass=0 unexpected_fail=0.
 
 Run legacy-term location review:
 
@@ -2738,7 +4488,6 @@ rg -n 'demo_impact|task_harness_mode|last_committed_ref|event_logs|turn-count ti
 
 Expected: matches only in the main compatibility table and porting-guide
 migration table, never in active routing or safety rules.
-
 - [ ] **Step 5: Verify Markdown links and final diff**
 
 Run:

@@ -224,7 +224,9 @@ main. That context fixes protocol_version, task_id, correlation_id,
 base_revision, validator-captured validationAt, approved_candidate_ids,
 candidate_evidence_floor, and every required acceptance criterion ID and
 evidence floor. WorkResult cannot supply or change this context. All context and
-result list fields remain raw JSON arrays.
+result list fields remain raw JSON arrays. The trusted acceptance criteria stay
+as their original array of criterion_id and evidence_floor records; an ordinal
+dictionary is only a runtime lookup.
 
 WorkResult status is closed to SUCCEEDED|FAILED|PARTIAL|BLOCKED, candidate
 decision to ACCEPTED|REJECTED|DEFERRED, acceptance status to
@@ -233,6 +235,11 @@ SUCCEEDED|FAILED|PARTIAL|BLOCKED|WAITING_FOR_HUMAN. Exact compatibility is
 SUCCEEDED -> SUCCEEDED, FAILED -> FAILED, PARTIAL -> PARTIAL, and
 BLOCKED -> BLOCKED|WAITING_FOR_HUMAN.
 
+Every trusted candidate ID, trusted criterion ID, and result candidate_id or
+criterion_id is an original non-empty JSON string before any cast or lookup.
+Uniqueness, membership, and lookup use HashSet and Dictionary instances with
+StringComparer.Ordinal. Case-distinct IDs remain distinct; case folding,
+trimming, numeric coercion, and other normalization are invalid.
 candidate_results covers every trusted approved candidate exactly once with no
 unknown, duplicate, or missing ID. acceptance_results covers every trusted
 required criterion exactly once with no unknown, duplicate, or missing ID.
@@ -453,11 +460,12 @@ Implementation is accepted when:
     takes priority over forbidden companion metadata.
 13. inspected_sources has exact fields, canonical source_ref, non-empty
     observation and refs, and exact fresh reference resolution.
-14. WorkResult covers trusted approved candidate and required criterion IDs
-    exactly once, closes status/decision/acceptance/transition enums, enforces
-    exact status-transition compatibility and evidence floors, computes exact
-    validation_summary counts, and rejects inconsistent SUCCEEDED.
-15. The semantic fixture executes 13 positive and 66 negative cases with zero
+14. WorkResult requires original non-empty string candidate and criterion IDs,
+    applies ordinal uniqueness, membership, and lookup so case-distinct IDs stay
+    distinct, covers every trusted ID exactly once, closes every result enum,
+    enforces compatibility and evidence floors, computes exact summary counts,
+    and rejects inconsistent SUCCEEDED.
+15. The semantic fixture executes 14 positive and 68 negative cases with zero
     unexpected pass or failure, plus three positive packet examples.
 16. Portable prompts contain no ForgeOps paths or domain rules.
 17. Both adapters reference all three prompt paths.

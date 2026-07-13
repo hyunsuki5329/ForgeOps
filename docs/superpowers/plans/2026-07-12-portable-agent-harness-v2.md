@@ -1490,7 +1490,54 @@ The following normative fixture suite is used by executable conformance checks:
                                                              "proposed_transition":  "SUCCEEDED"
                                                          }
                                          }
-                          }
+                          },
+                           {
+                             "id": "WORK_CASE_DISTINCT_IDS",
+                             "context": {
+                               "protocol_version": "2.0",
+                               "task_id": "TASK-001",
+                               "correlation_id": "CORR-001",
+                               "base_revision": 2,
+                               "validationAt": "2026-07-13T00:05:00Z",
+                               "candidate_evidence_floor": "E1",
+                               "approved_candidate_ids": ["CAND-1", "cand-1"],
+                               "acceptance_criteria": [
+                                 {"criterion_id": "AC-1", "evidence_floor": "E2"},
+                                 {"criterion_id": "ac-1", "evidence_floor": "E2"}
+                               ]
+                             },
+                             "result": {
+                               "protocol_version": "2.0",
+                               "packet_type": "work_result",
+                               "task_id": "TASK-001",
+                               "correlation_id": "CORR-001",
+                               "base_revision": 2,
+                               "actor": "work",
+                               "status": "SUCCEEDED",
+                               "payload": {
+                                 "approved_candidate_ids": ["CAND-1", "cand-1"],
+                                 "candidate_results": [
+                                   {"candidate_id": "CAND-1", "decision": "ACCEPTED", "evidence_refs": ["EVID-1"]},
+                                   {"candidate_id": "cand-1", "decision": "ACCEPTED", "evidence_refs": ["EVID-1"]}
+                                 ],
+                                 "changed_resources": [],
+                                 "acceptance_results": [
+                                   {"criterion_id": "AC-1", "status": "PASSED", "evidence_refs": ["EVID-2"], "notes": "passed"},
+                                   {"criterion_id": "ac-1", "status": "PASSED", "evidence_refs": ["EVID-2"], "notes": "passed"}
+                                 ],
+                                 "evidence": [
+                                   {"id": "EVID-1", "tier": "E1", "type": "file", "source": "src/app.py", "observation": "inspected", "observed_revision": 2},
+                                   {"id": "EVID-2", "tier": "E2", "type": "test", "source": "tests", "observation": "passed", "observed_at": "2026-07-13T00:05:00Z"}
+                                 ],
+                                 "validation_summary": {"passed": 2, "failed": 0, "not_run": 0},
+                                 "residual_risks": [],
+                                 "compensation_options": [],
+                                 "assertion_suggestions": [],
+                                 "event_suggestions": [],
+                                 "proposed_transition": "SUCCEEDED"
+                               }
+                             }
+                           }
                       ],
     "work_negative":  [
                           {
@@ -1552,7 +1599,9 @@ The following normative fixture suite is used by executable conformance checks:
                           {"id":"WORK_FAILED_REFS_SCALAR","expected_error":"WORK_FAILED_REFS_TYPE_INVALID","mutation":"FAILED_REFS_SCALAR"},
                           {"id":"WORK_NOT_RUN_REFS_SCALAR","expected_error":"WORK_NOT_RUN_REFS_TYPE_INVALID","mutation":"NOT_RUN_REFS_SCALAR"},
                           {"id":"WORK_REVISION_TIME_ONLY_PRIORITY","expected_error":"WORK_EVIDENCE_FRESHNESS_MISSING","mutation":"REVISION_TIME_ONLY"},
-                          {"id":"WORK_TIME_REVISION_ONLY_PRIORITY","expected_error":"WORK_EVIDENCE_FRESHNESS_MISSING","mutation":"TIME_REVISION_ONLY"}
+                          {"id":"WORK_TIME_REVISION_ONLY_PRIORITY","expected_error":"WORK_EVIDENCE_FRESHNESS_MISSING","mutation":"TIME_REVISION_ONLY"},
+                          {"id":"WORK_CANDIDATE_ID_NUMERIC","expected_error":"WORK_CANDIDATE_ID_INVALID","mutation":"NUMERIC_CANDIDATE_ID"},
+                          {"id":"WORK_CRITERION_ID_NUMERIC","expected_error":"WORK_CRITERION_ID_INVALID","mutation":"NUMERIC_CRITERION_ID"}
                       ]
 }
 ~~~
@@ -2057,7 +2106,7 @@ function Catalog-Error($c) {
   }
   return $null
 }
-$expected = [ordered]@{action_positive=5;action_negative=19;evidence_negative=4;freshness_positive=7;freshness_negative=13;inspected_sources_negative=10;work_positive=1;work_negative=20}
+$expected = [ordered]@{action_positive=5;action_negative=19;evidence_negative=4;freshness_positive=7;freshness_negative=13;inspected_sources_negative=10;work_positive=2;work_negative=22}
 foreach ($key in $expected.Keys) { if (@($fx.$key).Count -ne $expected[$key]) { Write-Error "$key count"; exit 1 } }
 foreach ($case in @($fx.action_positive)) {
   $actual = Action-Error $case; if ($null -ne $actual) { Write-Error "positive $($case.id) => $actual"; exit 1 }
@@ -2900,12 +2949,23 @@ never invented from packet data.
 approved_candidate_ids, candidate_results, acceptance_criteria,
 acceptance_results, evidence, and every candidate or acceptance evidence_refs
 value are raw JSON arrays for every decision and status. A scalar, null, or
-object is invalid even when it contains one item. IDs and
-references are non-empty case-sensitive strings and are unique in their own
-array. candidate_results contains every trusted approved candidate exactly once
-with no unknown, duplicate, or missing candidate. acceptance_results contains
-every trusted required criterion exactly once with no unknown, duplicate, or
-missing criterion.
+object is invalid even when it contains one item. The trusted
+acceptance_criteria value remains the original array of criterion_id and
+evidence_floor records; an ordinal dictionary is only a runtime lookup.
+
+Every trusted approved candidate ID, trusted required criterion ID, and result
+candidate_id or criterion_id is an original non-empty JSON string before any
+cast or lookup. ID uniqueness, membership, and lookup use .NET HashSet and
+Dictionary instances constructed with StringComparer.Ordinal. Case-distinct IDs
+remain distinct; case folding, trimming, numeric-to-string coercion, and every
+other normalization are invalid. A non-string or blank candidate ID fails as
+WORK_CANDIDATE_ID_INVALID, and a non-string or blank criterion ID fails as
+WORK_CRITERION_ID_INVALID, before ordinal membership or coverage. References
+are non-empty strings and ordinal-unique in their own arrays. candidate_results
+contains every trusted
+approved candidate exactly once with no unknown, duplicate, or missing
+candidate. acceptance_results contains every trusted required criterion exactly
+once with no unknown, duplicate, or missing criterion.
 
 WorkResult status is exactly SUCCEEDED|FAILED|PARTIAL|BLOCKED. Every candidate
 decision is exactly ACCEPTED|REJECTED|DEFERRED, every acceptance status is
@@ -2938,7 +2998,8 @@ stable fail-closed order: trusted context and envelope identity, closed status
 and transition compatibility, raw top-level arrays, candidate coverage then
 decision and refs type, criterion coverage then acceptance status and refs type,
 evidence catalog and accepted/passed references, freshness and tier floors,
-exact summary counts, then SUCCEEDED invariants.
+exact summary counts, then SUCCEEDED invariants. Candidate and criterion ID type
+checks precede ordinal membership, duplicate, and coverage checks.
 
 ## 6. WorkResult
 
@@ -3107,10 +3168,25 @@ function NonEmpty-Unique-Strings($value) {
   if (-not (Raw-Array $value)) { return $false }
   $items = @($value)
   if ($items.Count -eq 0) { return $false }
+  $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
   foreach ($item in $items) {
-    if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item)) { return $false }
+    if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace($item) -or
+        -not $seen.Add($item)) {
+      return $false
+    }
   }
-  return @($items | Sort-Object -CaseSensitive -Unique).Count -eq $items.Count
+  return $true
+}
+function Exact-Ordinal-String-Set($left, $right) {
+  $leftItems = @($left)
+  $rightItems = @($right)
+  if ($leftItems.Count -ne $rightItems.Count) { return $false }
+  $set = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($item in $leftItems) { [void]$set.Add($item) }
+  foreach ($item in $rightItems) {
+    if (-not $set.Contains($item)) { return $false }
+  }
+  return $true
 }
 function Parse-StrictUtc([string]$value, [ref]$parsed) {
   $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
@@ -3227,20 +3303,27 @@ function Work-Error($case) {
   }
   $trustedIds = @($context.approved_candidate_ids)
   $resultIds = @($result.payload.approved_candidate_ids)
-  if (@(Compare-Object $trustedIds $resultIds -CaseSensitive).Count -ne 0) {
+  if (-not (Exact-Ordinal-String-Set $trustedIds $resultIds)) {
     return 'WORK_APPROVED_IDS_MISMATCH'
   }
-  $criteriaById = @{}
+  $trustedIdSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+  foreach ($trustedId in $trustedIds) { [void]$trustedIdSet.Add($trustedId) }
+  $criteriaById = [Collections.Generic.Dictionary[string,object]]::new(
+    [StringComparer]::Ordinal
+  )
   foreach ($criterion in @($context.acceptance_criteria)) {
     if ($null -eq $criterion -or $criterion.criterion_id -isnot [string] -or
         [string]::IsNullOrWhiteSpace($criterion.criterion_id) -or
         (Tier-Rank ([string]$criterion.evidence_floor)) -lt 0) {
       return 'WORK_CONTEXT_INVALID'
     }
-    if ($criteriaById.ContainsKey([string]$criterion.criterion_id)) { return 'WORK_CONTEXT_INVALID' }
-    $criteriaById[[string]$criterion.criterion_id] = $criterion
+    $criterionId = $criterion.criterion_id
+    if ($criteriaById.ContainsKey($criterionId)) { return 'WORK_CONTEXT_INVALID' }
+    $criteriaById.Add($criterionId, $criterion)
   }
-  $seenCandidates = @{}
+  $seenCandidates = [Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::Ordinal
+  )
   foreach ($candidate in @($result.payload.candidate_results)) {
     if ($candidate.decision -isnot [string] -or
         -not (@('ACCEPTED','REJECTED','DEFERRED') -ccontains $candidate.decision)) {
@@ -3249,17 +3332,26 @@ function Work-Error($case) {
     if (-not (Raw-Array $candidate.evidence_refs)) {
       return 'WORK_CANDIDATE_REFS_TYPE_INVALID'
     }
-    $candidateId = [string]$candidate.candidate_id
-    if (-not ($trustedIds -ccontains $candidateId)) { return 'WORK_CANDIDATE_UNKNOWN' }
-    if ($seenCandidates.ContainsKey($candidateId)) { return 'WORK_CANDIDATE_DUPLICATE' }
-    $seenCandidates[$candidateId] = $true
+    if ($candidate.candidate_id -isnot [string] -or
+        [string]::IsNullOrWhiteSpace($candidate.candidate_id)) {
+      return 'WORK_CANDIDATE_ID_INVALID'
+    }
+    $candidateId = $candidate.candidate_id
+    if (-not $trustedIdSet.Contains($candidateId)) { return 'WORK_CANDIDATE_UNKNOWN' }
+    if (-not $seenCandidates.Add($candidateId)) { return 'WORK_CANDIDATE_DUPLICATE' }
   }
   if ($seenCandidates.Count -ne $trustedIds.Count) { return 'WORK_CANDIDATE_MISSING' }
-  $seenCriteria = @{}
+  $seenCriteria = [Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::Ordinal
+  )
   foreach ($criterionResult in @($result.payload.acceptance_results)) {
-    $criterionId = [string]$criterionResult.criterion_id
+    if ($criterionResult.criterion_id -isnot [string] -or
+        [string]::IsNullOrWhiteSpace($criterionResult.criterion_id)) {
+      return 'WORK_CRITERION_ID_INVALID'
+    }
+    $criterionId = $criterionResult.criterion_id
     if (-not $criteriaById.ContainsKey($criterionId)) { return 'WORK_CRITERION_UNKNOWN' }
-    if ($seenCriteria.ContainsKey($criterionId)) { return 'WORK_CRITERION_DUPLICATE' }
+    if (-not $seenCriteria.Add($criterionId)) { return 'WORK_CRITERION_DUPLICATE' }
     if ($criterionResult.status -isnot [string] -or
         -not (@('PASSED','FAILED','NOT_RUN') -ccontains $criterionResult.status)) {
       return 'WORK_ACCEPTANCE_STATUS_INVALID'
@@ -3271,7 +3363,6 @@ function Work-Error($case) {
         default { return 'WORK_ACCEPTANCE_REFS_TYPE_INVALID' }
       }
     }
-    $seenCriteria[$criterionId] = $true
   }
   if ($seenCriteria.Count -ne $criteriaById.Count) { return 'WORK_CRITERION_MISSING' }
   $evidence = @($result.payload.evidence)
@@ -3296,7 +3387,7 @@ function Work-Error($case) {
   }
   foreach ($criterionResult in @($result.payload.acceptance_results)) {
     if ($criterionResult.status -ceq 'PASSED') {
-      $floor = [string]$criteriaById[[string]$criterionResult.criterion_id].evidence_floor
+      $floor = [string]$criteriaById[$criterionResult.criterion_id].evidence_floor
       $errorCode = Ref-Error $criterionResult.evidence_refs $evidence ([int]$context.base_revision) $validationAt $floor
       if ($null -ne $errorCode) { return $errorCode }
     }
@@ -3405,6 +3496,15 @@ function Mutate-Work($baseline, [string]$mutation) {
       $entry.PSObject.Properties.Remove('observed_at')
       Add-Member -InputObject $entry -NotePropertyName observed_revision -NotePropertyValue ([int64]$case.context.base_revision)
     }
+    'NUMERIC_CANDIDATE_ID' {
+      $case.context.approved_candidate_ids = @('1')
+      $case.result.payload.approved_candidate_ids = @('1')
+      $case.result.payload.candidate_results[0].candidate_id = 1
+    }
+    'NUMERIC_CRITERION_ID' {
+      $case.context.acceptance_criteria[0].criterion_id = '1'
+      $case.result.payload.acceptance_results[0].criterion_id = 1
+    }
     default { throw "unknown work mutation $mutation" }
   }
   return $case
@@ -3414,16 +3514,18 @@ function Shape-Hash($value) {
   $bytes = [Text.Encoding]::UTF8.GetBytes($json)
   return [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($bytes)).Replace('-','').ToLowerInvariant()
 }
-if (@($fx.work_positive).Count -ne 1 -or @($fx.work_negative).Count -ne 20) {
+if (@($fx.work_positive).Count -ne 2 -or @($fx.work_negative).Count -ne 22) {
   Write-Error 'work fixture counts invalid'; exit 1
 }
 $unexpectedPass = 0
 $unexpectedFail = 0
 $baseline = @($fx.work_positive)[0]
-$positiveError = Work-Error $baseline
-$positiveActual = if ($null -eq $positiveError) { 'PASS' } else { $positiveError }
-Write-Output "WORK_CASE id=$($baseline.id) mutation=NONE shape_hash=$(Shape-Hash $baseline) expected=PASS actual=$positiveActual"
-if ($null -ne $positiveError) { $unexpectedFail++ }
+foreach ($positive in @($fx.work_positive)) {
+  $positiveError = Work-Error (Copy-Json $positive)
+  $positiveActual = if ($null -eq $positiveError) { 'PASS' } else { $positiveError }
+  Write-Output "WORK_CASE id=$($positive.id) mutation=NONE shape_hash=$(Shape-Hash $positive) expected=PASS actual=$positiveActual"
+  if ($null -ne $positiveError) { $unexpectedFail++ }
+}
 foreach ($negative in @($fx.work_negative)) {
   $case = Mutate-Work $baseline ([string]$negative.mutation)
   $actual = Work-Error $case
@@ -3432,7 +3534,7 @@ foreach ($negative in @($fx.work_negative)) {
   if ($null -eq $actual) { $unexpectedPass++ }
   elseif ($actual -cne $negative.expected_error) { $unexpectedFail++ }
 }
-Write-Output "work_positive=1 work_negative=20 unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
+Write-Output "work_positive=2 work_negative=22 unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
 if ($unexpectedPass -ne 0 -or $unexpectedFail -ne 0) { exit 1 }
 ~~~
 
@@ -3895,11 +3997,18 @@ ACCEPTED|REJECTED|DEFERRED, acceptance status는 PASSED|FAILED|NOT_RUN,
 proposed_transition은 SUCCEEDED|FAILED|PARTIAL|BLOCKED|WAITING_FOR_HUMAN만
 허용한다. status/transition 호환은 SUCCEEDED→SUCCEEDED, FAILED→FAILED,
 PARTIAL→PARTIAL, BLOCKED→BLOCKED|WAITING_FOR_HUMAN이다.
+approved candidate ID, required criterion ID, 결과 candidate_id와 criterion_id는
+cast나 lookup 전에 원본 비어 있지 않은 JSON 문자열이어야 한다. ID의
+uniqueness, membership, lookup은 StringComparer.Ordinal로 생성한 .NET
+HashSet/Dictionary를 사용한다. 대소문자만 다른 ID는 서로 다른 값이며 case
+folding, trimming, 숫자-문자열 coercion과 다른 normalization은 금지한다.
+trusted acceptance_criteria는 criterion_id와 evidence_floor record의 원본
+배열로 유지하고 dictionary는 runtime lookup에만 사용한다.
 candidate_results와 acceptance_results는 trusted ID를 unknown, duplicate,
-missing 없이 각각
-정확히 한 번 포함하고 모든 decision/status의 evidence_refs를 원본 JSON
-배열로 검증한다. ACCEPTED와 PASSED의 refs는 추가로 비어 있지 않고 unique하며
-정확히 하나의 fresh evidence를 가리키고 요구 floor 이상이어야 한다.
+missing 없이 각각 정확히 한 번 포함하고 모든 decision/status의
+evidence_refs를 원본 JSON 배열로 검증한다. ACCEPTED와 PASSED의 refs는 추가로
+비어 있지 않고 unique하며 정확히 하나의 fresh evidence를 가리키고 요구 floor
+이상이어야 한다.
 validation_summary는 실제 status count와 같아야 한다. SUCCEEDED는 모든
 candidate ACCEPTED, 모든 criterion PASSED, failed/not_run 0,
 proposed_transition SUCCEEDED일 때만 유효하다.
@@ -3950,12 +4059,12 @@ v2만 사용한다.
 | evidence catalog | 0 | 4 |
 | closed freshness union | 7 | 13 |
 | inspected_sources | 0 | 10 |
-| WorkResult matrix | 1 | 20 |
-| 합계 | 13 | 66 |
+| WorkResult matrix | 2 | 22 |
+| 합계 | 14 | 68 |
 
 세 packet example인 CANDIDATES_PROPOSED, NO_CANDIDATE, WorkResult도 별도
-양성으로 검사한다. 최종 기대값은 fixture_positive=13,
-fixture_negative=66, example_positive=3, unexpected_pass=0,
+양성으로 검사한다. 최종 기대값은 fixture_positive=14,
+fixture_negative=68, example_positive=3, unexpected_pass=0,
 unexpected_fail=0이다.
 
 ### 일반 응답
@@ -4000,12 +4109,13 @@ outcome의 합법적 absence 세 사례는 통과
 
 ### WorkResult fixture
 
-입력: empty ACCEPTED refs, unknown/duplicate/missing candidate ID,
+입력: case-distinct candidate/criterion ID 양성, numeric candidate_id와
+criterion_id, empty ACCEPTED refs, unknown/duplicate/missing candidate ID,
 unknown/duplicate/missing criterion ID, below-floor evidence, summary mismatch,
 FAILED criterion을 가진 SUCCEEDED, 네 closed enum 위반, status/transition
 불일치, REJECTED/FAILED/NOT_RUN scalar refs, REVISION/TIME required freshness
 누락과 forbidden companion이 함께 있는 priority 사례
-기대: 양성 1건 통과, 음성 20건이 지정된 WORK_* expected_error와 정확히
+기대: 양성 2건 통과, 음성 22건이 지정된 WORK_* expected_error와 정확히
 일치하고 unexpected pass/fail은 0
 
 ### 권한 없는 변경
@@ -4077,7 +4187,7 @@ foreach ($path in $files) {
 성공 summary는 정확히 다음과 같다.
 
 ~~~text
-fixture_positive=13 fixture_negative=66 example_positive=3 unexpected_pass=0 unexpected_fail=0
+fixture_positive=14 fixture_negative=68 example_positive=3 unexpected_pass=0 unexpected_fail=0
 ~~~
 
 애플리케이션 테스트가 존재하면 project_profile에 등록된 실제 명령을 추가로
@@ -4250,6 +4360,10 @@ $workRequired = @(
   'candidate_results contains every trusted approved candidate exactly once',
   'acceptance_results contains every trusted required criterion exactly once',
   'regardless of result status, candidate decision, or acceptance status',
+  'original non-empty JSON string',
+  'StringComparer.Ordinal',
+  'WORK_CANDIDATE_ID_INVALID',
+  'WORK_CRITERION_ID_INVALID',
   'validation_summary',
   'then SUCCEEDED invariants'
 )
@@ -4361,7 +4475,7 @@ finally {
 
 $mainSummary = 'action_positive=5 action_negative=19 evidence_negative=4 freshness_positive=7 freshness_negative=13'
 $partSummary = 'inspected_sources_negative=10 outcome_absence_positive=3 no_candidate_required=1'
-$workSummary = 'work_positive=1 work_negative=20 unexpected_pass=0 unexpected_fail=0'
+$workSummary = 'work_positive=2 work_negative=22 unexpected_pass=0 unexpected_fail=0'
 if (-not $runOutput.main.Contains($mainSummary)) {
   Write-Error 'main semantic counts invalid'
   exit 1
@@ -4375,7 +4489,7 @@ if (-not $runOutput.work.Contains($workSummary)) {
   exit 1
 }
 $workCases = [regex]::Matches($runOutput.work, '(?m)^WORK_CASE ')
-if ($workCases.Count -ne 21) {
+if ($workCases.Count -ne 24) {
   Write-Error "work case line count=$($workCases.Count)"
   exit 1
 }
@@ -4550,8 +4664,8 @@ foreach ($token in @(
   '원본 JSON 배열',
   'inspected_sources fixture',
   'WorkResult fixture',
-  'fixture_positive=13',
-  'fixture_negative=66',
+  'fixture_positive=14',
+  'fixture_negative=68',
   'example_positive=3',
   'unexpected_pass=0',
   'unexpected_fail=0'
@@ -4585,13 +4699,13 @@ if ($work.Contains('"assertions":') -or $work.Contains('"events":')) {
   exit 1
 }
 
-$fixturePositive = 5 + 7 + 1
-$fixtureNegative = 19 + 4 + 13 + 10 + 20
+$fixturePositive = 5 + 7 + 2
+$fixtureNegative = 19 + 4 + 13 + 10 + 22
 $unexpectedPass = 0
 $unexpectedFail = 0
 Write-Output "fixture_positive=$fixturePositive fixture_negative=$fixtureNegative example_positive=$examplePositive unexpected_pass=$unexpectedPass unexpected_fail=$unexpectedFail"
-if ($fixturePositive -ne 13 -or
-    $fixtureNegative -ne 66 -or
+if ($fixturePositive -ne 14 -or
+    $fixtureNegative -ne 68 -or
     $examplePositive -ne 3 -or
     $unexpectedPass -ne 0 -or
     $unexpectedFail -ne 0) {
@@ -4604,7 +4718,7 @@ if ($LASTEXITCODE -ne 0) {
 ~~~
 
 Expected: exit code 0 with role case evidence and the exact summary
-fixture_positive=13 fixture_negative=66 example_positive=3 unexpected_pass=0 unexpected_fail=0.
+fixture_positive=14 fixture_negative=68 example_positive=3 unexpected_pass=0 unexpected_fail=0.
 
 Run legacy-term location review:
 

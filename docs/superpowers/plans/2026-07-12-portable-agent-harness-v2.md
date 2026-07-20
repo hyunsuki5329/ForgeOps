@@ -1,64 +1,64 @@
-# Portable Agent Harness v2 Implementation Plan
+# Portable Agent Harness v2 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **에이전트 작업자용:** 필수 하위 스킬: 이 계획을 작업별로 구현하려면 superpowers:subagent-driven-development(권장) 또는 superpowers:executing-plans를 사용한다. 단계 추적에는 체크박스(`- [ ]`) 구문을 사용한다.
 
-**Goal:** Connect the existing ForgeOps folder to `hyunsuki5329/ForgeOps` without rewriting remote history, then add the reusable Portable Agent Harness v2 prompts, platform adapters, and application guide.
+**목표:** 원격 이력을 다시 쓰지 않고 기존 ForgeOps 폴더를 `hyunsuki5329/ForgeOps`에 연결한 다음, 재사용 가능한 Portable Agent Harness v2 프롬프트, 플랫폼 어댑터 및 적용 가이드를 추가한다.
 
-**Architecture:** Adopt the verified remote `main` commit as the local Git baseline without replacing the working tree, then create `feature/portable-agent-harness-v2`. The three files under `.github/agents/` form the portable contract; `AGENTS.md` and `.github/copilot-instructions.md` are thin ForgeOps adapters, while the guide explains profile-based reuse.
+**아키텍처:** 작업 트리를 교체하지 않고 검증된 원격 `main` 커밋을 로컬 Git 기준선으로 채택한 다음 `feature/portable-agent-harness-v2`를 생성한다. `.github/agents/` 아래의 세 파일이 이식 가능한 계약을 구성하고, `AGENTS.md`와 `.github/copilot-instructions.md`는 얇은 ForgeOps 어댑터이며, 가이드는 프로필 기반 재사용을 설명한다.
 
-**Tech Stack:** Git 2.28+, UTF-8 Markdown, PowerShell 5.1+, ripgrep, GitHub repository `hyunsuki5329/ForgeOps`
+**기술 스택:** Git 2.28+, UTF-8 Markdown, PowerShell 5.1+, ripgrep, GitHub 저장소 `hyunsuki5329/ForgeOps`
 
-## Global Constraints
+## 전역 제약 조건
 
-- Protocol version is exactly `2.0`.
-- The portable unit is exactly the three files under `.github/agents/`.
-- Portable prompts contain no ForgeOps-specific path, owner, repository, or domain rule.
-- Missing safety-relevant capability or authority is `UNKNOWN` and fails closed.
-- Only main owns accepted state, revision increments, authoritative events, final decisions, and v1 normalization.
-- Part is read-only; work mutates only after an exact authority scope/companion match and revision preflight.
-- Authority companion lists never accept wildcards, duplicates, prefix inference, or implicit grants.
-- Every CandidatePacket outcome carries a canonical evidence catalog with unique, fresh references.
-- Internal packets are structured; normal user output defaults to `QUIET`.
-- Git remote is `https://github.com/hyunsuki5329/ForgeOps.git`.
-- Verified remote baseline is `main` at `1e2478918e1c44ef6980843fb9876e84d508a0d7`.
-- Never force-push, rewrite `main`, use destructive reset, or merge unrelated histories.
-- Do not add runtime dependencies or an executable schema validator.
-- Exact design source: `docs/superpowers/specs/2026-07-12-portable-agent-harness-design.md`.
+- 프로토콜 버전은 정확히 `2.0`이다.
+- 이식 가능한 단위는 정확히 `.github/agents/` 아래의 세 파일이다.
+- 이식 가능한 프롬프트에는 ForgeOps 고유 경로, 소유자, 저장소 또는 도메인 규칙이 없다.
+- 누락된 안전 관련 기능 또는 권한은 `UNKNOWN`이며 실패 시 차단한다.
+- 인수된 상태, revision 증가, 권위 있는 이벤트, 최종 결정 및 v1 정규화는 main만 소유한다.
+- Part는 읽기 전용이며, work는 정확한 권한 범위/동반 목록 일치와 revision 사전 점검 이후에만 변경한다.
+- 권한 동반 목록은 와일드카드, 중복, 접두사 추론 또는 암묵적 부여를 절대 허용하지 않는다.
+- 모든 CandidatePacket 결과에는 고유하고 최신인 참조가 있는 정규 증빙 카탈로그가 포함된다.
+- 내부 패킷은 구조화되며, 일반 사용자 출력의 기본값은 `QUIET`이다.
+- Git 원격 저장소는 `https://github.com/hyunsuki5329/ForgeOps.git`이다.
+- 검증된 원격 기준선은 `main`의 `1e2478918e1c44ef6980843fb9876e84d508a0d7`이다.
+- 강제 푸시, `main` 재작성, 파괴적 reset 또는 관련 없는 이력 병합을 절대 수행하지 않는다.
+- 런타임 종속성이나 실행 가능한 스키마 검증기를 추가하지 않는다.
+- 정확한 설계 출처: `docs/superpowers/specs/2026-07-12-portable-agent-harness-design.md`.
 
 ---
 
-## File map
+## 파일 맵
 
-| Path | Action | Responsibility |
+| 경로 | 동작 | 책임 |
 | --- | --- | --- |
-| `docs/superpowers/specs/2026-07-12-portable-agent-harness-design.md` | Track | Approved design and acceptance criteria |
-| `docs/superpowers/plans/2026-07-12-portable-agent-harness-v2.md` | Track | This executable plan |
-| `.github/agents/main_instruction.prompt.md` | Create | Canonical protocol, routing, state, evidence, safety, and final decision owner |
-| `.github/agents/part_agent.prompt.md` | Create | Read-only discovery and `CandidatePacket` producer |
-| `.github/agents/work_agent.prompt.md` | Create | Authorized execution and `WorkResult` producer |
-| `AGENTS.md` | Create | Codex-style ForgeOps adapter and project profile |
-| `.github/copilot-instructions.md` | Create | Copilot adapter and role mapping |
-| `docs/agent-harness/PORTING_GUIDE.md` | Create | Application, migration, conformance, and troubleshooting guide |
-| `README.md` | Modify | Link to adapters and guide |
+| `docs/superpowers/specs/2026-07-12-portable-agent-harness-design.md` | 추적 | 승인된 설계 및 인수 기준 |
+| `docs/superpowers/plans/2026-07-12-portable-agent-harness-v2.md` | 추적 | 이 실행 계획 |
+| `.github/agents/main_instruction.prompt.md` | 생성 | 정규 프로토콜, 라우팅, 상태, 증빙, 안전 및 최종 결정 소유자 |
+| `.github/agents/part_agent.prompt.md` | 생성 | 읽기 전용 탐색 및 `CandidatePacket` 생성자 |
+| `.github/agents/work_agent.prompt.md` | 생성 | 권한이 부여된 실행 및 `WorkResult` 생성자 |
+| `AGENTS.md` | 생성 | Codex 방식 ForgeOps 어댑터 및 프로젝트 프로필 |
+| `.github/copilot-instructions.md` | 생성 | Copilot 어댑터 및 역할 매핑 |
+| `docs/agent-harness/PORTING_GUIDE.md` | 생성 | 적용, 마이그레이션, 적합성 및 문제 해결 가이드 |
+| `README.md` | 수정 | 어댑터 및 가이드 링크 |
 
 ---
 
-### Task 1: Adopt the existing GitHub history safely
+### 작업 1: 기존 GitHub 이력을 안전하게 채택
 
-**Files:**
-- Track: `docs/superpowers/specs/2026-07-12-portable-agent-harness-design.md`
-- Track: `docs/superpowers/plans/2026-07-12-portable-agent-harness-v2.md`
-- Preserve unchanged: `README.md`
-- Preserve unchanged: `LICENSE`
-- Preserve unchanged: `.gitignore`
+**파일:**
+- 추적: `docs/superpowers/specs/2026-07-12-portable-agent-harness-design.md`
+- 추적: `docs/superpowers/plans/2026-07-12-portable-agent-harness-v2.md`
+- 변경 없이 보존: `README.md`
+- 변경 없이 보존: `LICENSE`
+- 변경 없이 보존: `.gitignore`
 
-**Interfaces:**
-- Consumes: local non-Git folder `D:/VS/ForgeOps/ForgeOps` and remote `hyunsuki5329/ForgeOps`
-- Produces: local branch `feature/portable-agent-harness-v2` based on verified remote commit `1e2478918e1c44ef6980843fb9876e84d508a0d7` with `origin` configured
+**인터페이스:**
+- 입력: 로컬 비-Git 폴더 `D:/VS/ForgeOps/ForgeOps` 및 원격 `hyunsuki5329/ForgeOps`
+- 출력: 로컬 브랜치 `feature/portable-agent-harness-v2`; 검증된 원격 커밋 `1e2478918e1c44ef6980843fb9876e84d508a0d7`을 기반으로 하며 `origin`이 구성됨
 
-- [ ] **Step 1: Verify the local folder and baseline blobs**
+- [ ] **단계 1: 로컬 폴더와 기준선 블롭 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $ErrorActionPreference = 'Stop'
@@ -73,7 +73,7 @@ git hash-object README.md LICENSE .gitignore
 if ($LASTEXITCODE -ne 0) { throw 'STOP: hash-object failed' }
 ~~~
 
-Expected:
+예상 결과:
 
 ~~~text
 fdc4b756b144755001bc9fb51b4e2304287a25a5
@@ -81,19 +81,19 @@ c4c543605e89efa75b13b1ed99e4c9db53e1fb3e
 83972fadc2724842e111d0d3e2829a59ae3d3f45
 ~~~
 
-The enclosing-worktree check must produce no repository path. Stop without
-initializing Git if any blob differs. A mismatch means the local base is not the
-verified remote tree and requires separate reconciliation.
+상위 작업 트리 검사는 저장소 경로를 출력하지 않아야 한다. 블롭이 하나라도 다르면
+Git을 초기화하지 않고 중단한다. 불일치는 로컬 기준이 검증된 원격 트리가 아니며
+별도의 조정이 필요함을 의미한다.
 
-- [ ] **Step 2: Verify the remote baseline immediately before adoption**
+- [ ] **단계 2: 채택 직전에 원격 기준선 검증**
 
-Run:
+실행:
 
 ~~~powershell
 git ls-remote --symref https://github.com/hyunsuki5329/ForgeOps.git HEAD refs/heads/main
 ~~~
 
-Expected:
+예상 결과:
 
 ~~~text
 ref: refs/heads/main	HEAD
@@ -101,12 +101,12 @@ ref: refs/heads/main	HEAD
 1e2478918e1c44ef6980843fb9876e84d508a0d7	refs/heads/main
 ~~~
 
-Stop if `main` moved. Refresh the design/plan baseline before continuing rather
-than adopting an unreviewed commit.
+`main`이 이동했다면 중단한다. 검토하지 않은 커밋을 채택하지 말고 계속하기 전에
+설계/계획 기준선을 갱신한다.
 
-- [ ] **Step 3: Initialize Git and adopt the remote commit without rewriting the working tree**
+- [ ] **단계 3: 작업 트리를 다시 쓰지 않고 Git 초기화 및 원격 커밋 채택**
 
-Run exactly in order:
+정확히 다음 순서로 실행:
 
 ~~~powershell
 $ErrorActionPreference = 'Stop'
@@ -193,9 +193,9 @@ Require-Git -Arguments @('rev-parse','origin/main') -Failure 'STOP: origin/main 
 Require-Git -Arguments @('status','--short','--branch','--untracked-files=all') -Failure 'STOP: status failed'
 ~~~
 
-Expected: origin URL prints exactly
-`https://github.com/hyunsuki5329/ForgeOps.git`; both rev-parse commands print
-`1e2478918e1c44ef6980843fb9876e84d508a0d7`; the final status begins:
+예상 결과: origin URL은 정확히
+`https://github.com/hyunsuki5329/ForgeOps.git`을 출력하고, 두 rev-parse 명령은
+`1e2478918e1c44ef6980843fb9876e84d508a0d7`을 출력하며, 최종 상태는 다음으로 시작한다.
 
 ~~~text
 ## main...origin/main
@@ -203,22 +203,22 @@ Expected: origin URL prints exactly
 ?? docs/superpowers/specs/2026-07-12-portable-agent-harness-design.md
 ~~~
 
-`Invoke-GitRaw` temporarily relaxes ErrorActionPreference only for a native Git
-process and every caller checks LASTEXITCODE. `git read-tree` updates only the
-index. The zero old OID makes update-ref fail if local main unexpectedly exists.
-Do not replace this sequence with reset, checkout, switch, force fetch, or
-unrelated-history merge.
+`Invoke-GitRaw`는 네이티브 Git 프로세스에 대해서만 ErrorActionPreference 값을 일시적으로
+완화하며 모든 호출자는 LASTEXITCODE를 확인한다. `git read-tree`는 인덱스만 갱신한다.
+0으로 채운 이전 OID는 로컬 main이 예기치 않게 존재할 경우 update-ref 실행이 실패하도록 한다.
+이 순서를 reset, checkout, switch, 강제 fetch 또는 관련 없는 이력 병합으로
+대체하지 않는다.
 
-- [ ] **Step 4: Create the feature branch**
+- [ ] **단계 4: 기능 브랜치 생성**
 
-Run:
+실행:
 
 ~~~powershell
 git switch -c feature/portable-agent-harness-v2
 git status --short --branch
 ~~~
 
-Expected:
+예상 결과:
 
 ~~~text
 Switched to a new branch 'feature/portable-agent-harness-v2'
@@ -226,9 +226,9 @@ Switched to a new branch 'feature/portable-agent-harness-v2'
 ?? docs/
 ~~~
 
-- [ ] **Step 5: Commit the approved design and implementation plan**
+- [ ] **단계 5: 승인된 설계와 구현 계획 커밋**
 
-Run:
+실행:
 
 ~~~powershell
 git add docs/superpowers/specs/2026-07-12-portable-agent-harness-design.md docs/superpowers/plans/2026-07-12-portable-agent-harness-v2.md
@@ -237,33 +237,32 @@ git commit -m "docs: define portable agent harness v2"
 git status --short --branch
 ~~~
 
-Expected: one commit with exactly the two documentation files and a clean
-feature branch.
+예상 결과: 정확히 두 문서 파일만 포함하는 커밋 하나와 깨끗한 기능 브랜치.
 
 ---
 
-### Task 2: Create the main portable protocol
+### 작업 2: main 이식 가능 프로토콜 생성
 
-**Files:**
-- Create: `.github/agents/main_instruction.prompt.md`
+**파일:**
+- 생성: `.github/agents/main_instruction.prompt.md`
 
-**Interfaces:**
-- Consumes: project adapter profile and host-exposed capability/authority facts
-- Produces: `TaskPacket` and `MainDecision` under protocol `2.0`; canonical route, state, evidence, assertion, event, retry, delegation, and gate semantics
+**인터페이스:**
+- 입력: 프로젝트 어댑터 프로필 및 호스트가 노출한 기능/권한 사실
+- 출력: `TaskPacket` 및 `MainDecision`; 프로토콜 `2.0`의 정규 라우팅, 상태, 증빙, 검증 주장, 이벤트, 재시도, 위임 및 관문 의미론
 
-- [ ] **Step 1: Run the failing contract-presence check**
+- [ ] **단계 1: 실패하는 계약 존재 여부 검사 실행**
 
-Run:
+실행:
 
 ~~~powershell
 if (Test-Path '.github/agents/main_instruction.prompt.md') { exit 0 } else { Write-Error 'main prompt missing'; exit 1 }
 ~~~
 
-Expected: exit code 1 with `main prompt missing`.
+예상 결과: 종료 코드 1과 `main prompt missing`.
 
-- [ ] **Step 2: Create the main prompt with the complete contract**
+- [ ] **단계 2: 완전한 계약이 포함된 main 프롬프트 생성**
 
-Create `.github/agents/main_instruction.prompt.md` with exactly:
+다음 내용으로 `.github/agents/main_instruction.prompt.md`를 정확히 생성:
 
 ~~~markdown
 # Portable Agent Harness v2 — Main Orchestrator
@@ -2054,9 +2053,9 @@ Before deciding, confirm:
 - no secret, fabricated observation, or unsupported capability is present.
 ~~~
 
-- [ ] **Step 3: Verify the main contract**
+- [ ] **단계 3: main 계약 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $ErrorActionPreference = 'Stop'
@@ -2324,10 +2323,10 @@ foreach ($case in @($fx.freshness_negative)) {
 Write-Output 'action_positive=5 action_negative=21 evidence_negative=13 freshness_positive=7 freshness_negative=14'
 ~~~
 
-Expected: exit code 0 and the exact fixture counts.
-- [ ] **Step 4: Commit the main contract**
+예상 결과: 종료 코드 0과 정확한 검증 데이터 개수.
+- [ ] **단계 4: main 계약 커밋**
 
-Run:
+실행:
 
 ~~~powershell
 git add .github/agents/main_instruction.prompt.md
@@ -2335,32 +2334,32 @@ git diff --cached --check
 git commit -m "feat: define portable harness core protocol"
 ~~~
 
-Expected: one commit containing only the main prompt.
+예상 결과: main 프롬프트만 포함하는 커밋 하나.
 
 ---
 
-### Task 3: Create the read-only part role
+### 작업 3: 읽기 전용 part 역할 생성
 
-**Files:**
-- Create: `.github/agents/part_agent.prompt.md`
+**파일:**
+- 생성: `.github/agents/part_agent.prompt.md`
 
-**Interfaces:**
-- Consumes: protocol `2.0` `TaskPacket` from main and optional `recall_context`
-- Produces: `CandidatePacket` with evidence-grounded candidates and `proposed_transition`; never accepted state
+**인터페이스:**
+- 입력: main의 프로토콜 `2.0` `TaskPacket` 및 선택적 `recall_context`
+- 출력: `CandidatePacket`; 증빙에 근거한 후보와 `proposed_transition`을 포함하며 인수된 상태는 절대 포함하지 않음
 
-- [ ] **Step 1: Run the failing part-role check**
+- [ ] **단계 1: 실패하는 part 역할 검사 실행**
 
-Run:
+실행:
 
 ~~~powershell
 if (Test-Path '.github/agents/part_agent.prompt.md') { exit 0 } else { Write-Error 'part prompt missing'; exit 1 }
 ~~~
 
-Expected: exit code 1 with `part prompt missing`.
+예상 결과: 종료 코드 1과 `part prompt missing`.
 
-- [ ] **Step 2: Create the part prompt**
+- [ ] **단계 2: part 프롬프트 생성**
 
-Create `.github/agents/part_agent.prompt.md` with exactly:
+다음 내용으로 `.github/agents/part_agent.prompt.md`를 정확히 생성:
 
 ~~~markdown
 # Portable Agent Harness v2 — Part Analyst
@@ -2661,9 +2660,9 @@ Before returning:
 - unknowns and conflicts remain visible.
 ~~~
 
-- [ ] **Step 3: Verify the part boundary and schema**
+- [ ] **단계 3: part 경계와 스키마 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $ErrorActionPreference = 'Stop'
@@ -2987,10 +2986,10 @@ foreach ($case in @($fx.inspected_sources_negative)) {
 Write-Output 'inspected_sources_negative=10 outcome_absence_positive=3 no_candidate_required=1'
 ~~~
 
-Expected: exit code 0 and the exact inspected-source counts.
-- [ ] **Step 4: Commit the part role**
+예상 결과: 종료 코드 0과 정확한 검사 출처 개수.
+- [ ] **단계 4: part 역할 커밋**
 
-Run:
+실행:
 
 ~~~powershell
 git add .github/agents/part_agent.prompt.md
@@ -2998,32 +2997,32 @@ git diff --cached --check
 git commit -m "feat: add read-only candidate analyst role"
 ~~~
 
-Expected: one commit containing only the part prompt.
+예상 결과: part 프롬프트만 포함하는 커밋 하나.
 
 ---
 
-### Task 4: Create the authorized work role
+### 작업 4: 권한이 부여된 work 역할 생성
 
-**Files:**
-- Create: `.github/agents/work_agent.prompt.md`
+**파일:**
+- 생성: `.github/agents/work_agent.prompt.md`
 
-**Interfaces:**
-- Consumes: protocol `2.0` `TaskPacket`, `CandidatePacket`, and approved candidate IDs
-- Produces: `WorkResult` with criterion-level verification, evidence, residual risk, and `proposed_transition`; never accepted state
+**인터페이스:**
+- 입력: 프로토콜 `2.0` `TaskPacket`, `CandidatePacket` 및 승인된 후보 ID
+- 출력: `WorkResult`; 인수 기준별 검증, 증빙, 잔여 위험 및 `proposed_transition`을 포함하며 인수된 상태는 절대 포함하지 않음
 
-- [ ] **Step 1: Run the failing work-role check**
+- [ ] **단계 1: 실패하는 work 역할 검사 실행**
 
-Run:
+실행:
 
 ~~~powershell
 if (Test-Path '.github/agents/work_agent.prompt.md') { exit 0 } else { Write-Error 'work prompt missing'; exit 1 }
 ~~~
 
-Expected: exit code 1 with `work prompt missing`.
+예상 결과: 종료 코드 1과 `work prompt missing`.
 
-- [ ] **Step 2: Create the work prompt**
+- [ ] **단계 2: work 프롬프트 생성**
 
-Create `.github/agents/work_agent.prompt.md` with exactly:
+다음 내용으로 `.github/agents/work_agent.prompt.md`를 정확히 생성:
 
 ~~~markdown
 # Portable Agent Harness v2 — Work Executor
@@ -3376,9 +3375,9 @@ Before returning:
   unsupported capability is present.
 ~~~
 
-- [ ] **Step 3: Verify the work preflight and result schema**
+- [ ] **단계 3: work 사전 점검과 결과 스키마 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $path = '.github/agents/work_agent.prompt.md'
@@ -3883,10 +3882,10 @@ Write-Output "work_positive=2 work_negative=38 unexpected_pass=$unexpectedPass u
 if ($unexpectedPass -ne 0 -or $unexpectedFail -ne 0) { exit 1 }
 ~~~
 
-Expected: exit code 0 and the exact Work fixture counts.
-- [ ] **Step 4: Commit the work role**
+예상 결과: 종료 코드 0과 정확한 Work 검증 데이터 개수.
+- [ ] **단계 4: work 역할 커밋**
 
-Run:
+실행:
 
 ~~~powershell
 git add .github/agents/work_agent.prompt.md
@@ -3894,34 +3893,34 @@ git diff --cached --check
 git commit -m "feat: add authorized executor role"
 ~~~
 
-Expected: one commit containing only the work prompt.
+예상 결과: work 프롬프트만 포함하는 커밋 하나.
 
 ---
 
-### Task 5: Add ForgeOps platform adapters
+### 작업 5: ForgeOps 플랫폼 어댑터 추가
 
-**Files:**
-- Create: `AGENTS.md`
-- Create: `.github/copilot-instructions.md`
+**파일:**
+- 생성: `AGENTS.md`
+- 생성: `.github/copilot-instructions.md`
 
-**Interfaces:**
-- Consumes: the portable protocol and ForgeOps repository facts
-- Produces: Codex and Copilot entry points that select roles and inject one conservative ForgeOps profile
+**인터페이스:**
+- 입력: 이식 가능한 프로토콜 및 ForgeOps 저장소 사실
+- 출력: 역할을 선택하고 보수적인 ForgeOps 프로필 하나를 주입하는 Codex 및 Copilot 진입점
 
-- [ ] **Step 1: Run the failing adapter check**
+- [ ] **단계 1: 실패하는 어댑터 검사 실행**
 
-Run:
+실행:
 
 ~~~powershell
 $missing = @('AGENTS.md','.github/copilot-instructions.md') | Where-Object { -not (Test-Path $_) }
 if ($missing) { $missing; exit 1 }
 ~~~
 
-Expected: exit code 1 listing both paths.
+예상 결과: 두 경로를 모두 나열하는 종료 코드 1.
 
-- [ ] **Step 2: Create the Codex adapter**
+- [ ] **단계 2: Codex 어댑터 생성**
 
-Create `AGENTS.md` with exactly:
+다음 내용으로 `AGENTS.md`를 정확히 생성:
 
 ~~~markdown
 # ForgeOps Agent Instructions
@@ -4033,9 +4032,9 @@ namespaced below extensions.
 - Keep internal harness packets hidden at QUIET trace level.
 ~~~
 
-- [ ] **Step 3: Create the Copilot adapter**
+- [ ] **단계 3: Copilot 어댑터 생성**
 
-Create `.github/copilot-instructions.md` with exactly:
+다음 내용으로 `.github/copilot-instructions.md`를 정확히 생성:
 
 ~~~markdown
 # ForgeOps Copilot Adapter
@@ -4077,9 +4076,9 @@ external effects.
   docs/agent-harness/PORTING_GUIDE.md in the same change.
 ~~~
 
-- [ ] **Step 4: Verify adapter mappings and profile ownership**
+- [ ] **단계 4: 어댑터 매핑과 프로필 소유권 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $agents = Get-Content -Raw -Encoding UTF8 AGENTS.md
@@ -4101,11 +4100,11 @@ if (-not $agents.Contains('project_profile.extensions.forgeops.validation_discov
 if (-not $copilot.Contains('sole v1 normalization owner') -or $copilot.Contains('Normalize legacy')) { Write-Error 'adapter normalization ownership invalid'; exit 1 }
 ~~~
 
-Expected: exit code 0 and no output.
+예상 결과: 종료 코드 0이며 출력 없음.
 
-- [ ] **Step 5: Commit the adapters**
+- [ ] **단계 5: 어댑터 커밋**
 
-Run:
+실행:
 
 ~~~powershell
 git add AGENTS.md .github/copilot-instructions.md
@@ -4113,34 +4112,34 @@ git diff --cached --check
 git commit -m "chore: add ForgeOps harness adapters"
 ~~~
 
-Expected: one commit containing the two adapter files.
+예상 결과: 두 어댑터 파일을 포함하는 커밋 하나.
 
 ---
 
-### Task 6: Add the porting guide and README navigation
+### 작업 6: 이식 가이드와 README 탐색 경로 추가
 
-**Files:**
-- Create: `docs/agent-harness/PORTING_GUIDE.md`
-- Modify: `README.md`
+**파일:**
+- 생성: `docs/agent-harness/PORTING_GUIDE.md`
+- 수정: `README.md`
 
-**Interfaces:**
-- Consumes: protocol 2.0 prompts, adapters, compatibility mapping
-- Produces: copy/configure/dry-run/activate procedure and discoverable repository navigation
+**인터페이스:**
+- 입력: 프로토콜 2.0 프롬프트, 어댑터 및 호환성 매핑
+- 출력: 복사/구성/시험 실행/활성화 절차와 탐색 가능한 저장소 안내
 
-- [ ] **Step 1: Run the failing documentation check**
+- [ ] **단계 1: 실패하는 문서 검사 실행**
 
-Run:
+실행:
 
 ~~~powershell
 if (-not (Test-Path 'docs/agent-harness/PORTING_GUIDE.md')) { Write-Error 'guide missing'; exit 1 }
 if (-not (Select-String -Quiet -Path README.md -Pattern 'Portable Agent Harness')) { Write-Error 'README link missing'; exit 1 }
 ~~~
 
-Expected: exit code 1 with `guide missing`.
+예상 결과: 종료 코드 1과 `guide missing`.
 
-- [ ] **Step 2: Create the complete porting guide**
+- [ ] **단계 2: 완전한 이식 가이드 생성**
 
-Create `docs/agent-harness/PORTING_GUIDE.md` with exactly:
+다음 내용으로 `docs/agent-harness/PORTING_GUIDE.md`를 정확히 생성:
 
 ~~~markdown
 # Portable Agent Harness v2 적용 가이드
@@ -4595,9 +4594,9 @@ missing capability, authority, 사용자 결정 중 무엇이 필요한지 확�
 검증하지 않은 결과를 PASSED로 바꾸지 않는다.
 ~~~
 
-- [ ] **Step 3: Update README navigation**
+- [ ] **단계 3: README 탐색 경로 갱신**
 
-Replace `README.md` with exactly:
+`README.md`를 정확히 다음 내용으로 교체:
 
 ~~~markdown
 # ForgeOps
@@ -4619,9 +4618,9 @@ ForgeOps는 프로젝트 독립적인 세 역할 agent harness protocol 2.0을 �
 adapter와 project_profile만 작성한다.
 ~~~
 
-- [ ] **Step 4: Run cross-file conformance checks**
+- [ ] **단계 4: 파일 간 적합성 검사 실행**
 
-Run:
+실행:
 
 ~~~powershell
 $portablePaths = @(
@@ -5143,20 +5142,20 @@ if ($LASTEXITCODE -ne 0) {
 }
 ~~~
 
-Expected: exit code 0 with role case evidence and the exact summary
+예상 결과: 역할 사례 증빙 및 다음의 정확한 요약과 함께 종료 코드 0.
 fixture_positive=14 fixture_negative=96 example_positive=3 unexpected_pass=0 unexpected_fail=0.
 
-Run legacy-term location review:
+레거시 용어 위치 검토 실행:
 
 ~~~powershell
 rg -n 'demo_impact|task_harness_mode|last_committed_ref|event_logs|turn-count timeout|file-count fast path' .github/agents docs/agent-harness
 ~~~
 
-Expected: matches only in the main compatibility table and porting-guide
-migration table, never in active routing or safety rules.
-- [ ] **Step 5: Verify Markdown links and final diff**
+예상 결과: main 호환성 표와 이식 가이드 마이그레이션 표에서만 일치하며,
+활성 라우팅 또는 안전 규칙에서는 절대 일치하지 않음.
+- [ ] **단계 5: Markdown 링크와 최종 diff 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $links = @(
@@ -5174,12 +5173,12 @@ git diff --stat origin/main...HEAD
 git status --short
 ~~~
 
-Expected: the three prompt files, two adapters, design, plan, guide, and README
-are the only changed paths; no secrets, caches, or unrelated files appear.
+예상 결과: 세 프롬프트 파일, 두 어댑터, 설계, 계획, 가이드 및 README만 변경된
+경로이며, 비밀, 캐시 또는 관련 없는 파일은 나타나지 않음.
 
-- [ ] **Step 6: Commit the guide and README**
+- [ ] **단계 6: 가이드와 README 커밋**
 
-Run:
+실행:
 
 ~~~powershell
 git add docs/agent-harness/PORTING_GUIDE.md README.md
@@ -5188,24 +5187,23 @@ git commit -m "docs: add harness porting guide"
 git status --short --branch
 ~~~
 
-Expected: one commit with the guide and README, followed by a clean feature
-branch.
+예상 결과: 가이드와 README를 포함하는 커밋 하나와 이어지는 깨끗한 기능 브랜치.
 
 ---
 
-### Task 7: Verify history and publish the feature branch
+### 작업 7: 이력 검증 및 기능 브랜치 게시
 
-**Files:**
-- Verify only: all files from Tasks 1-6
-- Remote branch: `origin/feature/portable-agent-harness-v2`
+**파일:**
+- 검증 전용: 작업 1~6의 모든 파일
+- 원격 브랜치: `origin/feature/portable-agent-harness-v2`
 
-**Interfaces:**
-- Consumes: clean local feature branch with all conformance checks passing
-- Produces: non-forced remote feature branch; does not modify `origin/main` and does not create a pull request
+**인터페이스:**
+- 입력: 모든 적합성 검사를 통과한 깨끗한 로컬 기능 브랜치
+- 출력: 강제하지 않은 원격 기능 브랜치; `origin/main`을 수정하지 않고 풀 리퀘스트를 생성하지 않음
 
-- [ ] **Step 1: Verify branch ancestry and commits**
+- [ ] **단계 1: 브랜치 계보와 커밋 검증**
 
-Run:
+실행:
 
 ~~~powershell
 git merge-base --is-ancestor 1e2478918e1c44ef6980843fb9876e84d508a0d7 HEAD
@@ -5213,50 +5211,49 @@ git log --oneline --decorate --max-count=10
 git status --short --branch
 ~~~
 
-Expected: ancestry command exits 0; log shows the documentation, core, part,
-work, adapter, and guide commits above the verified baseline; status is clean.
+예상 결과: 계보 명령은 종료 코드 0을 반환하고, 로그에는 검증된 기준선 위의 문서,
+코어, part, work, 어댑터 및 가이드 커밋이 표시되며, 상태는 깨끗함.
 
-- [ ] **Step 2: Re-run final structural verification**
+- [ ] **단계 2: 최종 구조 검증 재실행**
 
-Run the complete PowerShell checks from Task 6 Step 4 and Step 5.
+작업 6 단계 4와 단계 5의 전체 PowerShell 검사를 실행한다.
 
-Expected: exit code 0, no missing path, no project coupling in portable prompts,
-no diff whitespace errors, and only migration-table legacy matches.
+예상 결과: 종료 코드 0, 누락된 경로 없음, 이식 가능한 프롬프트의 프로젝트 결합
+없음, diff 공백 오류 없음, 마이그레이션 표에서만 레거시 용어 일치.
 
-- [ ] **Step 3: Push without force**
+- [ ] **단계 3: 강제하지 않고 푸시**
 
-Run:
+실행:
 
 ~~~powershell
 git push --set-upstream origin feature/portable-agent-harness-v2
 ~~~
 
-Expected: a new remote branch named `feature/portable-agent-harness-v2` and
-local upstream tracking. Do not add `--force` or `--force-with-lease`.
+예상 결과: `feature/portable-agent-harness-v2`라는 새 원격 브랜치와 로컬 업스트림
+추적. `--force` 또는 `--force-with-lease`를 추가하지 않는다.
 
-- [ ] **Step 4: Verify remote branch without changing main**
+- [ ] **단계 4: main을 변경하지 않고 원격 브랜치 검증**
 
-Run:
+실행:
 
 ~~~powershell
 git ls-remote origin refs/heads/main refs/heads/feature/portable-agent-harness-v2
 git status --short --branch
 ~~~
 
-Expected: `refs/heads/main` remains at
-`1e2478918e1c44ef6980843fb9876e84d508a0d7`, the feature branch resolves to the
-local HEAD, and status is clean with upstream tracking.
+예상 결과: `refs/heads/main`은
+`1e2478918e1c44ef6980843fb9876e84d508a0d7`에 유지되고, 기능 브랜치는 로컬 HEAD를
+가리키며, 업스트림 추적 상태는 깨끗함.
 
-## Plan self-review checklist
+## 계획 자체 검토 체크리스트
 
-- Spec coverage: Tasks 1-7 cover Git adoption, three prompts, both adapters,
-  porting/migration documentation, README navigation, conformance, and safe
-  publication.
-- Contract consistency: protocol, packet, route, state, evidence, assertion,
-  event, and transition names are identical across role prompts.
-- Ownership consistency: main alone accepts state; part is read-only; work
-  returns proposed results.
-- Safety consistency: UNKNOWN fails closed; no destructive Git operation or
-  force push appears.
-- Scope consistency: no application framework, runtime dependency, schema
-  package, or PR is added.
+- 명세 범위: 작업 1~7은 Git 채택, 세 프롬프트, 두 어댑터, 이식/마이그레이션 문서,
+  README 탐색 경로, 적합성 및 안전한 게시를 다룬다.
+- 계약 일관성: 프로토콜, 패킷, 라우팅, 상태, 증빙, 검증 주장, 이벤트 및 전이 이름이
+  역할 프롬프트 전체에서 동일하다.
+- 소유권 일관성: main만 상태를 인수하고, part는 읽기 전용이며, work는 제안된 결과를
+  반환한다.
+- 안전 일관성: UNKNOWN은 실패 시 차단하며, 파괴적인 Git 작업이나 강제 푸시는
+  나타나지 않는다.
+- 범위 일관성: 애플리케이션 프레임워크, 런타임 종속성, 스키마 패키지 또는 PR을
+  추가하지 않는다.

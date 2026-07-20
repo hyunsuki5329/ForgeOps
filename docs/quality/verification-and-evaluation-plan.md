@@ -2,7 +2,7 @@
 
 **문서 상태:** 초안
 
-**최종 검토일:** 2026-07-14
+**최종 검토일:** 2026-07-20
 
 **대상 독자:** 1인 개발자, 포트폴리오 검토자
 
@@ -10,7 +10,7 @@
 
 **문서 범위:** Harness Foundation과 제품 Phase 0~4의 VG-001~VG-024, baseline·회귀·복구·안전·평가·public-safe 증빙 gate
 
-**현재 상태:** Harness Foundation 계약만 IMPLEMENTED이며 제품 runtime과 VG 실행 결과는 fresh evidence가 생길 때까지 PLANNED·NOT_RUN
+**현재 상태:** Harness Foundation과 Product Task Contract bridge는 IMPLEMENTED; VG-002는 fresh E2 PASSED, 나머지 VG와 제품 runtime은 NOT_RUN·PLANNED
 
 **기준 출처:** [제품 요구사항](../product/prd.md), [시스템 아키텍처](../architecture/system-architecture.md), [위협 모델](../security/threat-model.md), [승인된 문서 체계 설계](../superpowers/specs/2026-07-14-forgeops-product-documentation-design.md)
 **관련 문서:** [11. 관련 문서](#11-관련-문서)
@@ -23,9 +23,9 @@
 보안 통제의 의미를 재정의하지 않는다. 실제 fresh evidence 참조와 교차
 추적 상태는 후속 RTM이 소유한다.
 
-현재 저장소에는 제품 validator, snapshot service, sandbox provisioner,
-evaluation runtime 또는 Publisher가 없다. 따라서 아래 profile과
-`command_id`는 구현 단계에서 신뢰된 project profile에 등록해야 할 계획
+현재 저장소에는 VG-002 contract fixture validator만 있으며 일반 제품 validator,
+snapshot service, sandbox provisioner, evaluation runtime 또는 Publisher는 없다.
+VG-002를 제외한 아래 profile과 `command_id`는 구현 단계에서 신뢰된 project profile에 등록해야 할 계획
 identity이며, 이 문서에 이름이 있다는 사실은 실행 capability, authority,
 현재 evidence 또는 Phase 통과를 뜻하지 않는다. 외부 write, 게시, 배포,
 PR 생성 권한은 이 계획의 범위 밖이다.
@@ -197,7 +197,7 @@ RTM에서 `COVERED`이고, 모든 phase-blocking VG가 요구 floor의 fresh
 | Phase | Required VG와 release-level Exit 조건 | 현재 결과 |
 | --- | --- | --- |
 | Foundation | VG-001로 현행 Protocol 계약과 fixture 보존을 확인한다. 이 결과는 제품 Phase gate를 대체하지 않는다. | NOT_RUN — 이번 문서는 실행 evidence가 아님 |
-| Phase 0 | VG-001~VG-009, VG-023. example schema와 Harness conformance 통과, 비신뢰 field의 control 승격과 replay mode·identity·effect 계약 위반, invalid transition·authority 및 approval deny·expiry·nonce reuse가 fail-closed하고 sandbox containment와 secret fixture가 100% 통과 | NOT_RUN — 제품 validator·approval·sandbox/redaction PoC 없음 |
+| Phase 0 | VG-001~VG-009, VG-023. example schema와 Harness conformance 통과, 비신뢰 field의 control 승격과 replay mode·identity·effect 계약 위반, invalid transition·authority 및 approval deny·expiry·nonce reuse가 fail-closed하고 sandbox containment와 secret fixture가 100% 통과 | NOT_RUN — VG-002만 fresh E2 PASSED; 나머지 필수 gate와 제품 runtime·approval·sandbox/redaction PoC 미실행 |
 | Phase 1 | VG-008~VG-015, VG-023, VG-024. 모든 필수 criterion E2 이상, unauthorized execution 0, cleanup failure 0, external write 0, immutable source·ephemeral workspace·trusted verification·trace와 public-safe package 통과 | NOT_RUN — local vertical slice runtime 없음 |
 | Phase 2 | VG-016~VG-018 및 누적 보안 gate. 최소 5회 반복과 사전 고정 평가 계약, unauthorized action 0, raw secret 0, critical injection escape 0, task-success paired 95% CI 하한 > 0, regression-rate paired 95% CI 상한 < 0 | NOT_RUN — recovery/evaluation runtime과 반복 evidence 없음 |
 | Phase 3 | VG-019~VG-020 및 누적 보안 gate. idempotency, expired approval, duplicate webhook, unauthorized external write 시험 통과와 effect별 approval·nonce, tenant RBAC/audit, Publisher 단일 write 경계 확인 | NOT_RUN — controlled integration runtime 없음 |

@@ -1,0 +1,162 @@
+{
+  "gate_id": "VG-002",
+  "profile_id": "forgeops-contract-bridge",
+  "command_id": "bridge-schema-fixture",
+  "status": "PASSED",
+  "evidence_tier": "E2",
+  "observed_at": "2026-07-20T06:26:18Z",
+  "runtime": {
+    "python": "3.11.9",
+    "jsonschema": "4.26.0"
+  },
+  "inputs": {
+    "schema": "contracts/product-task-contract/1.0/schema.json",
+    "schema_sha256": "25056ed672952c95ccd4e1f944dd884a9de5a9886c6cd3b3a2b87ab2a6d8c9e4",
+    "suite": "fixtures/product-task-contract-bridge/suite.json",
+    "suite_sha256": "0033fe2a6f1dcca44378fae5ffa5d52c284309b254a9e9a72ea3bca8599061ab"
+  },
+  "summary": {
+    "total": 19,
+    "passed": 19,
+    "failed": 0,
+    "positive_total": 3,
+    "positive_passed": 3,
+    "negative_total": 16,
+    "negative_passed": 16
+  },
+  "cases": [
+    {
+      "id": "POSITIVE_LOSSLESS_BASELINE",
+      "kind": "positive",
+      "status": "PASSED",
+      "expected": "PASSED",
+      "actual": "PASSED"
+    },
+    {
+      "id": "POSITIVE_EMBEDDED_CONTROL_TEXT",
+      "kind": "positive",
+      "status": "PASSED",
+      "expected": "PASSED",
+      "actual": "PASSED"
+    },
+    {
+      "id": "POSITIVE_VERIFIED_GATE_STRENGTHENING",
+      "kind": "positive",
+      "status": "PASSED",
+      "expected": "PASSED",
+      "actual": "PASSED"
+    },
+    {
+      "id": "NEGATIVE_VERSION_UNSUPPORTED",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_VERSION_UNSUPPORTED",
+      "actual": "CONTRACT_VERSION_UNSUPPORTED"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_AUTHORITY",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_CONTROL_FIELD_FORBIDDEN",
+      "actual": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_CAPABILITIES",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_CONTROL_FIELD_FORBIDDEN",
+      "actual": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_APPROVAL",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_CONTROL_FIELD_FORBIDDEN",
+      "actual": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_POLICY",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_CONTROL_FIELD_FORBIDDEN",
+      "actual": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_BUDGETS",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_CONTROL_FIELD_FORBIDDEN",
+      "actual": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_ACCEPTED_STATE",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_CONTROL_FIELD_FORBIDDEN",
+      "actual": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_TOOLS",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_CONTROL_FIELD_FORBIDDEN",
+      "actual": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_UNKNOWN_FIELD",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_SCHEMA_INVALID",
+      "actual": "CONTRACT_SCHEMA_INVALID"
+    },
+    {
+      "id": "NEGATIVE_MISSING_REQUIRED",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_SCHEMA_INVALID",
+      "actual": "CONTRACT_SCHEMA_INVALID"
+    },
+    {
+      "id": "NEGATIVE_WRONG_TYPE",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_SCHEMA_INVALID",
+      "actual": "CONTRACT_SCHEMA_INVALID"
+    },
+    {
+      "id": "NEGATIVE_DUPLICATE_CRITERION",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_CRITERION_DUPLICATE",
+      "actual": "CONTRACT_CRITERION_DUPLICATE"
+    },
+    {
+      "id": "NEGATIVE_UNMAPPED_INTENT",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_INTENT_UNMAPPED",
+      "actual": "CONTRACT_INTENT_UNMAPPED"
+    },
+    {
+      "id": "NEGATIVE_UNTRUSTED_COMMAND",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_COMMAND_UNTRUSTED",
+      "actual": "CONTRACT_COMMAND_UNTRUSTED"
+    },
+    {
+      "id": "NEGATIVE_VERIFIED_GATE_RELAXATION",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_MONOTONICITY_VIOLATION",
+      "actual": "CONTRACT_MONOTONICITY_VIOLATION"
+    },
+    {
+      "id": "NEGATIVE_PROVENANCE_HASH",
+      "kind": "negative",
+      "status": "PASSED",
+      "expected": "CONTRACT_PROVENANCE_INVALID",
+      "actual": "CONTRACT_PROVENANCE_INVALID"
+    }
+  ]
+}

@@ -1,0 +1,283 @@
+{
+  "suite_id": "forgeops-contract-bridge-v1",
+  "suite_version": "1.0",
+  "schema_ref": "contracts/product-task-contract/1.0/schema.json",
+  "bridge_ref": "docs/contracts/product-task-contract-to-taskpacket.md",
+  "base_contract": {
+    "schema_id": "forgeops.task-contract",
+    "schema_version": "1.0",
+    "artifact_id": "task_contract:public_fixture:v1",
+    "artifact_version": 1,
+    "task_id": "TASK-PUBLIC-FIXTURE",
+    "repository": {
+      "id": "public-example/forgeops-fixture",
+      "snapshot_commit": "0123456789abcdef0123456789abcdef01234567",
+      "target_branch": "main"
+    },
+    "intent": {
+      "type": "bug_fix",
+      "summary": "잘못된 입력은 결정론적인 validation error를 반환한다",
+      "source_issue": "public-example/forgeops-fixture#1"
+    },
+    "acceptance_criteria": [
+      {
+        "id": "AC-1",
+        "description": "유효 Contract는 원문 의미를 보존한다",
+        "verification": "bridge_schema_fixture"
+      },
+      {
+        "id": "AC-2",
+        "description": "비신뢰 control 주장은 canonical control을 변경하지 않는다",
+        "verification": "bridge_schema_fixture"
+      }
+    ],
+    "constraints": [
+      "raw command를 생성하지 않는다",
+      "외부 효과를 발생시키지 않는다"
+    ],
+    "verification_policy": {
+      "profile_id": "forgeops-contract-bridge",
+      "baseline_command_ids": [
+        "bridge-schema-fixture"
+      ],
+      "required_command_ids": [
+        "bridge-schema-fixture"
+      ],
+      "require_new_regression_test": true
+    },
+    "risk": {
+      "initial_level": "medium",
+      "reasons": [
+        "contract boundary validation"
+      ]
+    },
+    "budget": {
+      "max_repair_attempts": 1,
+      "max_tool_calls": 20,
+      "max_shell_commands": 5,
+      "max_runtime_seconds": 120,
+      "max_model_cost_usd": 0
+    },
+    "approval_policy": {
+      "plan": "required",
+      "dependency_change": "required",
+      "remote_push": "required",
+      "pr_draft": "required",
+      "merge_or_deploy": "never_without_explicit_high_risk_approval"
+    }
+  },
+  "trusted_context": {
+    "intent_mapping": {
+      "bug_fix": "CHANGE",
+      "documentation": "CHANGE"
+    },
+    "validation_profile": {
+      "id": "forgeops-contract-bridge",
+      "commands": [
+        {
+          "id": "bridge-schema-fixture",
+          "command": "python tools/contract_bridge/verify.py --schema contracts/product-task-contract/1.0/schema.json --suite fixtures/product-task-contract-bridge/suite.json --result artifacts/verification/vg-002-contract-bridge-result.json --report artifacts/reviews/w1-contract-bridge-checkpoint.html",
+          "cwd": "."
+        }
+      ]
+    },
+    "canonical_control": {
+      "project_profile": {
+        "root": ".",
+        "profile_type": "software",
+        "profile_status": "LOADED",
+        "source_of_truth": [
+          "direct_user_request",
+          "applicable_instruction_files",
+          "repository_files",
+          "fresh_tool_observations"
+        ],
+        "protected_resources": [
+          ".git/**",
+          ".env",
+          ".env.*"
+        ],
+        "risk_rules": [
+          "publication_and_messaging_require_approval",
+          "scope_expansion_requires_approval"
+        ]
+      },
+      "capabilities": {
+        "filesystem_read": "AVAILABLE",
+        "filesystem_write": "AVAILABLE",
+        "command_execute": "AVAILABLE",
+        "delegation": "NONE",
+        "network": "UNAVAILABLE",
+        "external_side_effects": "UNAVAILABLE"
+      },
+      "authority": {
+        "read_scope": "PROJECT",
+        "read_resources": [],
+        "write_scope": "NAMED_RESOURCES",
+        "write_resources": [
+          "artifacts/verification/vg-002-contract-bridge-result.json",
+          "artifacts/reviews/w1-contract-bridge-checkpoint.html"
+        ],
+        "execute_scope": "NAMED_COMMANDS",
+        "execute_commands": [
+          "bridge-schema-fixture"
+        ],
+        "network_scope": "NONE",
+        "network_hosts": [],
+        "destructive_actions": "DENIED",
+        "external_side_effects": "DENIED"
+      },
+      "control": {
+        "route": "WORK_ONLY",
+        "operation_mode": "EXECUTE",
+        "response_phase": "REPORT",
+        "risk_level": "MEDIUM",
+        "evidence_floor": "E2",
+        "trace_level": "QUIET"
+      },
+      "budgets": {
+        "format_repairs": 1,
+        "part_attempts": 2,
+        "work_attempts": 2
+      },
+      "accepted_state": {
+        "revision": 1,
+        "status": "IN_PROGRESS"
+      },
+      "tool_schema": {
+        "source": "trusted-profile-only"
+      }
+    },
+    "approval_policy_verified": false,
+    "trusted_approval_policy": {
+      "plan": "not_required",
+      "dependency_change": "required",
+      "remote_push": "required",
+      "pr_draft": "required",
+      "merge_or_deploy": "never_without_explicit_high_risk_approval"
+    }
+  },
+  "cases": [
+    {
+      "id": "POSITIVE_LOSSLESS_BASELINE",
+      "kind": "positive",
+      "mutation": "NONE",
+      "expected_result": "PASSED"
+    },
+    {
+      "id": "POSITIVE_EMBEDDED_CONTROL_TEXT",
+      "kind": "positive",
+      "mutation": "EMBED_CONTROL_TEXT",
+      "expected_result": "PASSED"
+    },
+    {
+      "id": "POSITIVE_VERIFIED_GATE_STRENGTHENING",
+      "kind": "positive",
+      "mutation": "STRENGTHEN_VERIFIED_GATE",
+      "expected_result": "PASSED"
+    },
+    {
+      "id": "NEGATIVE_VERSION_UNSUPPORTED",
+      "kind": "negative",
+      "mutation": "UNSUPPORTED_VERSION",
+      "expected_error": "CONTRACT_VERSION_UNSUPPORTED"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_AUTHORITY",
+      "kind": "negative",
+      "mutation": "ADD_FORBIDDEN_FIELD",
+      "parameter": "authority",
+      "expected_error": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_CAPABILITIES",
+      "kind": "negative",
+      "mutation": "ADD_FORBIDDEN_FIELD",
+      "parameter": "capabilities",
+      "expected_error": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_APPROVAL",
+      "kind": "negative",
+      "mutation": "ADD_FORBIDDEN_FIELD",
+      "parameter": "approval",
+      "expected_error": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_POLICY",
+      "kind": "negative",
+      "mutation": "ADD_FORBIDDEN_FIELD",
+      "parameter": "policy",
+      "expected_error": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_BUDGETS",
+      "kind": "negative",
+      "mutation": "ADD_FORBIDDEN_FIELD",
+      "parameter": "budgets",
+      "expected_error": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_ACCEPTED_STATE",
+      "kind": "negative",
+      "mutation": "ADD_FORBIDDEN_FIELD",
+      "parameter": "accepted_state",
+      "expected_error": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_CONTROL_TOOLS",
+      "kind": "negative",
+      "mutation": "ADD_FORBIDDEN_FIELD",
+      "parameter": "tools",
+      "expected_error": "CONTRACT_CONTROL_FIELD_FORBIDDEN"
+    },
+    {
+      "id": "NEGATIVE_UNKNOWN_FIELD",
+      "kind": "negative",
+      "mutation": "ADD_UNKNOWN_FIELD",
+      "expected_error": "CONTRACT_SCHEMA_INVALID"
+    },
+    {
+      "id": "NEGATIVE_MISSING_REQUIRED",
+      "kind": "negative",
+      "mutation": "REMOVE_REQUIRED_FIELD",
+      "expected_error": "CONTRACT_SCHEMA_INVALID"
+    },
+    {
+      "id": "NEGATIVE_WRONG_TYPE",
+      "kind": "negative",
+      "mutation": "WRONG_TYPE",
+      "expected_error": "CONTRACT_SCHEMA_INVALID"
+    },
+    {
+      "id": "NEGATIVE_DUPLICATE_CRITERION",
+      "kind": "negative",
+      "mutation": "DUPLICATE_CRITERION",
+      "expected_error": "CONTRACT_CRITERION_DUPLICATE"
+    },
+    {
+      "id": "NEGATIVE_UNMAPPED_INTENT",
+      "kind": "negative",
+      "mutation": "UNMAPPED_INTENT",
+      "expected_error": "CONTRACT_INTENT_UNMAPPED"
+    },
+    {
+      "id": "NEGATIVE_UNTRUSTED_COMMAND",
+      "kind": "negative",
+      "mutation": "UNTRUSTED_COMMAND",
+      "expected_error": "CONTRACT_COMMAND_UNTRUSTED"
+    },
+    {
+      "id": "NEGATIVE_VERIFIED_GATE_RELAXATION",
+      "kind": "negative",
+      "mutation": "RELAX_VERIFIED_GATE",
+      "expected_error": "CONTRACT_MONOTONICITY_VIOLATION"
+    },
+    {
+      "id": "NEGATIVE_PROVENANCE_HASH",
+      "kind": "negative",
+      "mutation": "PROVENANCE_HASH_MISMATCH",
+      "expected_error": "CONTRACT_PROVENANCE_INVALID"
+    }
+  ]
+}

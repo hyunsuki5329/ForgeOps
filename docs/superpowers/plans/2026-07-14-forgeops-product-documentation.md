@@ -1,58 +1,58 @@
-# ForgeOps Product Documentation Implementation Plan
+# ForgeOps 제품 문서 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (- [ ]) syntax for tracking.
+> **에이전트 작업자용:** 필수 하위 스킬: 이 계획을 작업별로 구현할 때 superpowers:subagent-driven-development(권장) 또는 superpowers:executing-plans를 사용한다. 단계 추적에는 체크박스(- [ ]) 구문을 사용한다.
 
-**Goal:** 승인된 핸드오프와 문서 체계 설계를 기준으로, 1인 개발 실행 관리와 포트폴리오 증빙에 사용할 한국어 기초 문서 8개를 생성하고 상호 추적성을 검증한다.
+**목표:** 승인된 핸드오프와 문서 체계 설계를 기준으로, 1인 개발 실행 관리와 포트폴리오 증빙에 사용할 한국어 기초 문서 8개를 생성하고 상호 추적성을 검증한다.
 
-**Architecture:** PRD가 제품 요구사항 ID를 먼저 소유하고, 아키텍처·위협 모델·검증 계획이 설계와 통제 및 품질 게이트를 정의한다. WBS와 위험 등록부가 실행 정보를 제공한 뒤 RTM이 모든 ID를 연결하고, docs/README.md가 읽기 순서와 문서 상태를 제공한다.
+**아키텍처:** PRD가 제품 요구사항 ID를 먼저 소유하고, 아키텍처·위협 모델·검증 계획이 설계와 통제 및 품질 게이트를 정의한다. WBS와 위험 등록부가 실행 정보를 제공한 뒤 RTM이 모든 ID를 연결하고, docs/README.md가 읽기 순서와 문서 상태를 제공한다.
 
-**Tech Stack:** UTF-8 Markdown, Git, PowerShell 5.1+, ripgrep, Mermaid
+**기술 스택:** UTF-8 Markdown, Git, PowerShell 5.1+, ripgrep, Mermaid
 
-## Global Constraints
+## 전역 제약 조건
 
 - 승인된 설계 원본은 docs/superpowers/specs/2026-07-14-forgeops-product-documentation-design.md다.
 - 제품 비전과 현재 기준선의 입력 원본은 docs/handoff/forgeops-full-handoff.md다.
 - Protocol 2.0 불변식은 AGENTS.md와 .github/agents/main_instruction.prompt.md, part_agent.prompt.md, work_agent.prompt.md를 따른다.
 - 생성 파일은 정확히 docs/README.md와 product, architecture, security, quality, project 역할 폴더의 7개 문서다.
 - PRD는 Phase 0~4 전체 요구사항을 정의한다. WBS에서만 Phase 2~4를 상위 마일스톤으로 유지한다.
-- WBS는 상대 일정 W1~W10, 주당 5 person-day, 계획 4 person-day, buffer 1 person-day를 사용한다.
-- 문서 본문은 한국어로 작성하고 식별자, enum, API 및 Protocol 고유명은 원문 표기를 유지한다.
+- WBS는 상대 일정 W1~W10, 주당 5인일, 계획 4인일, 여유분 1인일을 사용한다.
+- 문서 본문은 한국어로 작성하고 식별자, 열거형, API 및 Protocol 고유명은 원문 표기를 유지한다.
 - 문서 상태는 최초 생성 시 초안이고 최종 검토일은 2026-07-14다.
 - 요구사항 성숙도는 IMPLEMENTED, SPECIFIED, PLANNED만 사용한다.
 - WBS 상태는 WBS_NOT_STARTED, WBS_IN_PROGRESS, WBS_BLOCKED, WBS_DONE만 사용하며 제품 상태와 혼합하지 않는다.
 - 추적 상태는 COVERED, PARTIAL, GAP만 사용한다.
 - 검증 결과는 PASSED, FAILED, NOT_RUN만 사용한다.
-- raw shell command를 RTM의 evidence나 authority로 기록하지 않는다. 검증 절차는 VG와 trusted command_id가 소유한다.
-- SPECIFIED와 PLANNED 요구사항의 초기 검증 결과는 NOT_RUN, 실제 evidence tier와 참조 및 관찰 metadata는 없음으로 기록한다.
-- 현재 구현 주장은 fresh E1 file 또는 diff observation으로 확인할 수 있을 때만 IMPLEMENTED로 표시한다.
-- 제품 runtime, 코드, 프롬프트, 핸드오프, 기존 설계서는 수정하지 않는다.
+- 원시 셸 command(명령)을 RTM의 증빙이나 권한으로 기록하지 않는다. 검증 절차는 VG와 신뢰된 command_id가 소유한다.
+- SPECIFIED와 PLANNED 요구사항의 초기 검증 결과는 NOT_RUN, 실제 증빙 등급과 참조 및 관찰 메타데이터는 없음으로 기록한다.
+- 현재 구현 주장은 최신 E1 file 또는 diff 관찰로 확인할 수 있을 때만 IMPLEMENTED로 표시한다.
+- 제품 runtime(런타임), 코드, 프롬프트, 핸드오프, 기존 설계서는 수정하지 않는다.
 - 사용자 소유 변경을 보존하고 태스크 시작과 종료 시 git status --short를 확인한다.
-- 새 영구 검증 스크립트는 추가하지 않는다. 문서 검증은 이 계획의 inline PowerShell로 수행한다.
-- 현재 승인에는 8개 문서와 이 계획의 Git commit, push, PR, 외부 게시 권한이 없다.
-- 각 Git checkpoint는 상태와 제안 commit message만 출력한다. 명시적 Git 승인이 새로 주어진 경우에만 해당 태스크의 정확한 파일을 add와 commit한다.
-- 외부 게시와 public portfolio 배포는 별도 승인 대상이다.
+- 새 영구 검증 스크립트는 추가하지 않는다. 문서 검증은 이 계획의 인라인 PowerShell로 수행한다.
+- 현재 승인에는 8개 문서와 이 계획의 Git 커밋, 푸시, PR, 외부 게시 권한이 없다.
+- 각 Git 체크포인트는 상태와 제안 커밋 메시지만 출력한다. 명시적 Git 승인이 새로 주어진 경우에만 해당 작업의 정확한 파일을 추가하고 커밋한다.
+- 외부 게시와 공개 포트폴리오 배포는 별도 승인 대상이다.
 
 ---
 
-## File Map
+## 파일 맵
 
-| Path | Action | Responsibility |
+| 경로 | 동작 | 책임 |
 | --- | --- | --- |
-| docs/superpowers/specs/2026-07-14-forgeops-product-documentation-design.md | Read only | 승인된 문서 체계와 완료 기준 |
-| docs/handoff/forgeops-full-handoff.md | Read only | 제품 비전, 계약, 단계, 지표 |
-| docs/product/prd.md | Create | Phase 0~4 제품 요구사항과 성공 기준 |
-| docs/architecture/system-architecture.md | Create | 시스템 경계, 상태, 구성요소, 계약, 흐름 |
-| docs/security/threat-model.md | Create | 위협, 통제, 잔여 위험, 보안 gate |
-| docs/quality/verification-and-evaluation-plan.md | Create | evidence, VG, 평가, 품질 gate |
-| docs/project/wbs.md | Create | Phase 0~1 상세 10주 계획과 Phase 2~4 마일스톤 |
-| docs/project/risk-register.md | Create | 일정·기술·보안·평가·포트폴리오 위험 |
-| docs/project/requirements-traceability-matrix.md | Create | 요구사항에서 증빙까지의 단일 교차 추적표 |
-| docs/README.md | Create | 문서 지도, 읽기 순서, 상태, 기준 우선순위 |
-| docs/superpowers/plans/2026-07-14-forgeops-product-documentation.md | Create | 이 실행 계획 |
+| docs/superpowers/specs/2026-07-14-forgeops-product-documentation-design.md | 읽기 전용 | 승인된 문서 체계와 완료 기준 |
+| docs/handoff/forgeops-full-handoff.md | 읽기 전용 | 제품 비전, 계약, 단계, 지표 |
+| docs/product/prd.md | 생성 | Phase 0~4 제품 요구사항과 성공 기준 |
+| docs/architecture/system-architecture.md | 생성 | 시스템 경계, 상태, 구성요소, 계약, 흐름 |
+| docs/security/threat-model.md | 생성 | 위협, 통제, 잔여 위험, 보안 게이트 |
+| docs/quality/verification-and-evaluation-plan.md | 생성 | 증빙, VG, 평가, 품질 게이트 |
+| docs/project/wbs.md | 생성 | Phase 0~1 상세 10주 계획과 Phase 2~4 마일스톤 |
+| docs/project/risk-register.md | 생성 | 일정·기술·보안·평가·포트폴리오 위험 |
+| docs/project/requirements-traceability-matrix.md | 생성 | 요구사항에서 증빙까지의 단일 교차 추적표 |
+| docs/README.md | 생성 | 문서 지도, 읽기 순서, 상태, 기준 우선순위 |
+| docs/superpowers/plans/2026-07-14-forgeops-product-documentation.md | 생성 | 이 실행 계획 |
 
-## Shared Document Header
+## 공통 문서 머리글
 
-모든 신규 기초 문서는 다음 metadata를 제목 바로 아래에 둔다.
+모든 신규 기초 문서는 다음 메타데이터를 제목 바로 아래에 둔다.
 
 ~~~markdown
 **문서 상태:** 초안
@@ -65,20 +65,20 @@
 
 ---
 
-### Task 1: Product Requirements Document
+### 작업 1: 제품 요구사항 문서
 
-**Files:**
-- Create: docs/product/prd.md
-- Read: docs/handoff/forgeops-full-handoff.md
-- Read: docs/superpowers/specs/2026-07-14-forgeops-product-documentation-design.md
+**파일:**
+- 생성: docs/product/prd.md
+- 읽기: docs/handoff/forgeops-full-handoff.md
+- 읽기: docs/superpowers/specs/2026-07-14-forgeops-product-documentation-design.md
 
-**Interfaces:**
-- Consumes: 핸드오프의 제품 정의, 범위, 사용자, 원칙, 평가 지표, SLO, Phase 0~4 로드맵
-- Produces: PRD-FR-001~PRD-FR-025, PRD-NFR-001~PRD-NFR-012와 Phase Exit gate
+**인터페이스:**
+- 입력: 핸드오프의 제품 정의, 범위, 사용자, 원칙, 평가 지표, SLO, Phase 0~4 로드맵
+- 출력: PRD-FR-001~PRD-FR-025, PRD-NFR-001~PRD-NFR-012와 Phase 종료 게이트
 
-- [ ] **Step 1: Inspect scope and protect existing work**
+- [ ] **단계 1: 범위를 점검하고 기존 작업 보호**
 
-Run:
+실행:
 
 ~~~powershell
 git status --short
@@ -96,11 +96,11 @@ if (Test-Path -LiteralPath 'docs/product/prd.md') {
 }
 ~~~
 
-Expected: 두 기준 문서가 존재하고 target은 존재하지 않는다. target 또는 상위 폴더에 사용자 변경이 보이면 중단하고 범위를 확인한다.
+예상 결과: 두 기준 문서가 존재하고 대상은 존재하지 않는다. 대상 또는 상위 폴더에 사용자 변경이 보이면 중단하고 범위를 확인한다.
 
-- [ ] **Step 2: Create the PRD structure**
+- [ ] **단계 2: PRD 구조 생성**
 
-Use apply_patch to create docs/product/prd.md with these exact top-level sections:
+다음의 정확한 최상위 절로 docs/product/prd.md를 생성할 때 apply_patch를 사용한다.
 
 ~~~markdown
 # ForgeOps 제품 요구사항 문서
@@ -119,24 +119,24 @@ Use apply_patch to create docs/product/prd.md with these exact top-level section
 ## 12. 관련 문서
 ~~~
 
-Include the shared header. State that the PRD owns what and why, while implementation tasks belong to WBS.
+공통 머리글을 포함한다. PRD는 무엇과 왜를 소유하고 구현 작업은 WBS에 속한다고 명시한다.
 
-- [ ] **Step 3: Add product context, users, scope, and baseline**
+- [ ] **단계 3: 제품 배경, 사용자, 범위, 기준선 추가**
 
-Write these facts without copying the entire handoff:
+핸드오프 전체를 복사하지 않고 다음 사실을 작성한다.
 
-- Product sentence: ForgeOps는 자연어 개발 요청을 구조화된 작업 계약으로 바꾸고, 고정 snapshot과 격리 환경에서 계획·실행·검증·복구한 뒤 근거와 trace를 사람에게 제공하는 self-evaluating AI development workflow platform이다.
-- Users: 개발자, 리뷰어 또는 테크 리드, 플랫폼 관리자, AI 또는 플랫폼 엔지니어.
-- Supported outcomes: Issue to Patch to Draft PR, dependency/API migration, CI failure repair, targeted refactoring, security/quality remediation, repository maintenance.
-- Non-goals: 무승인 production deploy·merge·release·운영 DB 변경, 무제한 host shell, 저장소 밖 임의 접근, 숨은 변경, 검증 없는 성공 선언, 초기 전 언어 동등 지원, 무한 repair, agent 수 자체의 차별화.
-- Current baseline: Protocol 2.0, Main/Part/Work, adapters, porting guide는 IMPLEMENTED다. 제품 runtime, immutable snapshot, sandbox, durable persistence, rollback은 구현됐다고 주장하지 않는다.
-- Baseline evidence links: ../../AGENTS.md, ../../.github/agents/main_instruction.prompt.md, ../../.github/agents/part_agent.prompt.md, ../../.github/agents/work_agent.prompt.md, ../agent-harness/PORTING_GUIDE.md.
+- 제품 문장: ForgeOps는 자연어 개발 요청을 구조화된 작업 계약으로 바꾸고, 고정 스냅샷과 격리 환경에서 계획·실행·검증·복구한 뒤 근거와 추적을 사람에게 제공하는 자체 평가형 AI 개발 워크플로 플랫폼이다.
+- 사용자: 개발자, 리뷰어 또는 테크 리드, 플랫폼 관리자, AI 또는 플랫폼 엔지니어.
+- 지원 결과: 이슈에서 패치와 초안 PR로 이어지는 흐름, 의존성/API 마이그레이션, CI 실패 복구, 대상이 지정된 리팩터링, 보안/품질 개선, 저장소 유지관리.
+- 비목표: 무승인 프로덕션 배포·병합·릴리스·운영 DB 변경, 무제한 호스트 셸, 저장소 밖 임의 접근, 숨은 변경, 검증 없는 성공 선언, 초기 전 언어 동등 지원, 무한 복구, 에이전트 수 자체의 차별화.
+- 현재 기준선: Protocol 2.0, Main/Part/Work, 어댑터, 이식 가이드는 IMPLEMENTED다. 제품 runtime(런타임), 변경 불가능한 스냅샷, 샌드박스, 영속 저장, 롤백은 구현됐다고 주장하지 않는다.
+- 기준선 증빙 링크: ../../AGENTS.md, ../../.github/agents/main_instruction.prompt.md, ../../.github/agents/part_agent.prompt.md, ../../.github/agents/work_agent.prompt.md, ../agent-harness/PORTING_GUIDE.md.
 
-- [ ] **Step 4: Add the functional requirement catalog**
+- [ ] **단계 4: 기능 요구사항 카탈로그 추가**
 
-Create one table with columns ID, Phase, Priority, Maturity, Requirement, Acceptance result, Verification. Use exactly this catalog:
+ID, Phase, 우선순위, 성숙도, 요구사항, 수용 결과, 검증 열을 가진 표 하나를 만든다. 다음 카탈로그를 정확히 사용한다.
 
-| ID | Phase | Priority | Maturity | Requirement and observable acceptance | VG |
+| ID | Phase | 우선순위 | 성숙도 | 요구사항 및 관찰 가능한 수용 | VG |
 | --- | --- | --- | --- | --- | --- |
 | PRD-FR-001 | Phase 0 | 필수 | SPECIFIED | Product Task Contract를 TaskPacket으로 lossless 정규화하며 Contract가 authority를 만들지 않는다 | VG-002 |
 | PRD-FR-002 | Phase 0 | 필수 | SPECIFIED | 제품 state transition을 검증하고 canonical accepted state와 명시적으로 매핑하며 CANCELLED gap을 강제 변환하지 않는다 | VG-003 |
@@ -164,13 +164,13 @@ Create one table with columns ID, Phase, Priority, Maturity, Requirement, Accept
 | PRD-FR-024 | Phase 4 | 권장 | PLANNED | code graph, richer static analysis, security remediation이 근거와 검증을 제공한다 | VG-023 |
 | PRD-FR-025 | Phase 4 | 권장 | PLANNED | replay, experiment, continuous quality loop가 원본 identity와 외부 효과 경계를 보존한다 | VG-017, VG-018, VG-022 |
 
-Keep every ID, phase, priority, maturity, and VG reference exactly as listed. Use the Requirement and observable acceptance text as the normative row content and add one rationale sentence tied to the product problem. Do not add schedule or implementation steps.
+모든 ID, 단계, 우선순위, 성숙도, VG 참조를 나열된 그대로 유지한다. 요구사항과 관찰 가능한 수용 텍스트를 규범 행 내용으로 사용하고 제품 문제에 연결된 근거 문장 하나를 추가한다. 일정이나 구현 단계를 추가하지 않는다.
 
-- [ ] **Step 5: Add nonfunctional requirements**
+- [ ] **단계 5: 비기능 요구사항 추가**
 
-Create one table with the same metadata fields and exactly these rows:
+동일한 메타데이터 필드를 가진 표 하나를 만들고 다음 행을 정확히 사용한다.
 
-| ID | Scope | Priority | Maturity | Requirement and observable acceptance | VG |
+| ID | 범위 | 우선순위 | 성숙도 | 요구사항 및 관찰 가능한 수용 | VG |
 | --- | --- | --- | --- | --- | --- |
 | PRD-NFR-001 | 전 단계 | 필수 | SPECIFIED | 성공 주장은 요구 floor의 fresh evidence를 가지며 결정론적 실패가 정성 점수로 뒤집히지 않는다 | VG-001, VG-023 |
 | PRD-NFR-002 | 전 단계 | 필수 | SPECIFIED | RESOURCE, COMMAND, NETWORK, destructive, external effect authority가 exact match와 fail-closed를 적용한다 | VG-005, VG-006, VG-007 |
@@ -185,21 +185,21 @@ Create one table with the same metadata fields and exactly these rows:
 | PRD-NFR-011 | Phase 1~4 | 권장 | PLANNED | 사용자가 상태, 이유, 위험, diff, 검증, 승인, 다음 행동을 한 workflow에서 이해한다 | VG-015, VG-024 |
 | PRD-NFR-012 | Phase 3~4 | 필수 | PLANNED | tenant, credential, integration, plugin, worker 경계가 zero-event security invariants를 유지한다 | VG-020, VG-021 |
 
-- [ ] **Step 6: Add Exit gates, metrics, and research success**
+- [ ] **단계 6: 종료 게이트, 지표, 연구 성공 조건 추가**
 
-Include these exact release-level gates:
+다음의 정확한 릴리스 수준 게이트를 포함한다.
 
-- Phase 0: example schema와 Harness conformance 통과, invalid transition/authority와 approval deny/expiry/nonce reuse fail-closed, sandbox containment와 secret fixture 100%.
-- Phase 1: 모든 필수 criterion E2 이상, unauthorized execution 0, cleanup failure 0, external write 0.
-- Phase 2: 최소 5회 반복과 사전 고정 평가 계약, unauthorized action 0, raw secret 0, critical injection escape 0, task-success paired 95% CI lower bound greater than 0, regression-rate paired 95% CI upper bound less than 0.
-- Phase 3: idempotency, expired approval, duplicate webhook, unauthorized external write 시험 통과.
-- Phase 4: rolling 30-day SLO 충족과 security invariant 위반 0.
+- Phase 0: 예제 스키마와 Harness 적합성 통과, 유효하지 않은 전이/권한과 approval(승인) 거부/만료/nonce 재사용 실패 시 차단, 샌드박스 격리와 비밀 검증 데이터 100%.
+- Phase 1: 모든 필수 기준 E2 이상, 무권한 실행 0건, 정리 실패 0건, 외부 쓰기 0건.
+- Phase 2: 최소 5회 반복과 사전 고정 평가 계약, 무권한 작업 0건, 원시 비밀 0건, 심각한 주입 탈출 0건, 작업 성공률의 쌍별 95% CI 하한이 0보다 큼, 회귀율의 쌍별 95% CI 상한이 0보다 작음.
+- Phase 3: 멱등성, 만료된 approval(승인), 중복 웹훅, 무권한 외부 쓰기 시험 통과.
+- Phase 4: 최근 30일 SLO 충족과 보안 불변식 위반 0건.
 
-Include the handoff metric definitions for task success, regression, recovery, no-progress, unauthorized action, injection escape, unrelated change, human revert, latency, cost. Mark every SLO as PLANNED target, not current measurement.
+작업 성공, 회귀, 복구, 진전 없음, 무권한 작업, 주입 탈출, 무관한 변경, 사람의 되돌림, 지연 시간, 비용에 대한 핸드오프 지표 정의를 포함한다. 모든 SLO를 현재 측정값이 아닌 PLANNED 목표로 표시한다.
 
-- [ ] **Step 7: Validate PRD structure and identifiers**
+- [ ] **단계 7: PRD 구조와 식별자 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $path = 'docs/product/prd.md'
@@ -217,11 +217,11 @@ if ($text.Contains('제품 runtime이 현재 구현됨')) { throw 'Unverified ru
 'PRD_VALIDATE=PASS'
 ~~~
 
-Expected: PRD_VALIDATE=PASS.
+예상 결과: PRD_VALIDATE=PASS.
 
-- [ ] **Step 8: Run the Git checkpoint**
+- [ ] **단계 8: Git 체크포인트 실행**
 
-Run:
+실행:
 
 ~~~powershell
 git status --short
@@ -229,24 +229,24 @@ Get-Content -LiteralPath 'docs/product/prd.md' -Raw -Encoding utf8
 'PROPOSED_COMMIT=docs: add ForgeOps product requirements'
 ~~~
 
-Expected: only the intended PRD change plus previously known user changes. Do not write .git unless new explicit commit authority exists.
+예상 결과: 의도한 PRD 변경과 이전에 파악된 사용자 변경만 나타난다. 새로운 명시적 커밋 권한이 없으면 .git에 쓰지 않는다.
 
 ---
 
-### Task 2: System Architecture
+### 작업 2: 시스템 아키텍처
 
-**Files:**
-- Create: docs/architecture/system-architecture.md
-- Read: docs/product/prd.md
-- Read: docs/handoff/forgeops-full-handoff.md
+**파일:**
+- 생성: docs/architecture/system-architecture.md
+- 읽기: docs/product/prd.md
+- 읽기: docs/handoff/forgeops-full-handoff.md
 
-**Interfaces:**
-- Consumes: PRD-FR-001~025 and PRD-NFR-001~012
-- Produces: ARC-001~ARC-014, state mapping, contract and data-flow diagrams
+**인터페이스:**
+- 입력: PRD-FR-001~025와 PRD-NFR-001~012
+- 출력: ARC-001~ARC-014, 상태 매핑, 계약 및 데이터 흐름 다이어그램
 
-- [ ] **Step 1: Verify the PRD dependency and target**
+- [ ] **단계 1: PRD 의존성과 대상 검증**
 
-Run:
+실행:
 
 ~~~powershell
 if (-not (Test-Path -LiteralPath 'docs/product/prd.md')) { throw 'PRD dependency missing' }
@@ -256,11 +256,11 @@ if (Test-Path -LiteralPath 'docs/architecture/system-architecture.md') {
 git status --short
 ~~~
 
-Expected: PRD exists and architecture target does not.
+예상 결과: PRD는 존재하고 아키텍처 대상은 존재하지 않는다.
 
-- [ ] **Step 2: Create the architecture outline**
+- [ ] **단계 2: 아키텍처 개요 생성**
 
-Use apply_patch with these sections:
+apply_patch를 사용해 다음 절을 작성한다.
 
 ~~~markdown
 # ForgeOps 시스템 아키텍처
@@ -280,11 +280,11 @@ Use apply_patch with these sections:
 ## 13. 관련 문서
 ~~~
 
-- [ ] **Step 3: Define the architecture catalog**
+- [ ] **단계 3: 아키텍처 카탈로그 정의**
 
-Create a table with ID, Maturity, Responsibility, Dependencies, Related requirements. Define exactly:
+ID, 성숙도, 책임, 의존성, 관련 요구사항 열을 가진 표를 만든다. 다음과 같이 정확히 정의한다.
 
-| ID | Maturity | Responsibility |
+| ID | 성숙도 | 책임 |
 | --- | --- | --- |
 | ARC-001 | IMPLEMENTED | Portable Harness Foundation의 Main, Part, Work와 adapter/profile 경계 |
 | ARC-002 | SPECIFIED | Product layer와 Protocol 2.0 사이의 비약화 경계 |
@@ -301,33 +301,33 @@ Create a table with ID, Maturity, Responsibility, Dependencies, Related requirem
 | ARC-013 | SPECIFIED | approval-bound external effects와 replay modes |
 | ARC-014 | PLANNED | Phase별 deployment topology와 기술 결정 경계 |
 
-ARC-001 must link to the implemented prompt files. Every other row must reference one or more PRD IDs without claiming runtime implementation.
+ARC-001은 구현된 프롬프트 파일에 연결해야 한다. 다른 모든 행은 runtime(런타임) 구현을 주장하지 않고 하나 이상의 PRD ID를 참조해야 한다.
 
-- [ ] **Step 4: Add four diagrams**
+- [ ] **단계 4: 다이어그램 4개 추가**
 
-Add Mermaid diagrams with these nodes and flows:
+다음 노드와 흐름을 가진 Mermaid 다이어그램을 추가한다.
 
-1. Context: User/Reviewer → Control Plane → Orchestration → Context Engine, Tool Gateway, Sandbox, Verification/Recovery/Evaluation, Trace/Artifact; publisher is the only path to external SCM.
-2. Main flow: Main normalize/route → Part context/plan → Main candidate decision → Work preflight/execute/verify → Main evidence validation/accepted state.
-3. State ownership: product states map to Protocol statuses; only MainDecision owns accepted state, revision, seq; Part/Work emit proposals; product CANCELLED stays product-only until a versioned Protocol change.
-4. Evidence flow: trusted source/profile → action → observation → evidence catalog → acceptance criterion → MainDecision → manifest/trace.
+1. 배경: 사용자/검토자 → 제어 플레인 → 오케스트레이션 → 컨텍스트 엔진, 도구 게이트웨이, 샌드박스, 검증/복구/평가, 추적/산출물. 게시자는 외부 SCM으로 가는 유일한 경로다.
+2. Main 흐름: Main 정규화/라우팅 → Part 컨텍스트/계획 → Main 후보 결정 → Work 사전 점검/실행/검증 → Main 증빙 검증/인수 상태.
+3. 상태 소유권: 제품 상태를 Protocol 상태에 매핑한다. MainDecision만 인수 상태, revision, 시퀀스를 소유한다. Part/Work는 제안을 내보낸다. 제품 CANCELLED는 버전이 지정된 Protocol 변경 전까지 제품 계층에만 둔다.
+4. 증빙 흐름: 신뢰된 출처/프로필 → 작업 → 관찰 → 증빙 카탈로그 → 수용 기준 → MainDecision → 매니페스트/추적.
 
-Label IMPLEMENTED, SPECIFIED, PLANNED boundaries directly in diagram nodes or adjacent legends.
+IMPLEMENTED, SPECIFIED, PLANNED 경계를 다이어그램 노드 또는 인접 범례에 직접 표시한다.
 
-- [ ] **Step 5: Add contract and boundary tables**
+- [ ] **단계 5: 계약 및 경계 표 추가**
 
-Include:
+다음을 포함한다.
 
-- Task Contract to TaskPacket mapping fields and the rule that Contract never grants authority.
-- Closed product replay modes AUDIT_REPLAY, REEXECUTE, COUNTERFACTUAL and their Harness mapping.
-- API/event/manifest identity fields: task, run, correlation, base revision, event sequence, source task/run/manifest, schema version, hash/provenance.
-- Product CANCELLED handling and versioned Protocol integration block.
-- Snapshot identity versus conversation/task revision; Git SHA is repository identity, not rollback or task revision proof.
-- Technology choices remain decision records inside this document until a later approved ADR workflow; do not select Temporal/Celery, S3/MinIO, Docker/stronger isolation as simultaneous defaults.
+- Task Contract와 TaskPacket 매핑 필드 및 Contract가 권한을 부여하지 않는다는 규칙.
+- 폐쇄형 제품 리플레이 모드 AUDIT_REPLAY, REEXECUTE, COUNTERFACTUAL과 각 Harness 매핑.
+- API/이벤트/매니페스트 식별 필드: 작업, 실행, 상관관계, base revision, 이벤트 시퀀스, 원본 작업/실행/매니페스트, 스키마 버전, 해시/출처.
+- 제품 CANCELLED 처리와 버전이 지정된 Protocol 통합 차단.
+- 스냅샷 식별 정보와 대화/작업 revision의 구분. Git SHA는 저장소 식별 정보이며 롤백이나 작업 revision의 증명이 아니다.
+- 이후 승인된 ADR 워크플로가 마련되기 전까지 기술 선택은 이 문서 안의 결정 기록으로 유지한다. Temporal/Celery, S3/MinIO, Docker/강화된 격리를 동시에 기본값으로 선택하지 않는다.
 
-- [ ] **Step 6: Validate architecture definitions and boundaries**
+- [ ] **단계 6: 아키텍처 정의와 경계 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $path = 'docs/architecture/system-architecture.md'
@@ -344,11 +344,11 @@ if (($fences % 2) -ne 0) { throw 'Unbalanced Markdown fence' }
 'ARCH_VALIDATE=PASS'
 ~~~
 
-Expected: ARCH_VALIDATE=PASS.
+예상 결과: ARCH_VALIDATE=PASS.
 
-- [ ] **Step 7: Run the Git checkpoint**
+- [ ] **단계 7: Git 체크포인트 실행**
 
-Run:
+실행:
 
 ~~~powershell
 git status --short
@@ -356,26 +356,26 @@ Get-Content -LiteralPath 'docs/architecture/system-architecture.md' -Raw -Encodi
 'PROPOSED_COMMIT=docs: add ForgeOps system architecture'
 ~~~
 
-Expected: the complete architecture document is visible for review and status shows the intended untracked file.
+예상 결과: 검토할 수 있도록 전체 아키텍처 문서가 보이고 상태에는 의도한 미추적 file(파일)이 나타난다.
 
-Do not write .git without new explicit commit authority.
+새로운 명시적 커밋 권한이 없으면 .git에 쓰지 않는다.
 
 ---
 
-### Task 3: Threat Model
+### 작업 3: 위협 모델
 
-**Files:**
-- Create: docs/security/threat-model.md
-- Read: docs/product/prd.md
-- Read: docs/architecture/system-architecture.md
+**파일:**
+- 생성: docs/security/threat-model.md
+- 읽기: docs/product/prd.md
+- 읽기: docs/architecture/system-architecture.md
 
-**Interfaces:**
-- Consumes: PRD security requirements and ARC trust boundaries
-- Produces: THR-001~THR-012, CTL-001~CTL-020, negative-gate mapping
+**인터페이스:**
+- 입력: PRD 보안 요구사항과 ARC 신뢰 경계
+- 출력: THR-001~THR-012, CTL-001~CTL-020, 실패 경로 검증 게이트 매핑
 
-- [ ] **Step 1: Verify dependencies and target ownership**
+- [ ] **단계 1: 의존성과 대상 소유권 검증**
 
-Run:
+실행:
 
 ~~~powershell
 foreach ($path in @('docs/product/prd.md', 'docs/architecture/system-architecture.md')) {
@@ -387,9 +387,9 @@ if (Test-Path -LiteralPath 'docs/security/threat-model.md') {
 git status --short
 ~~~
 
-- [ ] **Step 2: Create the threat-model outline**
+- [ ] **단계 2: 위협 모델 개요 생성**
 
-Use these sections:
+다음 절을 사용한다.
 
 ~~~markdown
 # ForgeOps 위협 모델
@@ -406,13 +406,13 @@ Use these sections:
 ## 10. 관련 문서
 ~~~
 
-Assets must include source snapshot, user changes, credentials, approval capability, validation profile, evidence, artifact, event/manifest, tenant data, external effect identity.
+자산에는 소스 스냅샷, 사용자 변경, 자격 증명, approval(승인) 기능, 검증 프로필, 증빙, 산출물, 이벤트/매니페스트, 테넌트 데이터, 외부 효과 식별 정보가 포함되어야 한다.
 
-- [ ] **Step 3: Add the threat catalog**
+- [ ] **단계 3: 위협 카탈로그 추가**
 
-Define exactly:
+다음과 같이 정확히 정의한다.
 
-| ID | Threat |
+| ID | 위협 |
 | --- | --- |
 | THR-001 | repository, Issue, log, MCP output의 prompt injection이 control instruction으로 승격 |
 | THR-002 | path traversal, protected resource 접근, 사용자 변경 덮어쓰기 |
@@ -427,13 +427,13 @@ Define exactly:
 | THR-011 | test 조작, baseline 오염, verification bypass, rubric override |
 | THR-012 | resource exhaustion, budget 우회, no-progress loop, cleanup 잔존 |
 
-Each row includes asset, actor, precondition, attack path, impact, target phase, related PRD-NFR.
+각 행에는 자산, 행위자, 사전 조건, 공격 경로, 영향, 대상 단계, 관련 PRD-NFR을 포함한다.
 
-- [ ] **Step 4: Add the control catalog**
+- [ ] **단계 4: 통제 카탈로그 추가**
 
-Every control row has ID, Requirement, Severity, phase_blocking, Target Phase, Related THR, Negative VG, Residual risk. Define:
+모든 통제 행은 ID, 요구사항, 심각도, phase_blocking, 대상 단계, 관련 THR, 부정 검증 VG, 잔여 위험을 갖는다. 다음과 같이 정의한다.
 
-| ID | Severity | phase_blocking | Control |
+| ID | 심각도 | phase_blocking | 통제 |
 | --- | --- | --- | --- |
 | CTL-001 | CRITICAL | true | 비신뢰 data와 control plane 분리 및 injection 승격 차단 |
 | CTL-002 | CRITICAL | true | RESOURCE canonical root-relative exact authority와 protected-resource preflight |
@@ -456,13 +456,13 @@ Every control row has ID, Requirement, Severity, phase_blocking, Target Phase, R
 | CTL-019 | CRITICAL | true | idempotency key, webhook dedup, non-idempotent retry block |
 | CTL-020 | CRITICAL | true | complete audit trace와 zero-event security invariant release block |
 
-Severity downgrade requires changed threat premise, substitute control, verification evidence, RTM and risk updates in one change.
+심각도를 낮추려면 변경된 위협 전제, 대체 통제, 검증 증빙, RTM과 위험 갱신을 하나의 변경에 포함해야 한다.
 
-- [ ] **Step 5: Add exact threat-to-control mapping**
+- [ ] **단계 5: 정확한 위협-통제 매핑 추가**
 
-Use this minimum mapping:
+다음 최소 매핑을 사용한다.
 
-| THR | CTL | Negative VG |
+| THR | CTL | 부정 검증 VG |
 | --- | --- | --- |
 | THR-001 | CTL-001, CTL-018 | VG-011, VG-020 |
 | THR-002 | CTL-002, CTL-005 | VG-005 |
@@ -477,11 +477,11 @@ Use this minimum mapping:
 | THR-011 | CTL-016, CTL-020 | VG-013, VG-017 |
 | THR-012 | CTL-011, CTL-017 | VG-014, VG-016 |
 
-State that any orphan THR, CTL, or negative VG blocks document baselining.
+고립된 THR, CTL 또는 부정 검증 VG가 하나라도 있으면 문서 기준선 확정을 차단한다고 명시한다.
 
-- [ ] **Step 6: Validate security closure**
+- [ ] **단계 6: 보안 폐쇄성 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $path = 'docs/security/threat-model.md'
@@ -499,11 +499,11 @@ foreach ($id in ($ctl | Sort-Object -Unique)) {
 'SECURITY_VALIDATE=PASS'
 ~~~
 
-Expected: SECURITY_VALIDATE=PASS.
+예상 결과: SECURITY_VALIDATE=PASS.
 
-- [ ] **Step 7: Run the Git checkpoint**
+- [ ] **단계 7: Git 체크포인트 실행**
 
-Run:
+실행:
 
 ~~~powershell
 git status --short
@@ -511,27 +511,27 @@ Get-Content -LiteralPath 'docs/security/threat-model.md' -Raw -Encoding utf8
 'PROPOSED_COMMIT=docs: add ForgeOps threat model'
 ~~~
 
-Expected: the full threat model is visible and no out-of-scope modification was made.
+예상 결과: 전체 위협 모델이 보이고 범위 밖 수정은 없다.
 
-Do not write .git without new explicit commit authority.
+새로운 명시적 커밋 권한이 없으면 .git에 쓰지 않는다.
 
 ---
 
-### Task 4: Verification and Evaluation Plan
+### 작업 4: 검증 및 평가 계획
 
-**Files:**
-- Create: docs/quality/verification-and-evaluation-plan.md
-- Read: docs/product/prd.md
-- Read: docs/architecture/system-architecture.md
-- Read: docs/security/threat-model.md
+**파일:**
+- 생성: docs/quality/verification-and-evaluation-plan.md
+- 읽기: docs/product/prd.md
+- 읽기: docs/architecture/system-architecture.md
+- 읽기: docs/security/threat-model.md
 
-**Interfaces:**
-- Consumes: 37 PRD requirements and THR/CTL catalogs
-- Produces: VG-001~VG-024, evidence contract, phase gates, evaluation rules
+**인터페이스:**
+- 입력: PRD 요구사항 37개와 THR/CTL 카탈로그
+- 출력: VG-001~VG-024, 증빙 계약, 단계 게이트, 평가 규칙
 
-- [ ] **Step 1: Verify dependencies**
+- [ ] **단계 1: 의존성 검증**
 
-Run:
+실행:
 
 ~~~powershell
 foreach ($path in @(
@@ -547,11 +547,11 @@ if (Test-Path -LiteralPath 'docs/quality/verification-and-evaluation-plan.md') {
 git status --short
 ~~~
 
-Expected: both dependencies exist, quality target is absent, and current user changes are reviewed.
+예상 결과: 모든 의존성이 존재하고 품질 문서 대상은 없으며 현재 사용자 변경을 검토했다.
 
-- [ ] **Step 2: Create the quality-plan outline**
+- [ ] **단계 2: 품질 계획 개요 생성**
 
-Use:
+다음을 사용한다.
 
 ~~~markdown
 # ForgeOps 검증 및 평가 계획
@@ -569,24 +569,24 @@ Use:
 ## 11. 관련 문서
 ~~~
 
-- [ ] **Step 3: Define evidence and verdict semantics**
+- [ ] **단계 3: 증빙과 판정 의미론 정의**
 
-State exactly:
+다음을 정확히 명시한다.
 
-- Evidence type is file, diff, command, test, render, runtime, approval.
-- file/diff require observed_revision equal to base_revision and forbid observed_at.
-- command/test/render/runtime/approval require runtime-supplied strict UTC observed_at, forbid observed_revision, and must be 0~300 seconds old relative to trusted validationAt.
-- E0 < E1 < E2 < E3; requirement success needs evidence at or above its floor.
-- verification_profile_id and trusted command_id identify planned execution; raw command text is not evidence or authority.
-- PASSED requires resolved fresh evidence refs; FAILED preserves evidence; NOT_RUN has no evidence tier/ref/time and records a reason.
-- deterministic verification failure and security violation cannot be overridden by rubric or overall score.
-- baseline_blocked, policy_blocked, inconclusive stay distinct from pass.
+- 증빙 유형은 file, diff, command, test, render, runtime, approval이다.
+- file/diff는 observed_revision이 base_revision과 같아야 하고 observed_at을 금지한다.
+- command/test/render/runtime/approval은 runtime(런타임)이 공급한 엄격한 UTC observed_at을 요구하고 observed_revision을 금지하며, 신뢰된 validationAt을 기준으로 0~300초 이내여야 한다.
+- E0 < E1 < E2 < E3이며, 요구사항 성공에는 요구 수준 이상의 증빙이 필요하다.
+- verification_profile_id와 신뢰된 command_id는 계획된 실행을 식별하며, 원시 command(명령) 텍스트는 증빙이나 권한이 아니다.
+- PASSED는 해석된 최신 증빙 참조를 요구한다. FAILED는 증빙을 보존한다. NOT_RUN에는 증빙 등급/참조/시각이 없으며 이유를 기록한다.
+- 결정론적 검증 실패와 보안 위반은 평가 기준이나 전체 점수로 뒤집을 수 없다.
+- baseline_blocked, policy_blocked, inconclusive은 통과와 구분해 유지한다.
 
-- [ ] **Step 4: Add the VG catalog**
+- [ ] **단계 4: VG 카탈로그 추가**
 
-Each row has ID, Target Phase, Scope, Method or trusted profile, Evidence floor, Pass condition, Fail-closed result, Related PRD/CTL. Define:
+각 행은 ID, 대상 단계, 범위, 방법 또는 신뢰된 프로필, 증빙 수준, 통과 조건, 실패 시 차단 결과, 관련 PRD/CTL을 갖는다. 다음과 같이 정의한다.
 
-| ID | Phase | Gate | Floor |
+| ID | Phase | 게이트 | 수준 |
 | --- | --- | --- | --- |
 | VG-001 | Foundation/0 | Harness conformance and sample fixture | E2 |
 | VG-002 | Phase 0 | Contract to TaskPacket bridge schema and non-grant rule | E2 |
@@ -613,27 +613,27 @@ Each row has ID, Target Phase, Scope, Method or trusted profile, Evidence floor,
 | VG-023 | 전 단계 | closed evidence type, tier, freshness, reference integrity | E2 |
 | VG-024 | Phase 1 Exit | public-safe portfolio package and redaction/license scan | E2 |
 
-For every CRITICAL CTL, link at least one negative VG and state that PARTIAL, GAP, NOT_RUN, or failed evidence blocks its target Phase Exit.
+모든 CRITICAL CTL에 부정 검증 VG를 하나 이상 연결하고 PARTIAL, GAP, NOT_RUN 또는 실패한 증빙이 대상 Phase 종료를 차단한다고 명시한다.
 
-- [ ] **Step 5: Add metrics and phase decisions**
+- [ ] **단계 5: 지표와 단계 결정 추가**
 
-Copy the formulas, not only metric names, for task success, regression, recovery, no-progress, unauthorized action, injection escape, unrelated changes, human revert, latency, and cost. Include:
+작업 성공, 회귀, 복구, 진전 없음, 무권한 작업, 주입 탈출, 무관한 변경, 사람의 되돌림, 지연 시간, 비용에 대해 지표 이름뿐 아니라 계산식도 복사한다. 다음을 포함한다.
 
-- dev/test/hidden split with schema version and content hash.
-- same snapshot, Contract, input, image, policy, verification profile, tool schema, and budgets per variant.
-- at least 5 stochastic repeats; infrastructure failures remain reported.
-- power analysis and target confidence width determine sample size.
-- paired delta with stratified bootstrap 95% CI.
-- fixed anonymous 1~5 rubric; at least 20% double rating; weighted kappa below 0.6 forces rubric revision and re-rating.
-- exact Phase 2 go/no-go inequalities from PRD.
+- 스키마 버전과 콘텐츠 해시를 가진 dev/test/hidden(개발/테스트/비공개) 분할.
+- 변형별 동일한 스냅샷, Contract, 입력, 이미지, 정책, 검증 프로필, 도구 스키마, 예산.
+- 최소 5회의 확률적 반복. 인프라 실패도 계속 보고한다.
+- 검정력 분석과 목표 신뢰구간 폭으로 표본 크기를 결정한다.
+- 층화 부트스트랩 95% CI를 사용한 쌍별 차이.
+- 고정 익명 1~5 평가 기준, 최소 20% 이중 평가. 가중 카파가 0.6 미만이면 평가 기준을 개정하고 재평가한다.
+- PRD의 정확한 Phase 2 진행/중단 부등식.
 
-- [ ] **Step 6: Define the public-safe evidence package**
+- [ ] **단계 6: 공개에 안전한 증빙 패키지 정의**
 
-Require public-safe demo fixture, reproduction steps, redacted trace and diff, metrics, manifest hash. Forbid credentials, private repository content, tenant identifiers, raw logs, and unclear-license code. State that passing the package gate does not authorize external publication.
+공개에 안전한 데모 검증 데이터, 재현 단계, 비밀정보를 삭제한 추적과 diff, 지표, 매니페스트 해시를 요구한다. 자격 증명, 비공개 저장소 내용, 테넌트 식별자, 원시 로그, 라이선스가 불명확한 코드를 금지한다. 패키지 게이트 통과가 외부 게시 권한을 부여하지 않는다고 명시한다.
 
-- [ ] **Step 7: Validate VG coverage**
+- [ ] **단계 7: VG 적용 범위 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $path = 'docs/quality/verification-and-evaluation-plan.md'
@@ -646,11 +646,11 @@ foreach ($term in @('observed_revision', 'observed_at', 'validationAt', '0~300',
 'QUALITY_VALIDATE=PASS'
 ~~~
 
-Expected: QUALITY_VALIDATE=PASS.
+예상 결과: QUALITY_VALIDATE=PASS.
 
-- [ ] **Step 8: Run the Git checkpoint**
+- [ ] **단계 8: Git 체크포인트 실행**
 
-Run:
+실행:
 
 ~~~powershell
 git status --short
@@ -658,28 +658,28 @@ Get-Content -LiteralPath 'docs/quality/verification-and-evaluation-plan.md' -Raw
 'PROPOSED_COMMIT=docs: add ForgeOps verification and evaluation plan'
 ~~~
 
-Expected: the full quality plan is visible and the status contains only intended work plus preserved user changes.
+예상 결과: 전체 품질 계획이 보이고 상태에는 의도한 작업과 보존된 사용자 변경만 나타난다.
 
-Do not write .git without new explicit commit authority.
+새로운 명시적 커밋 권한이 없으면 .git에 쓰지 않는다.
 
 ---
 
-### Task 5: Ten-Week WBS
+### 작업 5: 10주 WBS
 
-**Files:**
-- Create: docs/project/wbs.md
-- Read: docs/product/prd.md
-- Read: docs/architecture/system-architecture.md
-- Read: docs/security/threat-model.md
-- Read: docs/quality/verification-and-evaluation-plan.md
+**파일:**
+- 생성: docs/project/wbs.md
+- 읽기: docs/product/prd.md
+- 읽기: docs/architecture/system-architecture.md
+- 읽기: docs/security/threat-model.md
+- 읽기: docs/quality/verification-and-evaluation-plan.md
 
-**Interfaces:**
-- Consumes: PRD requirements and VG-001~024
-- Produces: WBS-001~WBS-035, W1~W10 capacity plan, dependencies, Definition of Done
+**인터페이스:**
+- 입력: PRD 요구사항과 VG-001~024
+- 출력: WBS-001~WBS-035, W1~W10 용량 계획, 의존성, 완료 정의
 
-- [ ] **Step 1: Verify dependencies and target**
+- [ ] **단계 1: 의존성과 대상 검증**
 
-Run:
+실행:
 
 ~~~powershell
 foreach ($path in @(
@@ -696,11 +696,11 @@ if (Test-Path -LiteralPath 'docs/project/wbs.md') {
 git status --short
 ~~~
 
-Expected: PRD and quality plan exist, WBS target is absent, and current changes are reviewed.
+예상 결과: PRD와 품질 계획이 존재하고 WBS 대상은 없으며 현재 변경을 검토했다.
 
-- [ ] **Step 2: Create the WBS outline**
+- [ ] **단계 2: WBS 개요 생성**
 
-Use:
+다음을 사용한다.
 
 ~~~markdown
 # ForgeOps 작업 분해 구조
@@ -716,11 +716,11 @@ Use:
 ## 9. 관련 문서
 ~~~
 
-Every detailed item has ID, Phase, Week, Status, person-day, Predecessor, PRD IDs, Deliverable, Definition of Done, VG IDs, Expected evidence type.
+모든 상세 항목은 ID, 단계, 주차, 상태, 인일, 선행 작업, PRD ID, 산출물, 완료 정의, VG ID, 예상 증빙 유형을 갖는다.
 
-- [ ] **Step 3: Add W1~W4 Phase 0 packages**
+- [ ] **단계 3: W1~W4 Phase 0 패키지 추가**
 
-| ID | Week | pd | Predecessor | Deliverable |
+| ID | 주차 | 인일 | 선행 작업 | 산출물 |
 | --- | --- | --- | --- | --- |
 | WBS-001 | W1 | 1.0 | 없음 | Harness baseline inventory and evidence links |
 | WBS-002 | W1 | 2.0 | WBS-001 | Product Contract schema and TaskPacket bridge |
@@ -735,11 +735,11 @@ Every detailed item has ID, Phase, Week, Status, person-day, Predecessor, PRD ID
 | WBS-011 | W4 | 1.0 | WBS-005, WBS-009 | redaction and artifact fixture |
 | WBS-012 | W4 | 0.5 | WBS-009, WBS-010, WBS-011 | Phase 0 Exit report |
 
-Use WBS_NOT_STARTED for every initial status. Each week totals exactly 4.0 planned person-day.
+모든 초기 상태에 WBS_NOT_STARTED를 사용한다. 주별 계획 작업 합계는 정확히 4.0인일이다.
 
-- [ ] **Step 4: Add W5~W7 core workflow packages**
+- [ ] **단계 4: W5~W7 핵심 워크플로 패키지 추가**
 
-| ID | Week | pd | Predecessor | Deliverable |
+| ID | 주차 | 인일 | 선행 작업 | 산출물 |
 | --- | --- | --- | --- | --- |
 | WBS-013 | W5 | 1.5 | WBS-012 | immutable snapshot provider |
 | WBS-014 | W5 | 1.5 | WBS-013 | baseline runner and baseline artifact |
@@ -752,9 +752,9 @@ Use WBS_NOT_STARTED for every initial status. Each week totals exactly 4.0 plann
 | WBS-021 | W7 | 1.5 | WBS-014, WBS-020 | trusted test/lint/typecheck profiles |
 | WBS-022 | W7 | 1.0 | WBS-021 | regression and test anti-tamper guard |
 
-- [ ] **Step 5: Add W8~W10 reliability and Exit packages**
+- [ ] **단계 5: W8~W10 신뢰성과 종료 패키지 추가**
 
-| ID | Week | pd | Predecessor | Deliverable |
+| ID | 주차 | 인일 | 선행 작업 | 산출물 |
 | --- | --- | --- | --- | --- |
 | WBS-023 | W8 | 1.0 | WBS-019 | budget enforcement |
 | WBS-024 | W8 | 1.5 | WBS-019, WBS-023 | cancellation and verified cleanup |
@@ -767,31 +767,31 @@ Use WBS_NOT_STARTED for every initial status. Each week totals exactly 4.0 plann
 | WBS-031 | W10 | 1.0 | WBS-030 | public-safe portfolio package |
 | WBS-032 | W10 | 0.5 | WBS-030, WBS-031 | retrospective and next-phase decision record |
 
-- [ ] **Step 6: Add high-level Phase 2~4 milestones**
+- [ ] **단계 6: Phase 2~4 상위 마일스톤 추가**
 
-Define without confirmed week or person-day:
+확정된 주차나 인일 없이 정의한다.
 
-| ID | Phase | Predecessor | Exit |
+| ID | Phase | 선행 작업 | 종료 |
 | --- | --- | --- | --- |
 | WBS-033 | Phase 2 | WBS-032 | bounded repair and benchmark go/no-go |
 | WBS-034 | Phase 3 | WBS-033 | controlled GitHub integration, RBAC, audit, dedup gates |
 | WBS-035 | Phase 4 | WBS-034 | rolling SLO, zero security violations, plugin maturity |
 
-Use N/A (상위 마일스톤) for week and person-day. Do not add a detailed sprint or fixed date.
+주차와 인일에는 N/A(상위 마일스톤)를 사용한다. 상세 스프린트나 고정 날짜를 추가하지 않는다.
 
-- [ ] **Step 7: Add capacity, critical path, and replan rules**
+- [ ] **단계 7: 용량, 주 경로, 재계획 규칙 추가**
 
-State:
+다음을 명시한다.
 
-- Weekly capacity is 5 person-day: 4 planned, 1 buffer.
-- Replan when planned load exceeds 4, a Phase gate misses its week, a security invariant fails, or carry-over occurs for two consecutive weeks.
-- Do not pull future work forward automatically after a failed gate.
-- Critical path starts WBS-001→002→004→005→010→012→013→014→016→017→018→019→020→021→022→026→027→028→029→030.
-- Every Definition of Done names a deliverable and VG, but expected evidence is not recorded as current fresh evidence.
+- 주간 용량은 5인일이며 계획 4인일과 여유분 1인일로 구성한다.
+- 계획 부하가 4인일을 초과하거나, Phase 게이트가 목표 주차를 지키지 못하거나, 보안 불변식이 실패하거나, 2주 연속 이월이 발생하면 재계획한다.
+- 게이트 실패 후 미래 작업을 자동으로 앞당기지 않는다.
+- 주 경로는 WBS-001→002→004→005→010→012→013→014→016→017→018→019→020→021→022→026→027→028→029→030에서 시작한다.
+- 모든 완료 정의는 산출물과 VG를 명시하지만, 예상 증빙을 현재의 최신 증빙으로 기록하지 않는다.
 
-- [ ] **Step 8: Validate WBS counts and capacity**
+- [ ] **단계 8: WBS 개수와 용량 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $path = 'docs/project/wbs.md'
@@ -807,11 +807,11 @@ foreach ($term in @('주당 5 person-day', '4 person-day', '1 person-day', 'WBS_
 'WBS_VALIDATE=PASS'
 ~~~
 
-Expected: WBS_VALIDATE=PASS.
+예상 결과: WBS_VALIDATE=PASS.
 
-- [ ] **Step 9: Run the Git checkpoint**
+- [ ] **단계 9: Git 체크포인트 실행**
 
-Run:
+실행:
 
 ~~~powershell
 git status --short
@@ -819,28 +819,28 @@ Get-Content -LiteralPath 'docs/project/wbs.md' -Raw -Encoding utf8
 'PROPOSED_COMMIT=docs: add ForgeOps ten-week WBS'
 ~~~
 
-Expected: the full WBS is visible, including W1~W10 and WBS-033~035.
+예상 결과: W1~W10과 WBS-033~035를 포함한 전체 WBS가 보인다.
 
-Do not write .git without new explicit commit authority.
+새로운 명시적 커밋 권한이 없으면 .git에 쓰지 않는다.
 
 ---
 
-### Task 6: Risk Register
+### 작업 6: 위험 등록부
 
-**Files:**
-- Create: docs/project/risk-register.md
-- Read: docs/product/prd.md
-- Read: docs/project/wbs.md
-- Read: docs/security/threat-model.md
-- Read: docs/quality/verification-and-evaluation-plan.md
+**파일:**
+- 생성: docs/project/risk-register.md
+- 읽기: docs/product/prd.md
+- 읽기: docs/project/wbs.md
+- 읽기: docs/security/threat-model.md
+- 읽기: docs/quality/verification-and-evaluation-plan.md
 
-**Interfaces:**
-- Consumes: requirements, schedule, threats, controls
-- Produces: RSK-001~RSK-014 with trigger, response, target week, linked IDs
+**인터페이스:**
+- 입력: 요구사항, 일정, 위협, 통제
+- 출력: 조건, 대응, 목표 주차, 연결된 ID를 가진 RSK-001~RSK-014
 
-- [ ] **Step 1: Verify dependencies and create the outline**
+- [ ] **단계 1: 의존성을 검증하고 개요 생성**
 
-Run:
+실행:
 
 ~~~powershell
 foreach ($path in @(
@@ -857,9 +857,9 @@ if (Test-Path -LiteralPath 'docs/project/risk-register.md') {
 git status --short
 ~~~
 
-Expected: all dependencies exist and the risk-register target is absent.
+예상 결과: 모든 의존성이 존재하고 위험 등록부 대상은 없다.
 
-Use apply_patch to create:
+apply_patch를 사용해 다음을 생성한다.
 
 ~~~markdown
 # ForgeOps 위험 등록부
@@ -872,13 +872,13 @@ Use apply_patch to create:
 ## 6. 관련 문서
 ~~~
 
-Probability and impact each use 1~5; score is their product. Status is OPEN, MITIGATING, MONITORING, CLOSED.
+확률과 영향은 각각 1~5를 사용하고 점수는 둘의 곱이다. 상태는 OPEN, MITIGATING, MONITORING, CLOSED다.
 
-- [ ] **Step 2: Add the risk catalog**
+- [ ] **단계 2: 위험 카탈로그 추가**
 
-Every row has ID, Category, Probability, Impact, Score, Trigger, Prevention, Contingency, Related PRD/THR/CTL/WBS, Target review, Status. Use:
+모든 행은 ID, 범주, 확률, 영향, 점수, 조건, 예방, 비상 대책, 관련 PRD/THR/CTL/WBS, 목표 검토, 상태를 갖는다. 다음을 사용한다.
 
-| ID | P | I | Score | Risk | Target |
+| ID | 확률 | 영향 | 점수 | 위험 | 목표 |
 | --- | --- | --- | --- | --- | --- |
 | RSK-001 | 4 | 4 | 16 | 10주 범위 확장과 Phase 2~4 상세화 | W1, weekly |
 | RSK-002 | 3 | 5 | 15 | Product와 Protocol 2.0 contract drift | W2 |
@@ -895,9 +895,9 @@ Every row has ID, Category, Probability, Impact, Score, Trigger, Prevention, Con
 | RSK-013 | 2 | 5 | 10 | 포트폴리오 공개 시 privacy, secret, license 위반 | W10 |
 | RSK-014 | 2 | 4 | 8 | dependency, API, cloud 사용의 material cost | before any paid service |
 
-Set all initial statuses to OPEN. Use these exact prevention and contingency anchors:
+모든 초기 상태를 OPEN으로 설정한다. 다음의 정확한 예방 및 비상 대책 기준점을 사용한다.
 
-| Risk | Prevention | Contingency |
+| 위험 | 예방 | 비상 대책 |
 | --- | --- | --- |
 | RSK-001 | lock PRD scope and WBS capacity | move only Phase 2~4 detail to successor plan |
 | RSK-002 | ARC-002/009/010 and VG-001~003 conformance review | block merge and restore the last compatible contract |
@@ -914,23 +914,23 @@ Set all initial statuses to OPEN. Use these exact prevention and contingency anc
 | RSK-013 | VG-024 public-safe review | remove unsafe material and keep publication unapproved |
 | RSK-014 | local-first design and cost approval gate | stop before paid usage and request material-cost authority |
 
-Do not repeat the full threat narrative.
+전체 위협 설명을 반복하지 않는다.
 
-- [ ] **Step 3: Add risk response and escalation rules**
+- [ ] **단계 3: 위험 대응과 상향 보고 규칙 추가**
 
-Require:
+다음을 요구한다.
 
-- Score 17~25: release/phase blocking, immediate mitigation.
-- Score 10~16: weekly review and named mitigation task.
-- Score 5~9: monitor at phase checkpoint.
-- Score 1~4: monitor when trigger changes.
-- Any CRITICAL CTL failure is phase blocking regardless of numeric project-risk score.
-- Cost, publication, new credentials, destructive action, and scope expansion require new human authority.
-- Severity downgrade and risk closure require evidence or a changed premise, not calendar passage.
+- 점수 17~25: 릴리스/단계 차단, 즉시 완화.
+- 점수 10~16: 주간 검토와 이름이 지정된 완화 작업.
+- 점수 5~9: 단계 체크포인트에서 모니터링.
+- 점수 1~4: 조건 변경 시 모니터링.
+- 모든 CRITICAL CTL 실패는 프로젝트 위험 점수와 무관하게 단계를 차단한다.
+- 비용, 게시, 새 자격 증명, 파괴적 작업, 범위 확장에는 새로운 사람 권한이 필요하다.
+- 심각도 하향과 위험 종료에는 단순한 시간 경과가 아니라 증빙 또는 변경된 전제가 필요하다.
 
-- [ ] **Step 4: Validate risk arithmetic and count**
+- [ ] **단계 4: 위험 산술과 개수 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $path = 'docs/project/risk-register.md'
@@ -943,11 +943,11 @@ foreach ($state in @('OPEN', 'MITIGATING', 'MONITORING', 'CLOSED')) {
 'RISK_VALIDATE=PASS'
 ~~~
 
-Expected: RISK_VALIDATE=PASS.
+예상 결과: RISK_VALIDATE=PASS.
 
-- [ ] **Step 5: Run the Git checkpoint**
+- [ ] **단계 5: Git 체크포인트 실행**
 
-Run:
+실행:
 
 ~~~powershell
 git status --short
@@ -955,25 +955,25 @@ Get-Content -LiteralPath 'docs/project/risk-register.md' -Raw -Encoding utf8
 'PROPOSED_COMMIT=docs: add ForgeOps risk register'
 ~~~
 
-Expected: all 14 risks, scores, triggers, and response anchors are visible.
+예상 결과: 위험 14개와 점수, 조건, 대응 기준점이 모두 보인다.
 
-Do not write .git without new explicit commit authority.
+새로운 명시적 커밋 권한이 없으면 .git에 쓰지 않는다.
 
 ---
 
-### Task 7: Requirements Traceability Matrix
+### 작업 7: 요구사항 추적성 매트릭스
 
-**Files:**
-- Create: docs/project/requirements-traceability-matrix.md
-- Read: all six role documents created in Tasks 1~6
+**파일:**
+- 생성: docs/project/requirements-traceability-matrix.md
+- 읽기: 작업 1~6에서 생성한 역할 문서 6개 모두
 
-**Interfaces:**
-- Consumes: 37 PRD, 14 ARC, 12 THR, 20 CTL, 24 VG, 35 WBS, 14 RSK definitions
-- Produces: one RTM row per PRD requirement and orphan/coverage summary
+**인터페이스:**
+- 입력: PRD 37개, ARC 14개, THR 12개, CTL 20개, VG 24개, WBS 35개, RSK 14개 정의
+- 출력: PRD 요구사항별 RTM 행 하나와 고립/적용 범위 요약
 
-- [ ] **Step 1: Verify all definition owners**
+- [ ] **단계 1: 모든 정의 소유자 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $owners = @(
@@ -992,9 +992,9 @@ if (Test-Path -LiteralPath 'docs/project/requirements-traceability-matrix.md') {
 }
 ~~~
 
-- [ ] **Step 2: Create the RTM structure**
+- [ ] **단계 2: RTM 구조 생성**
 
-Use:
+다음을 사용한다.
 
 ~~~markdown
 # ForgeOps 요구사항 추적성 매트릭스
@@ -1008,15 +1008,15 @@ Use:
 ## 7. 관련 문서
 ~~~
 
-The main table columns are Requirement, Phase/Priority, Maturity, ARC, THR, CTL, RSK, WBS, VG, Required floor, Result, Actual tier, Evidence ref, Observation metadata, Trace status, Gap/action.
+주 표의 열은 요구사항, 단계/우선순위, 성숙도, ARC, THR, CTL, RSK, WBS, VG, 요구 수준, 결과, 실제 등급, 증빙 참조, 관찰 메타데이터, 추적 상태, 누락/조치다.
 
-Initial result for every requirement is NOT_RUN. Actual tier, evidence ref, and observation metadata are 없음. Trace status is COVERED only after every planned relationship in the row exists.
+모든 요구사항의 초기 결과는 NOT_RUN이다. 실제 등급, 증빙 참조, 관찰 메타데이터는 없음이다. 행에 계획된 모든 관계가 존재할 때만 추적 상태를 COVERED로 설정한다.
 
-- [ ] **Step 3: Add Phase 0 and Phase 1 mappings**
+- [ ] **단계 3: Phase 0 및 Phase 1 매핑 추가**
 
-Use these planned links:
+다음의 계획된 연결을 사용한다.
 
-| Requirement | ARC | THR/CTL | RSK | WBS | VG/Floor |
+| 요구사항 | ARC | THR/CTL | RSK | WBS | VG/수준 |
 | --- | --- | --- | --- | --- | --- |
 | PRD-FR-001 | ARC-002, ARC-010 | THR-003 / CTL-005 | RSK-002 | WBS-002, WBS-003 | VG-002 / E2 |
 | PRD-FR-002 | ARC-009 | THR-009, THR-010 / CTL-008, CTL-015 | RSK-003 | WBS-004 | VG-003 / E2 |
@@ -1032,9 +1032,9 @@ Use these planned links:
 | PRD-FR-012 | ARC-008 | THR-011 / CTL-016 | RSK-007 | WBS-021, WBS-022 | VG-013 / E2 |
 | PRD-FR-013 | ARC-003, ARC-004, ARC-011 | THR-010, THR-012 / CTL-011, CTL-017, CTL-020 | RSK-011 | WBS-023, WBS-024, WBS-025, WBS-026, WBS-027, WBS-028 | VG-014, VG-015 / E2 |
 
-- [ ] **Step 4: Add Phase 2~4 mappings**
+- [ ] **단계 4: Phase 2~4 매핑 추가**
 
-| Requirement | ARC | THR/CTL | RSK | WBS | VG/Floor |
+| 요구사항 | ARC | THR/CTL | RSK | WBS | VG/수준 |
 | --- | --- | --- | --- | --- | --- |
 | PRD-FR-014 | ARC-008 | THR-010, THR-012 / CTL-015, CTL-017 | RSK-007 | WBS-033 | VG-016 / E2 |
 | PRD-FR-015 | ARC-008 | THR-012 / CTL-017 | RSK-001 | WBS-033 | VG-016 / E2 |
@@ -1049,9 +1049,9 @@ Use these planned links:
 | PRD-FR-024 | ARC-005, ARC-008, ARC-014 | THR-001, THR-011 / CTL-001, CTL-016 | RSK-010 | WBS-035 | VG-023 / E3 |
 | PRD-FR-025 | ARC-008, ARC-011, ARC-013 | THR-006, THR-009, THR-010 / CTL-007, CTL-008, CTL-015, CTL-019 | RSK-003, RSK-008, RSK-009 | WBS-035 | VG-017, VG-018, VG-022 / E3 |
 
-- [ ] **Step 5: Add nonfunctional mappings**
+- [ ] **단계 5: 비기능 매핑 추가**
 
-| Requirement | ARC | THR/CTL | RSK | WBS | VG/Floor |
+| 요구사항 | ARC | THR/CTL | RSK | WBS | VG/수준 |
 | --- | --- | --- | --- | --- | --- |
 | PRD-NFR-001 | ARC-008, ARC-011 | THR-010, THR-011 / CTL-015, CTL-016 | RSK-007 | WBS-001, WBS-021, WBS-027 | VG-001, VG-023 / E2 |
 | PRD-NFR-002 | ARC-006, ARC-007, ARC-010 | THR-002, THR-003, THR-004, THR-006 / CTL-002, CTL-003, CTL-004, CTL-005, CTL-006, CTL-007, CTL-012 | RSK-005 | WBS-005, WBS-010, WBS-026 | VG-005, VG-006, VG-007, VG-008 / E3 |
@@ -1066,9 +1066,9 @@ Use these planned links:
 | PRD-NFR-011 | ARC-003, ARC-012 | THR-006, THR-008 / CTL-007, CTL-014, CTL-020 | RSK-013 | WBS-003, WBS-025, WBS-029, WBS-031, WBS-032 | VG-015, VG-024 / E2 |
 | PRD-NFR-012 | ARC-007, ARC-013, ARC-014 | THR-005, THR-008, THR-009 / CTL-009, CTL-010, CTL-014, CTL-019, CTL-020 | RSK-004, RSK-009 | WBS-035 | VG-021, VG-022 / E3 |
 
-- [ ] **Step 6: Validate all definitions and orphan closure**
+- [ ] **단계 6: 모든 정의와 고립 항목 해소 검증**
 
-Run this exact cross-document validator:
+다음의 정확한 문서 간 검증기를 실행한다.
 
 ~~~powershell
 $definitions = [ordered]@{
@@ -1106,15 +1106,15 @@ if (([regex]::Matches($matrix, '\bNOT_RUN\b')).Count -lt 37) { throw 'Every init
 'RTM_VALIDATE=PASS'
 ~~~
 
-Expected: RTM_VALIDATE=PASS.
+예상 결과: RTM_VALIDATE=PASS.
 
-- [ ] **Step 7: Add coverage summary**
+- [ ] **단계 7: 적용 범위 요약 추가**
 
-Report exact counts: PRD 37, ARC 14, THR 12, CTL 20, VG 24, WBS 35, RSK 14. State orphan count 0 only after Step 6 passes. Explain that COVERED means planned links are complete, not that runtime verification passed.
+정확한 개수를 보고한다. PRD 37, ARC 14, THR 12, CTL 20, VG 24, WBS 35, RSK 14다. 단계 6이 통과한 후에만 고립 항목 수가 0이라고 명시한다. COVERED는 계획된 연결이 완전하다는 뜻이며 runtime(런타임) 검증 통과를 의미하지 않는다고 설명한다.
 
-- [ ] **Step 8: Run the Git checkpoint**
+- [ ] **단계 8: Git 체크포인트 실행**
 
-Run:
+실행:
 
 ~~~powershell
 git status --short
@@ -1122,26 +1122,26 @@ Get-Content -LiteralPath 'docs/project/requirements-traceability-matrix.md' -Raw
 'PROPOSED_COMMIT=docs: add ForgeOps requirements traceability matrix'
 ~~~
 
-Expected: 37 requirement rows and the coverage/orphan summary are visible.
+예상 결과: 요구사항 행 37개와 적용 범위/고립 항목 요약이 보인다.
 
-Do not write .git without new explicit commit authority.
+새로운 명시적 커밋 권한이 없으면 .git에 쓰지 않는다.
 
 ---
 
-### Task 8: Documentation Index and Final Verification
+### 작업 8: 문서 색인 및 최종 검증
 
-**Files:**
-- Create: docs/README.md
-- Verify: all 8 new documents
-- Preserve: docs/handoff/forgeops-full-handoff.md and all existing repository files
+**파일:**
+- 생성: docs/README.md
+- 검증: 신규 문서 8개 모두
+- 보존: docs/handoff/forgeops-full-handoff.md와 기존 저장소 파일 모두
 
-**Interfaces:**
-- Consumes: final seven role documents and approved design
-- Produces: navigable documentation index and final verification evidence
+**인터페이스:**
+- 입력: 최종 역할 문서 7개와 승인된 설계
+- 출력: 탐색 가능한 문서 색인과 최종 검증 증빙
 
-- [ ] **Step 1: Create the documentation index**
+- [ ] **단계 1: 문서 색인 생성**
 
-Use:
+다음을 사용한다.
 
 ~~~markdown
 # ForgeOps 문서 지도
@@ -1154,7 +1154,7 @@ Use:
 ## 6. 변경 및 동기화 규칙
 ~~~
 
-Reading order:
+읽기 순서:
 
 1. handoff/forgeops-full-handoff.md
 2. product/prd.md
@@ -1165,21 +1165,21 @@ Reading order:
 7. project/risk-register.md
 8. project/requirements-traceability-matrix.md
 
-Add a table with responsibility, state 초안, last reviewed 2026-07-14, and relative link for every new role document. Link the approved design and this plan as process artifacts, not product authority.
+모든 신규 역할 문서에 대해 책임, 상태 초안, 최종 검토일 2026-07-14, 상대 링크를 가진 표를 추가한다. 승인된 설계와 이 계획은 제품 권한이 아닌 프로세스 산출물로 연결한다.
 
-- [ ] **Step 2: Define source and synchronization rules**
+- [ ] **단계 2: 출처 및 동기화 규칙 정의**
 
-State:
+다음을 명시한다.
 
-- Initial precedence: direct user/scoped instructions → Protocol and fresh repository observation → handoff → derived docs.
-- After user baselines the suite, each role document owns its domain and handoff becomes vision/handoff summary.
-- A normative change updates RTM and affected docs in the same change.
-- If handoff cannot be synchronized, create a RSK entry with reason and target week.
-- No document can weaken exact authority, approval, fail-closed, fresh evidence, protected resource, or publication gates.
+- 초기 우선순위: 직접 사용자/범위 지시 → Protocol과 최신 저장소 관찰 → 핸드오프 → 파생 문서.
+- 사용자가 문서 세트를 기준선으로 확정한 후에는 각 역할 문서가 담당 영역을 소유하고 핸드오프는 비전/인수인계 요약이 된다.
+- 규범 변경에서는 RTM과 영향을 받는 문서를 같은 변경으로 갱신한다.
+- 핸드오프를 동기화할 수 없으면 이유와 목표 주차가 있는 RSK 항목을 생성한다.
+- 어떤 문서도 정확한 권한, approval(승인), 실패 시 차단, 최신 증빙, 보호 리소스, 게시 게이트를 약화할 수 없다.
 
-- [ ] **Step 3: Run file, encoding, fence, and incomplete-marker checks**
+- [ ] **단계 3: file(파일), 인코딩, 코드 블록 경계, 미완료 표식 검사 실행**
 
-Run:
+실행:
 
 ~~~powershell
 $targets = @(
@@ -1211,11 +1211,11 @@ foreach ($path in $targets) {
 'DOC_STRUCTURE=PASS'
 ~~~
 
-Expected: DOC_STRUCTURE=PASS.
+예상 결과: DOC_STRUCTURE=PASS.
 
-- [ ] **Step 4: Validate relative Markdown links**
+- [ ] **단계 4: 상대 Markdown 링크 검증**
 
-Run:
+실행:
 
 ~~~powershell
 $targets = @(
@@ -1249,11 +1249,11 @@ foreach ($path in $targets) {
 'DOC_LINKS=PASS'
 ~~~
 
-Expected: DOC_LINKS=PASS.
+예상 결과: DOC_LINKS=PASS.
 
-- [ ] **Step 5: Re-run the RTM closure validator**
+- [ ] **단계 5: RTM 폐쇄성 검증기 재실행**
 
-Run:
+실행:
 
 ~~~powershell
 $definitions = [ordered]@{
@@ -1291,11 +1291,11 @@ if (([regex]::Matches($matrix, '\bNOT_RUN\b')).Count -lt 37) { throw 'Every init
 'RTM_VALIDATE=PASS'
 ~~~
 
-Expected: RTM_VALIDATE=PASS with PRD 37, ARC 14, THR 12, CTL 20, VG 24, WBS 35, RSK 14, orphan 0.
+예상 결과: PRD 37, ARC 14, THR 12, CTL 20, VG 24, WBS 35, RSK 14, 고립 항목 0으로 RTM_VALIDATE=PASS.
 
-- [ ] **Step 6: Check scope and repository diff**
+- [ ] **단계 6: 범위와 저장소 diff 확인**
 
-Run:
+실행:
 
 ~~~powershell
 $allowed = @(
@@ -1323,28 +1323,28 @@ git status --short
 'SCOPE_CHECK=PASS'
 ~~~
 
-Expected: only the 8 documents and this plan appear as new/modified work. The earlier committed design spec does not appear as a working-tree change.
+예상 결과: 문서 8개와 이 계획만 신규/수정 작업으로 나타난다. 이전에 커밋된 설계 명세는 작업 트리 변경으로 나타나지 않는다.
 
-- [ ] **Step 7: Perform semantic review**
+- [ ] **단계 7: 의미 검토 수행**
 
-Check line by line and record PASS/FAIL for:
+다음 항목을 줄 단위로 확인하고 PASS/FAIL을 기록한다.
 
-1. PRD contains Phase 0~4 requirements and no WBS task details.
-2. WBS details only Phase 0~1 and keeps Phase 2~4 as milestones.
-3. Architecture separates product state, WBS state, canonical accepted state.
-4. Threat model contains RESOURCE, COMMAND, NETWORK, destructive and external-effect gates.
-5. Quality plan separates planned method from actual fresh evidence.
-6. RTM uses NOT_RUN and 없음 for unexecuted product checks.
-7. Every THR has CTL and negative VG; every CTL links PRD-NFR, WBS, VG through RTM.
-8. Portfolio package is public-safe but external publication remains unapproved.
-9. Current Harness claims link to files; product runtime is not labeled IMPLEMENTED.
-10. Handoff and Protocol files are unchanged.
+1. PRD는 Phase 0~4 요구사항을 포함하고 WBS 작업 세부사항은 포함하지 않는다.
+2. WBS는 Phase 0~1만 상세화하고 Phase 2~4는 마일스톤으로 유지한다.
+3. 아키텍처는 제품 상태, WBS 상태, 정규 인수 상태를 분리한다.
+4. 위협 모델은 RESOURCE, COMMAND, NETWORK, 파괴적 작업, 외부 효과 게이트를 포함한다.
+5. 품질 계획은 계획된 방법과 실제 최신 증빙을 분리한다.
+6. RTM은 실행하지 않은 제품 검사에 NOT_RUN과 없음을 사용한다.
+7. 모든 THR은 CTL과 부정 검증 VG를 갖는다. 모든 CTL은 RTM을 통해 PRD-NFR, WBS, VG에 연결된다.
+8. 포트폴리오 패키지는 공개에 안전하지만 외부 게시는 여전히 승인되지 않았다.
+9. 현재 Harness 주장은 파일에 연결된다. 제품 runtime(런타임)은 IMPLEMENTED로 표시하지 않는다.
+10. 핸드오프와 Protocol 파일은 변경되지 않았다.
 
-If any item fails, fix the owning document and rerun Steps 3~6.
+항목이 하나라도 실패하면 소유 문서를 수정하고 단계 3~6을 다시 실행한다.
 
-- [ ] **Step 8: Run the final Git checkpoint**
+- [ ] **단계 8: 최종 Git 체크포인트 실행**
 
-Run:
+실행:
 
 ~~~powershell
 git status --short --branch
@@ -1367,13 +1367,13 @@ $targets | ForEach-Object {
 'PROPOSED_COMMIT=docs: add ForgeOps product planning foundation'
 ~~~
 
-Do not stage, commit, push, create a PR, or publish without new explicit user authority.
+새로운 명시적 사용자 권한이 없으면 스테이징, 커밋, 푸시, PR 생성, 게시를 수행하지 않는다.
 
 ---
 
-## Completion Evidence
+## 완료 증빙
 
-The executor may report completion only when all of these fresh results exist in the same execution:
+실행자는 동일한 실행에서 다음 최신 결과가 모두 있을 때만 완료를 보고할 수 있다.
 
 - PRD_VALIDATE=PASS
 - ARCH_VALIDATE=PASS
@@ -1385,6 +1385,6 @@ The executor may report completion only when all of these fresh results exist in
 - DOC_STRUCTURE=PASS
 - DOC_LINKS=PASS
 - SCOPE_CHECK=PASS
-- Semantic review 10/10 PASS
+- 의미 검토 10/10 PASS
 
-If a command cannot run, report the exact reason and leave the affected criterion NOT_RUN. Do not replace missing evidence with narrative confidence.
+command(명령)을 실행할 수 없으면 정확한 이유를 보고하고 영향을 받은 기준을 NOT_RUN으로 둔다. 누락된 증빙을 서술형 확신으로 대체하지 않는다.

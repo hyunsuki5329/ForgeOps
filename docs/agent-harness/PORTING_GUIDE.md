@@ -34,7 +34,7 @@
 프로젝트 이름, 경로, 테스트 명령, 보호 자원, 배포 규칙은 세 파일에 넣지
 않는다. 그런 값은 adapter의 project_profile에 둔다.
 
-## 4. Codex/AGENTS.md adapter
+## 4. Codex/AGENTS.md 어댑터
 
 루트 AGENTS.md에 다음 역할 매핑을 둔다.
 
@@ -50,7 +50,7 @@
 추가한다. 하위 지시는 범위를 좁히거나 검증을 강화할 수 있지만 코어 안전
 규칙을 약화할 수 없다.
 
-## 5. Copilot adapter
+## 5. Copilot 어댑터
 
 .github/copilot-instructions.md가 루트 profile과 세 역할을 로드하도록
 매핑한다. part 또는 work만 단독으로 로드하지 않는다. main이 없으면
@@ -98,7 +98,7 @@ instruction_files, source_of_truth, validation_commands, protected_resources,
 risk_rules, extensions만 허용한다. 프로젝트 전용 값은
 extensions.<프로젝트_네임스페이스> 아래에 둔다. 예를 들어 ForgeOps의
 validation_discovery는 extensions.forgeops.validation_discovery에 둔다.
-그 밖의 활성 최상위 필드는 conformance 오류다.
+그 밖의 활성 최상위 필드는 적합성 오류다.
 
 ## 7. Capability와 authority
 
@@ -179,7 +179,7 @@ Freshness는 닫힌 두 variant다.
   main validator가 한 번 캡처한 trusted validationAt과 비교한 age가 0..300초다.
 - packet은 validationAt을 제공하거나 변경할 수 없다.
 - required freshness field의 missing을 forbidden companion의 wrong-mode보다
-  먼저 판정하고, invalid, stale, future 순서로 stable하게 fail closed한다.
+  먼저 판정하고, invalid, 오래된 값, future 순서로 stable하게 fail closed한다.
 
 NO_CANDIDATE의 inspected_sources는 원본 비어 있지 않은 JSON 배열이다. 각
 entry는 source_ref, observation, evidence_refs만 정확히 가진다. source_ref는
@@ -254,30 +254,30 @@ v2만 사용한다.
 4. DIRECT 일반 응답을 확인한다.
 5. PART_ONLY 저장소 분석과 NO_CANDIDATE를 확인한다.
 6. 권한 없는 변경이 차단되는지 확인한다.
-7. stale base_revision이 거절되는지 확인한다.
+7. 오래된 base_revision이 거절되는지 확인한다.
 8. 검증 실패가 SUCCEEDED로 바뀌지 않는지 확인한다.
 9. 사람 승인 gate가 추가 쓰기를 멈추는지 확인한다.
 10. 낮은 위험의 단일 문서 변경으로 EXECUTE를 활성화한다.
 11. 네트워크와 외부 효과는 별도 정책으로 마지막에 활성화한다.
 
-## 12. Conformance 시나리오
+## 12. 적합성 시나리오
 
 ### 실행 카운터
 
-| fixture family | positive | negative |
+| 검증 데이터 계열 | 양성 | 음성 |
 | --- | ---: | ---: |
-| action/authority/network identity | 5 | 21 |
-| evidence catalog | 0 | 13 |
-| closed freshness union | 7 | 14 |
+| 작업/권한/네트워크 식별자 | 5 | 21 |
+| 증빙 카탈로그 | 0 | 13 |
+| 폐쇄형 최신성 유니온 | 7 | 14 |
 | inspected_sources | 0 | 10 |
-| WorkResult matrix | 2 | 38 |
+| WorkResult 매트릭스 | 2 | 38 |
 
-Closed-object property names retain their original JSON spelling and are
-compared case-sensitively with StringComparer.Ordinal; a case variant is not an
-alias. payload.evidence, inspected_sources when present or required, and nested
-evidence_refs are checked as raw JSON arrays before @() wrapping. Scalar, null,
-and object substitutes fail stably as EVIDENCE_LIST_TYPE_INVALID,
-INSPECTED_SOURCES_TYPE_INVALID, and EVIDENCE_REFS_TYPE_INVALID respectively.
+닫힌 객체의 속성 이름은 원래 JSON 표기를 유지하며 StringComparer.Ordinal을
+사용해 대소문자를 구분하여 비교한다. 대소문자가 다른 변형은 별칭이 아니다.
+payload.evidence, inspected_sources와 중첩 evidence_refs는 존재하거나 필수인
+경우 @() wrapping 전에 원본 JSON 배열인지 검사한다. scalar, null, object
+대체값은 각각 EVIDENCE_LIST_TYPE_INVALID, INSPECTED_SOURCES_TYPE_INVALID,
+EVIDENCE_REFS_TYPE_INVALID로 안정적으로 실패한다.
 | 합계 | 14 | 96 |
 
 세 packet example인 CANDIDATES_PROPOSED, NO_CANDIDATE, WorkResult도 별도
@@ -303,7 +303,7 @@ NAMED_RESOURCES exact 원본 배열로 각각 검사
 기대: PROJECT는 boolean root_contained만 검사하고 named membership을
 사용하지 않으며, NAMED는 exact membership만 적용
 
-### action_identity 및 network 음성 fixture
+### action_identity 및 네트워크 음성 검증 데이터
 
 입력: hybrid RESOURCE+COMMAND, identity 누락, command 대소문자 변경,
 execute_scope PROJECT, scheme/path/query/userinfo/uppercase/space/empty-label/
@@ -311,21 +311,21 @@ edge-hyphen/multiple-colon/out-of-range-port network_host
 기대: closed identity와 Canonical-NetworkHost가 stable expected_error로 거절.
 port 없는 lower-case DNS host와 port 1..65535 host는 양성
 
-### freshness fixture
+### 최신성 검증 데이터
 
 입력: REVISION/TIME metadata 누락, 두 mode 혼합, string/fraction revision,
-형식이 다른 timestamp, stale/future time
+형식이 다른 timestamp, 오래된/미래 time
 기대: trusted validationAt 기준으로 TYPE, MISSING, MODE, INVALID,
 STALE/FUTURE 순서의 stable expected_error. packet timestamp는 clock이 아님
 
-### inspected_sources fixture
+### inspected_sources 검증 데이터
 
 입력: missing/null/scalar/empty source list, extra/missing fields, noncanonical
-source_ref, blank observation, scalar/empty/duplicate/unresolved/stale refs
+source_ref, blank observation, scalar/empty/duplicate/unresolved/오래된 refs
 기대: NO_CANDIDATE는 exact schema의 원본 non-empty arrays만 통과하고 다른
 outcome의 합법적 absence 세 사례는 통과
 
-### WorkResult fixture
+### WorkResult 검증 데이터
 
 입력: case-distinct candidate/criterion ID 양성, numeric candidate_id와
 criterion_id, empty ACCEPTED refs, unknown/duplicate/missing candidate ID,
@@ -341,7 +341,7 @@ FAILED criterion을 가진 SUCCEEDED, 네 closed enum 위반, status/transition
 입력: CHANGE지만 write_scope가 NONE
 기대: work 호출 전 WAITING_FOR_HUMAN 또는 BLOCKED
 
-### stale revision
+### 오래된 revision
 
 입력: 현재 accepted revision보다 낮은 WorkResult
 기대: HC-STATE-001, 결과 거절, 자동 덮어쓰기 없음
@@ -360,9 +360,9 @@ FAILED criterion을 가진 SUCCEEDED, 네 closed enum 위반, status/transition
 
 입력: publish 요청, external_side_effects UNKNOWN
 기대: human gate, 효과 실행 없음
-## 13. 구조 및 semantic 검증
+## 13. 구조 및 의미론적 검증
 
-프로젝트 루트에서 Task 6 Step 4의 shared conformance를 실행한다. 이 검사는
+프로젝트 루트에서 Task 6 Step 4의 공유 적합성 검사를 실행한다. 이 검사는
 세 role validator를 각각 새 PowerShell process에서 실행하고 case ID,
 mutation, input shape hash, expected/actual error를 보존한다. 그 다음 세
 packet example, adapter/profile, UTF-8, Markdown link, legacy 위치, diff를

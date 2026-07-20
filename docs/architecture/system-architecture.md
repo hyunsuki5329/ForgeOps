@@ -5,7 +5,7 @@
 **대상 독자:** 1인 개발자, 포트폴리오 검토자
 **문서 목적:** ForgeOps 구성요소, 상태·권한 소유권과 실행·증빙 계약의 기준 정의
 **문서 범위:** 현재 Harness Foundation과 Phase 0~4 목표 제품 아키텍처
-**현재 상태:** Harness Foundation만 IMPLEMENTED, 제품 계약은 SPECIFIED, 제품 runtime은 PLANNED
+**현재 상태:** Harness Foundation과 Product Task Contract bridge는 IMPLEMENTED, 나머지 제품 계약은 SPECIFIED, 제품 runtime은 PLANNED
 **기준 출처:** [ForgeOps 제품 요구사항 문서](../product/prd.md), [ForgeOps 전체 제품 핸드오프](../handoff/forgeops-full-handoff.md), [ForgeOps 제품 기초 문서 체계 설계](../superpowers/specs/2026-07-14-forgeops-product-documentation-design.md)
 **관련 문서:** [13. 관련 문서](#13-관련-문서)
 
@@ -28,9 +28,9 @@ sandbox provisioner, Tool Gateway, durable event store 및 외부 publisher는
 
 ## 2. 현재와 목표 경계
 
-ForgeOps는 **Harness Foundation 완료, 제품 Phase 0 시작 전** 상태다. 현재
-구현은 prompt와 repository adapter/profile에 표현된 Protocol 2.0 계약과
-Main·Part·Work 역할 경계뿐이다. Work가 사용자에게 허용된 현재 project
+ForgeOps는 **Harness Foundation과 Phase 0 W1 bridge 완료** 상태다. 현재
+구현은 Protocol 2.0 prompt·repository adapter/profile 및 Product Task Contract
+schema·fixture 검증기에 한정된다. Work가 사용자에게 허용된 현재 project
 workspace를 직접 변경할 수 있다는 사실은 제품의 immutable snapshot,
 ephemeral workspace, containment, durable recovery 또는 rollback 보장이
 아니다.
@@ -38,7 +38,8 @@ ephemeral workspace, containment, durable recovery 또는 rollback 보장이
 | 계층 또는 capability | 성숙도 | 이 문서에서 허용하는 주장 | 금지되는 확대 해석 |
 | --- | --- | --- | --- |
 | Portable Harness Foundation | IMPLEMENTED | Main·Part·Work와 adapter/profile의 prompt 계약 및 fixture가 저장소에 존재한다. | 제품 service, 격리 runtime 또는 durable persistence가 작동한다는 주장 |
-| Product contract layer | SPECIFIED | Product Task Contract bridge, 제품 상태 mapping, API/event/manifest/replay 계약을 이 문서와 PRD가 정의한다. | 계약 정의를 runtime 구현이나 검증 통과로 표현 |
+| Product Task Contract bridge | IMPLEMENTED | versioned schema와 lossless/non-grant fixture가 fresh VG-002 E2를 통과했다. | bridge 통과를 제품 orchestration 또는 runtime 구현으로 표현 |
+| 나머지 product contract layer | SPECIFIED | 제품 상태 mapping, API/event/manifest/replay 계약을 이 문서와 PRD가 정의한다. | 계약 정의를 runtime 구현이나 검증 통과로 표현 |
 | Product runtime | PLANNED | Control Plane, Orchestration, Context Engine, Tool Gateway, workspace, verification/recovery/evaluation, artifact 및 publisher를 단계별로 구현한다. | 현재 API, queue, DB, sandbox, rollback, 외부 SCM write가 가능하다는 주장 |
 
 현재와 목표 사이의 bridge는 제품 입력을 canonical TaskPacket으로
@@ -95,14 +96,14 @@ flowchart LR
 ## 4. 논리적 구성요소
 
 아키텍처 catalog의 성숙도는 `IMPLEMENTED`, `SPECIFIED`, `PLANNED`의 closed
-set을 사용한다. `IMPLEMENTED`는 실제 prompt 파일이 확인되는 ARC-001에만
-적용한다. 나머지는 제품 runtime 구현을 주장하지 않으며 각 PRD 연결은
+set을 사용한다. `IMPLEMENTED`는 실제 prompt 파일이 확인되는 ARC-001과
+fresh fixture로 검증된 bridge 범위의 ARC-002·ARC-010에 적용한다. 나머지는 제품 runtime 구현을 주장하지 않으며 각 PRD 연결은
 요구사항의 소유권을 복제하지 않는 추적 link다.
 
 | ID | Maturity | Responsibility | Dependencies | Related requirements |
 | --- | --- | --- | --- | --- |
 | ARC-001 | IMPLEMENTED | Portable Harness Foundation: [Main](../../.github/agents/main_instruction.prompt.md), [Part](../../.github/agents/part_agent.prompt.md), [Work](../../.github/agents/work_agent.prompt.md)와 repository [adapter/profile](../../AGENTS.md) 경계 | 현재 저장소 prompt, adapter, fixture | PRD-NFR-001, PRD-NFR-002, PRD-NFR-009 |
-| ARC-002 | SPECIFIED | Product layer와 Protocol 2.0 사이의 비약 없는 경계; 제품 계약이 canonical 의미를 약화하거나 암묵 확장하지 못하게 한다. | ARC-001, versioned bridge schema | PRD-FR-001, PRD-FR-002, PRD-NFR-009 |
+| ARC-002 | IMPLEMENTED | Product layer와 Protocol 2.0 사이의 비약 없는 bridge 경계; 제품 계약이 canonical 의미를 약화하거나 암묵 확장하지 못하게 한다. | ARC-001, versioned bridge schema와 VG-002 fixture | PRD-FR-001, PRD-FR-002, PRD-NFR-009 |
 | ARC-003 | PLANNED | Control Plane: task, approval, budget, RBAC, queue와 사용자 가시성 책임 | ARC-002, ARC-012, ARC-013 | PRD-FR-006, PRD-FR-013, PRD-FR-019, PRD-NFR-008, PRD-NFR-011 |
 | ARC-004 | PLANNED | Orchestration Engine: normalize, route, state proposal 조정과 MainDecision 제출 책임 | ARC-001, ARC-002, ARC-003, ARC-010 | PRD-FR-001, PRD-FR-010, PRD-FR-013 |
 | ARC-005 | PLANNED | Repository Context Engine: immutable snapshot index, retrieval, source-attributed Context Pack 책임 | ARC-007, snapshot provider | PRD-FR-008, PRD-FR-009, PRD-NFR-004 |
@@ -110,7 +111,7 @@ set을 사용한다. `IMPLEMENTED`는 실제 prompt 파일이 확인되는 ARC-0
 | ARC-007 | PLANNED | Ephemeral Workspace와 sandbox: immutable source 분리, containment, quota, egress, cleanup 책임 | snapshot provider, sandbox provisioner, ARC-006 | PRD-FR-007, PRD-FR-011, PRD-NFR-003, PRD-NFR-005 |
 | ARC-008 | PLANNED | Verification, Recovery, Evaluation Engine: trusted verification, failure 분류, bounded repair, deterministic gate와 평가 책임 | ARC-005, ARC-007, ARC-011 | PRD-FR-012, PRD-FR-014, PRD-FR-015, PRD-FR-016, PRD-FR-017, PRD-NFR-001, PRD-NFR-010 |
 | ARC-009 | SPECIFIED | Product workflow state와 canonical accepted state의 명시적 mapping 및 `CANCELLED` gap 계약 | ARC-001, ARC-002, versioned state schema | PRD-FR-002, PRD-FR-013, PRD-NFR-005, PRD-NFR-006 |
-| ARC-010 | SPECIFIED | Product Task Contract와 TaskPacket 사이의 lossless bridge 계약 | ARC-001, ARC-002 | PRD-FR-001, PRD-FR-003, PRD-NFR-002, PRD-NFR-009 |
+| ARC-010 | IMPLEMENTED | Product Task Contract와 TaskPacket 사이의 lossless/non-grant bridge 계약과 검증기 | ARC-001, ARC-002, VG-002 fixture | PRD-FR-001, PRD-FR-003, PRD-NFR-002, PRD-NFR-009 |
 | ARC-011 | SPECIFIED | Durable event, run manifest, evidence와 artifact provenance 계약 | ARC-009, ARC-010 | PRD-FR-004, PRD-NFR-001, PRD-NFR-004, PRD-NFR-006 |
 | ARC-012 | SPECIFIED | Product data model, versioned API와 realtime event stream 계약 | ARC-009, ARC-010, ARC-011 | PRD-FR-003, PRD-FR-004, PRD-NFR-006, PRD-NFR-011 |
 | ARC-013 | SPECIFIED | Approval-bound external effect와 replay mode 경계 | ARC-003, ARC-006, ARC-011 | PRD-FR-006, PRD-FR-018, PRD-FR-025, PRD-NFR-002, PRD-NFR-005 |

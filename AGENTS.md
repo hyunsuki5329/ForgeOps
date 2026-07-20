@@ -44,7 +44,12 @@ project_profile:
     - applicable_instruction_files
     - repository_files
     - fresh_tool_observations
-  validation_commands: []
+  validation_commands:
+    - id: bridge-schema-fixture
+      command: python tools/contract_bridge/verify.py --schema contracts/product-task-contract/1.0/schema.json --suite fixtures/product-task-contract-bridge/suite.json --result artifacts/verification/vg-002-contract-bridge-result.json --report artifacts/reviews/w1-contract-bridge-checkpoint.html
+      cwd: "."
+      evidence_tier: E2
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -60,6 +65,10 @@ project_profile:
     - scope_expansion_requires_approval
   extensions:
     forgeops:
+      verification_profiles:
+        - id: forgeops-contract-bridge
+          command_ids:
+            - bridge-schema-fixture
       validation_discovery:
         - pyproject.toml
         - uv.lock

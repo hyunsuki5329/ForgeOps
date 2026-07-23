@@ -1,0 +1,568 @@
+{
+  "assertions": {
+    "negative_zero_adapter_calls": true,
+    "no_dns_calls": true,
+    "no_process_calls": true,
+    "no_socket_calls": true,
+    "positive_single_adapter_call": true
+  },
+  "cases": [
+    {
+      "actual": "PASSED",
+      "adapter": {
+        "adapter_calls": 1,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "PASSED",
+      "id": "POSITIVE_COMMAND_EXACT_TRIPLE",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "adapter": {
+        "adapter_calls": 1,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "PASSED",
+      "id": "POSITIVE_NETWORK_HOST",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "adapter": {
+        "adapter_calls": 1,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "PASSED",
+      "id": "POSITIVE_NETWORK_HOST_PORT",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_COMMAND_CAPABILITY_UNKNOWN",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_NETWORK_CANDIDATE_UNAPPROVED",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_IDENTITY_MISMATCH",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_IDENTITY_MISMATCH",
+      "id": "NEGATIVE_COMMAND_ID_MISMATCH",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_IDENTITY_MISMATCH",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_IDENTITY_MISMATCH",
+      "id": "NEGATIVE_COMMAND_TEXT_MISMATCH",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_IDENTITY_MISMATCH",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_IDENTITY_MISMATCH",
+      "id": "NEGATIVE_COMMAND_CWD_MISMATCH",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_RAW_FORBIDDEN",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_RAW_FORBIDDEN",
+      "id": "NEGATIVE_COMMAND_RAW",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_SCOPE_INVALID",
+      "id": "NEGATIVE_COMMAND_PROJECT_SCOPE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_SCOPE_INVALID",
+      "id": "NEGATIVE_COMMAND_NONE_SCOPE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_SCOPE_INVALID",
+      "id": "NEGATIVE_COMMAND_UNKNOWN_SCOPE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_SCOPE_INVALID",
+      "id": "NEGATIVE_COMMAND_NAMED_EMPTY",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_SCOPE_INVALID",
+      "id": "NEGATIVE_COMMAND_NAMED_DUPLICATE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "COMMAND_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "COMMAND_SCOPE_INVALID",
+      "id": "NEGATIVE_COMMAND_NAMED_WILDCARD",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_SCHEME",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_PATH",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_QUERY",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_FRAGMENT",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_USERINFO",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_WHITESPACE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_UPPERCASE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_WILDCARD",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_LABEL",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_EDGE_HYPHEN",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_MULTIPLE_COLONS",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_PORT_ZERO",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_IDENTITY_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_IDENTITY_INVALID",
+      "id": "NEGATIVE_NETWORK_PORT_HIGH",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_EXACT_MATCH_REQUIRED",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_EXACT_MATCH_REQUIRED",
+      "id": "NEGATIVE_NETWORK_EXACT_MISMATCH",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_SCOPE_INVALID",
+      "id": "NEGATIVE_NETWORK_PROJECT_SCOPE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_SCOPE_INVALID",
+      "id": "NEGATIVE_NETWORK_NAMED_EMPTY",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_SCOPE_INVALID",
+      "id": "NEGATIVE_NETWORK_NAMED_DUPLICATE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_SCOPE_INVALID",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_SCOPE_INVALID",
+      "id": "NEGATIVE_NETWORK_INVALID_ALLOWLIST_EXTRA",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_REDIRECT_INHERITANCE_FORBIDDEN",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_REDIRECT_INHERITANCE_FORBIDDEN",
+      "id": "NEGATIVE_NETWORK_REDIRECT_INHERITANCE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_DESTINATION_FORBIDDEN",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_DESTINATION_FORBIDDEN",
+      "id": "NEGATIVE_NETWORK_PRIVATE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_DESTINATION_FORBIDDEN",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_DESTINATION_FORBIDDEN",
+      "id": "NEGATIVE_NETWORK_LOOPBACK",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_DESTINATION_FORBIDDEN",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_DESTINATION_FORBIDDEN",
+      "id": "NEGATIVE_NETWORK_LINK_LOCAL",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_DESTINATION_FORBIDDEN",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_DESTINATION_FORBIDDEN",
+      "id": "NEGATIVE_NETWORK_METADATA",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "NETWORK_DESTINATION_FORBIDDEN",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "NETWORK_DESTINATION_FORBIDDEN",
+      "id": "NEGATIVE_NETWORK_CLASSIFICATION_MISMATCH",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_COMMAND_EXPLORE_MODE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_NETWORK_STALE_REVISION",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "adapter": {
+        "adapter_calls": 0,
+        "dns_calls": 0,
+        "process_calls": 0,
+        "socket_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_COMMAND_PREFLIGHT_FAILED",
+      "kind": "negative",
+      "status": "PASSED"
+    }
+  ],
+  "catalog_match": true,
+  "command_id": "command-network-negative",
+  "observed_at": "2026-07-23T04:44:07Z",
+  "schema_sha256": "f7efb70700f16d93fa9b37c76140fa9a624e0f573625423b8b39637409b27a0c",
+  "status": "PASSED",
+  "suite_sha256": "ceec67c111f3c065920ebce0dc6c945dcfa63874b70d85ad76bd8983ea4b1bae",
+  "summary": {
+    "failed": 0,
+    "passed": 42,
+    "total": 42
+  }
+}

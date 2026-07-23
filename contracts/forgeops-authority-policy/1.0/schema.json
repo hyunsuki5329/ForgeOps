@@ -1,0 +1,453 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:forgeops:authority-policy:1.0",
+  "title": "ForgeOps Closed Authority Policy Fixture 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["suite_id", "suite_version", "schema_ref", "cases"],
+  "properties": {
+    "suite_id": {
+      "enum": [
+        "forgeops-authority-resource-v1",
+        "forgeops-authority-command-network-v1",
+        "forgeops-approval-policy-v1"
+      ]
+    },
+    "suite_version": {"const": "1.0"},
+    "schema_ref": {"const": "contracts/forgeops-authority-policy/1.0/schema.json"},
+    "catalog": {"$ref": "#/$defs/command_network_catalog"},
+    "base_request": {"$ref": "#/$defs/approval_request"},
+    "cases": {"type": "array", "minItems": 1}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"suite_id": {"const": "forgeops-authority-resource-v1"}},
+        "required": ["suite_id"]
+      },
+      "then": {
+        "not": {"required": ["catalog"]},
+        "properties": {"cases": {"items": {"$ref": "#/$defs/resource_case"}}}
+      },
+      "else": {
+        "if": {
+          "properties": {"suite_id": {"const": "forgeops-authority-command-network-v1"}},
+          "required": ["suite_id"]
+        },
+        "then": {
+          "required": ["catalog"],
+          "not": {"required": ["base_request"]},
+          "properties": {"cases": {"items": {"$ref": "#/$defs/command_network_case"}}}
+        },
+        "else": {
+          "required": ["base_request"],
+          "not": {"required": ["catalog"]},
+          "properties": {"cases": {"items": {"$ref": "#/$defs/approval_case"}}}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "resource_case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "request"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["positive", "negative"]},
+        "request": {"$ref": "#/$defs/resource_request"},
+        "expected_result": {"const": "PASSED"},
+        "expected_error": {"$ref": "#/$defs/resource_error"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "negative"}}, "required": ["kind"]},
+          "then": {"required": ["expected_error"], "not": {"required": ["expected_result"]}},
+          "else": {"required": ["expected_result"], "not": {"required": ["expected_error"]}}
+        }
+      ]
+    },
+    "resource_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action", "identity", "authority", "capability", "approved_candidate",
+        "current_revision", "operation_mode", "protected_target_approval"
+      ],
+      "properties": {
+        "action": {"$ref": "#/$defs/resource_action"},
+        "identity": {"$ref": "#/$defs/resource_identity"},
+        "authority": {"$ref": "#/$defs/resource_authority"},
+        "capability": {"enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"]},
+        "approved_candidate": {"type": "boolean"},
+        "current_revision": {"type": "boolean"},
+        "operation_mode": {"enum": ["EXPLORE", "EXECUTE"]},
+        "protected_target_approval": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/protected_target_approval"}
+          ]
+        }
+      }
+    },
+    "protected_target_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_ref", "classification"],
+      "properties": {
+        "resource_ref": {"type": "string", "minLength": 1},
+        "classification": {"enum": ["PROTECTED", "CREDENTIAL", "PRIVATE_DATA"]}
+      }
+    },
+    "resource_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_type", "operation", "user_change_owned"],
+      "properties": {
+        "action_type": {"enum": ["READ_RESOURCE", "CREATE_RESOURCE", "UPDATE_RESOURCE", "DELETE_RESOURCE"]},
+        "operation": {"enum": ["read", "create", "update", "delete"]},
+        "user_change_owned": {"type": "boolean"}
+      }
+    },
+    "resource_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_kind", "resource_ref", "root_contained", "symlink_contained", "classification"],
+      "properties": {
+        "identity_kind": {"const": "RESOURCE"},
+        "resource_ref": {"type": "string", "minLength": 1},
+        "root_contained": {"type": "boolean"},
+        "symlink_contained": {"type": "boolean"},
+        "classification": {"enum": ["PUBLIC", "PROTECTED", "CREDENTIAL", "PRIVATE_DATA"]}
+      }
+    },
+    "resource_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "resources"],
+      "properties": {
+        "scope": {"enum": ["PROJECT", "NAMED_RESOURCES", "NONE", "UNKNOWN"]},
+        "resources": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "resource_error": {
+      "enum": [
+        "RESOURCE_SCHEMA_INVALID", "RESOURCE_PATH_INVALID", "RESOURCE_SCOPE_INVALID",
+        "RESOURCE_CONTAINMENT_FAILED", "RESOURCE_EXACT_MATCH_REQUIRED",
+        "RESOURCE_CAPABILITY_DENIED", "PROTECTED_TARGET_APPROVAL_REQUIRED",
+        "USER_CHANGE_CONFLICT"
+      ]
+    },
+    "command_network_catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commands", "network_destinations"],
+      "properties": {
+        "commands": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/command_record"}
+        },
+        "network_destinations": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "enum": ["PUBLIC", "PRIVATE", "LOOPBACK", "LINK_LOCAL", "METADATA"]
+          }
+        }
+      }
+    },
+    "command_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command", "cwd"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "command": {"type": "string", "minLength": 1},
+        "cwd": {"type": "string", "minLength": 1}
+      }
+    },
+    "command_network_case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "request"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["positive", "negative"]},
+        "request": {"$ref": "#/$defs/command_network_request"},
+        "expected_result": {"const": "PASSED"},
+        "expected_error": {"$ref": "#/$defs/command_network_error"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "negative"}}, "required": ["kind"]},
+          "then": {"required": ["expected_error"], "not": {"required": ["expected_result"]}},
+          "else": {"required": ["expected_result"], "not": {"required": ["expected_error"]}}
+        }
+      ]
+    },
+    "command_network_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action", "identity", "authority", "operation_mode", "capability",
+        "approved_candidate", "current_revision", "all_preflights_passed",
+        "destination_class", "redirect_source"
+      ],
+      "properties": {
+        "action": {"$ref": "#/$defs/command_network_action"},
+        "identity": {
+          "oneOf": [
+            {"$ref": "#/$defs/command_identity"},
+            {"$ref": "#/$defs/raw_command_identity"},
+            {"$ref": "#/$defs/network_identity"}
+          ]
+        },
+        "authority": {
+          "oneOf": [
+            {"$ref": "#/$defs/command_authority"},
+            {"$ref": "#/$defs/network_authority"}
+          ]
+        },
+        "operation_mode": {"enum": ["EXECUTE", "EXPLORE"]},
+        "capability": {"enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"]},
+        "approved_candidate": {"type": "boolean"},
+        "current_revision": {"type": "boolean"},
+        "all_preflights_passed": {"type": "boolean"},
+        "destination_class": {
+          "type": ["string", "null"],
+          "enum": [null, "PUBLIC", "PRIVATE", "LOOPBACK", "LINK_LOCAL", "METADATA"]
+        },
+        "redirect_source": {"type": ["string", "null"]}
+      }
+    },
+    "command_network_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_type", "operation"],
+      "properties": {
+        "action_type": {"enum": ["EXECUTE_COMMAND", "CALL_NETWORK"]},
+        "operation": {"const": "invoke"}
+      }
+    },
+    "command_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_kind", "command_id", "command", "cwd"],
+      "properties": {
+        "identity_kind": {"const": "COMMAND"},
+        "command_id": {"type": "string", "minLength": 1},
+        "command": {"type": "string", "minLength": 1},
+        "cwd": {"type": "string", "minLength": 1}
+      }
+    },
+    "raw_command_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_kind", "command"],
+      "properties": {
+        "identity_kind": {"const": "COMMAND"},
+        "command": {"type": "string", "minLength": 1}
+      }
+    },
+    "network_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_kind", "network_host"],
+      "properties": {
+        "identity_kind": {"const": "NETWORK"},
+        "network_host": {"type": "string", "minLength": 1}
+      }
+    },
+    "command_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["execute_scope", "execute_commands"],
+      "properties": {
+        "execute_scope": {"enum": ["NAMED_COMMANDS", "PROJECT", "NONE", "UNKNOWN"]},
+        "execute_commands": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "network_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["network_scope", "network_hosts"],
+      "properties": {
+        "network_scope": {"enum": ["NAMED_HOSTS", "PROJECT", "NONE", "UNKNOWN"]},
+        "network_hosts": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "command_network_error": {
+      "enum": [
+        "COMMAND_NETWORK_SCHEMA_INVALID", "COMMAND_RAW_FORBIDDEN",
+        "COMMAND_SCOPE_INVALID", "COMMAND_IDENTITY_MISMATCH",
+        "NETWORK_IDENTITY_INVALID", "NETWORK_SCOPE_INVALID",
+        "NETWORK_EXACT_MATCH_REQUIRED", "NETWORK_REDIRECT_INHERITANCE_FORBIDDEN",
+        "NETWORK_DESTINATION_FORBIDDEN", "AUTHORITY_CAPABILITY_DENIED"
+      ]
+    },
+    "approval_case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "scenario", "mutations"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["positive", "negative"]},
+        "scenario": {"enum": ["evaluate", "nonce_reuse", "replay", "nonce_failure", "concurrent"]},
+        "mutations": {"type": "array", "items": {"$ref": "#/$defs/approval_mutation"}},
+        "expected_result": {"const": "PASSED"},
+        "expected_error": {"$ref": "#/$defs/approval_error"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "negative"}}, "required": ["kind"]},
+          "then": {"required": ["expected_error"], "not": {"required": ["expected_result"]}},
+          "else": {"required": ["expected_result"], "not": {"required": ["expected_error"]}}
+        }
+      ]
+    },
+    "approval_mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^[a-z_]+(?:\\.[a-z_]+)*$"},
+        "value": {},
+        "remove": {"const": true}
+      },
+      "oneOf": [
+        {"required": ["value"], "not": {"required": ["remove"]}},
+        {"required": ["remove"], "not": {"required": ["value"]}}
+      ]
+    },
+    "approval_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_mode", "capability", "exact_authority", "approved_candidate",
+        "current_revision", "all_preflights_passed", "effect", "destructive_actions",
+        "external_runtime", "external_side_effects", "base_revision", "candidate_id",
+        "action_identity", "target", "tenant", "trusted_issuer", "trusted_audience",
+        "trusted_approver_subject", "trusted_policy_version", "trusted_key_id",
+        "trusted_signature_ref", "signature_verified", "approval_decision",
+        "validation_time", "contract", "plan", "policy", "diff", "payload"
+      ],
+      "properties": {
+        "operation_mode": {"enum": ["EXECUTE", "EXPLORE"]},
+        "capability": {"enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"]},
+        "exact_authority": {"enum": ["ALLOWED", "DENIED", "UNKNOWN"]},
+        "approved_candidate": {"type": "boolean"},
+        "current_revision": {"type": "boolean"},
+        "all_preflights_passed": {"type": "boolean"},
+        "effect": {"$ref": "#/$defs/effect_classification"},
+        "destructive_actions": {"enum": ["ALLOWED", "DENIED", "UNKNOWN"]},
+        "external_runtime": {"enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"]},
+        "external_side_effects": {"enum": ["ALLOWED", "DENIED", "UNKNOWN"]},
+        "base_revision": {"type": "integer", "minimum": 0},
+        "candidate_id": {"type": "string", "minLength": 1},
+        "action_identity": {"$ref": "#/$defs/approval_action_identity"},
+        "target": {"type": "string", "minLength": 1},
+        "tenant": {"type": "string", "minLength": 1},
+        "trusted_issuer": {"type": "string", "minLength": 1},
+        "trusted_audience": {"type": "string", "minLength": 1},
+        "trusted_approver_subject": {"type": "string", "minLength": 1},
+        "trusted_policy_version": {"type": "string", "minLength": 1},
+        "trusted_key_id": {"type": "string", "minLength": 1},
+        "trusted_signature_ref": {"type": "string", "minLength": 1},
+        "signature_verified": {"type": "boolean"},
+        "approval_decision": {"enum": ["APPROVED", "REJECTED"]},
+        "validation_time": {"type": "string", "minLength": 1},
+        "contract": {"$ref": "#/$defs/contract_binding"},
+        "plan": {"$ref": "#/$defs/plan_binding"},
+        "policy": {"$ref": "#/$defs/policy_binding"},
+        "diff": {"$ref": "#/$defs/hash_binding"},
+        "payload": {"$ref": "#/$defs/payload_binding"},
+        "approval": {"$ref": "#/$defs/approval_record"}
+      }
+    },
+    "effect_classification": {
+      "type": "object", "additionalProperties": false,
+      "required": ["destructive", "external"],
+      "properties": {"destructive": {"type": "boolean"}, "external": {"type": "boolean"}}
+    },
+    "approval_action_identity": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["identity_kind", "resource_ref"],
+          "properties": {"identity_kind": {"const": "RESOURCE"}, "resource_ref": {"type": "string", "minLength": 1}}
+        },
+        {"$ref": "#/$defs/command_identity"},
+        {"$ref": "#/$defs/network_identity"}
+      ]
+    },
+    "contract_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_id", "content_hash"],
+      "properties": {"artifact_id": {"type": "string", "minLength": 1}, "content_hash": {"type": "string", "minLength": 1}}
+    },
+    "plan_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["plan_id", "content_hash"],
+      "properties": {"plan_id": {"type": "string", "minLength": 1}, "content_hash": {"type": "string", "minLength": 1}}
+    },
+    "policy_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["policy_id", "version"],
+      "properties": {"policy_id": {"type": "string", "minLength": 1}, "version": {"type": "string", "minLength": 1}}
+    },
+    "hash_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["content_hash"],
+      "properties": {"content_hash": {"type": "string", "minLength": 1}}
+    },
+    "payload_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["content_hash", "media_type"],
+      "properties": {"content_hash": {"type": "string", "minLength": 1}, "media_type": {"type": "string", "minLength": 1}}
+    },
+    "approval_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id", "action_identity", "target", "tenant", "issuer", "audience",
+        "approver_subject", "policy_version", "key_id", "not_before", "expires_at",
+        "nonce", "signature_ref", "effect_hash"
+      ],
+      "properties": {
+        "candidate_id": {"type": "string", "minLength": 1},
+        "action_identity": {"$ref": "#/$defs/approval_action_identity"},
+        "target": {"type": "string", "minLength": 1},
+        "tenant": {"type": "string", "minLength": 1},
+        "issuer": {"type": "string", "minLength": 1},
+        "audience": {"type": "string", "minLength": 1},
+        "approver_subject": {"type": "string", "minLength": 1},
+        "policy_version": {"type": "string", "minLength": 1},
+        "key_id": {"type": "string", "minLength": 1},
+        "not_before": {"type": "string", "minLength": 1},
+        "expires_at": {"type": "string", "minLength": 1},
+        "nonce": {"type": "string", "minLength": 1},
+        "signature_ref": {"type": "string", "minLength": 1},
+        "effect_hash": {"type": "string"}
+      }
+    },
+    "approval_error": {
+      "enum": [
+        "EFFECT_GATE_DENIED", "AUTHORITY_CAPABILITY_DENIED", "APPROVAL_MISSING",
+        "APPROVAL_REJECTED", "APPROVAL_EXPIRED", "APPROVAL_AUDIENCE_INVALID",
+        "APPROVAL_TENANT_INVALID", "APPROVAL_BINDING_MISMATCH",
+        "APPROVAL_SIGNATURE_INVALID", "APPROVAL_NONCE_REUSED",
+        "APPROVAL_NONCE_CONSUME_FAILED"
+      ]
+    }
+  }
+}

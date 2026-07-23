@@ -50,6 +50,41 @@ project_profile:
       cwd: "."
       evidence_tier: E2
       required: true
+    - id: state-transition-fixture
+      command: python tools/state_contract/verify.py --schema contracts/forgeops-state-contract/1.0/schema.json --suite fixtures/forgeops-state-contract/state-suite.json --result artifacts/verification/vg-003-state-transition-result.json --command-id state-transition-fixture
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: event-order-fixture
+      command: python tools/state_contract/verify.py --schema contracts/forgeops-state-contract/1.0/schema.json --suite fixtures/forgeops-state-contract/state-suite.json --result artifacts/verification/vg-003-event-order-result.json --command-id event-order-fixture
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: replay-contract-negative
+      command: python tools/replay_contract/verify.py --schema contracts/forgeops-replay-contract/1.0/schema.json --suite fixtures/forgeops-replay-contract/suite.json --result artifacts/verification/vg-003-replay-contract-result.json
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: resource-authority-negative
+      command: python tools/policy_contract/verify.py resource --schema contracts/forgeops-authority-policy/1.0/schema.json --suite fixtures/forgeops-authority-resource/suite.json --result artifacts/verification/vg-005-resource-authority-result.json --command-id resource-authority-negative
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: protected-read-negative
+      command: python tools/policy_contract/verify.py resource --schema contracts/forgeops-authority-policy/1.0/schema.json --suite fixtures/forgeops-authority-resource/suite.json --result artifacts/verification/vg-005-protected-read-result.json --command-id protected-read-negative
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: command-network-negative
+      command: python tools/policy_contract/verify.py command-network --schema contracts/forgeops-authority-policy/1.0/schema.json --suite fixtures/forgeops-authority-command-network/suite.json --result artifacts/verification/vg-006-command-network-result.json --command-id command-network-negative
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: approval-negative-fixture
+      command: python tools/policy_contract/verify.py approval --schema contracts/forgeops-authority-policy/1.0/schema.json --suite fixtures/forgeops-approval-policy/suite.json --result artifacts/verification/vg-007-approval-policy-result.json --command-id approval-negative-fixture
+      cwd: "."
+      evidence_tier: E2
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -69,6 +104,21 @@ project_profile:
         - id: forgeops-contract-bridge
           command_ids:
             - bridge-schema-fixture
+        - id: forgeops-state-contract
+          command_ids:
+            - state-transition-fixture
+            - event-order-fixture
+            - replay-contract-negative
+        - id: forgeops-authority-resource
+          command_ids:
+            - resource-authority-negative
+            - protected-read-negative
+        - id: forgeops-authority-command-network
+          command_ids:
+            - command-network-negative
+        - id: forgeops-approval-policy
+          command_ids:
+            - approval-negative-fixture
       validation_discovery:
         - pyproject.toml
         - uv.lock

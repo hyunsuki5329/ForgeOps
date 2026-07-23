@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:forgeops:state-contract:1.0",
+  "title": "ForgeOps State Contract Fixture 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["suite_id", "suite_version", "schema_ref", "cases"],
+  "properties": {
+    "suite_id": {"const": "forgeops-state-contract-v1"},
+    "suite_version": {"const": "1.0"},
+    "schema_ref": {"type": "string", "minLength": 1},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/case"}
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "snapshot", "proposal"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["positive", "negative", "mapping"]},
+        "snapshot": {"$ref": "#/$defs/snapshot"},
+        "proposal": {"$ref": "#/$defs/proposal"},
+        "expected_result": {"const": "PASSED"},
+        "expected_error": {"$ref": "#/$defs/error_code"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "negative"}}, "required": ["kind"]},
+          "then": {"required": ["expected_error"], "not": {"required": ["expected_result"]}},
+          "else": {"required": ["expected_result"], "not": {"required": ["expected_error"]}}
+        }
+      ]
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "correlation_id", "status", "revision", "next_seq"],
+      "properties": {
+        "task_id": {"type": "string", "minLength": 1},
+        "correlation_id": {"type": "string", "minLength": 1},
+        "status": {"enum": ["PENDING", "IN_PROGRESS", "WAITING_FOR_HUMAN", "BLOCKED", "SUCCEEDED", "FAILED", "PARTIAL"]},
+        "revision": {"type": "integer", "minimum": 0},
+        "next_seq": {"type": "integer", "minimum": 1}
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor", "product_state", "canonical_state", "base_revision", "expected_seq", "has_required_evidence"],
+      "properties": {
+        "actor": {"enum": ["main", "part", "work"]},
+        "product_state": {"enum": ["CREATED", "TRIAGING", "EVALUATING", "AWAITING_USER", "AWAITING_APPROVAL", "REVIEW_REQUIRED", "PARTIAL_RESULT", "COMPLETED_VERIFIED", "POLICY_BLOCKED", "BASELINE_UNHEALTHY", "FAILED", "REJECTED", "BUDGET_EXCEEDED", "CANCELLED"]},
+        "canonical_state": {"enum": ["PENDING", "IN_PROGRESS", "WAITING_FOR_HUMAN", "BLOCKED", "SUCCEEDED", "FAILED", "PARTIAL"]},
+        "base_revision": {"type": "integer", "minimum": 0},
+        "expected_seq": {"type": "integer", "minimum": 1},
+        "has_required_evidence": {"type": "boolean"}
+      }
+    },
+    "error_code": {
+      "enum": ["STATE_SCHEMA_INVALID", "STATE_OWNER_INVALID", "STATE_REVISION_STALE", "STATE_SEQUENCE_OUT_OF_ORDER", "STATE_TRANSITION_INVALID", "STATE_MAPPING_INVALID", "STATE_CANCELLED_COERCION_FORBIDDEN", "STATE_EVIDENCE_INSUFFICIENT"]
+    }
+  }
+}

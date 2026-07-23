@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:forgeops:replay-contract:1.0",
+  "title": "ForgeOps Replay Contract Fixture 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["suite_id", "suite_version", "schema_ref", "cases"],
+  "properties": {
+    "suite_id": {"const": "forgeops-replay-contract-v1"},
+    "suite_version": {"const": "1.0"},
+    "schema_ref": {"const": "contracts/forgeops-replay-contract/1.0/schema.json"},
+    "cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/case"}}
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "request"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["positive", "negative"]},
+        "request": {"$ref": "#/$defs/request"},
+        "expected_result": {"const": "PASSED"},
+        "expected_error": {"$ref": "#/$defs/error_code"}
+      },
+      "allOf": [{
+        "if": {"properties": {"kind": {"const": "negative"}}, "required": ["kind"]},
+        "then": {"required": ["expected_error"], "not": {"required": ["expected_result"]}},
+        "else": {"required": ["expected_result"], "not": {"required": ["expected_error"]}}
+      }]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "lineage", "new_identity", "contract_changed", "copied_controls", "requested_external_effect", "outcome_known", "reexecute_preconditions"],
+      "properties": {
+        "mode": {"type": "string", "minLength": 1},
+        "lineage": {"$ref": "#/$defs/lineage"},
+        "new_identity": {"$ref": "#/$defs/new_identity"},
+        "contract_changed": {"type": "boolean"},
+        "copied_controls": {"type": "array", "items": {"$ref": "#/$defs/copied_control"}, "uniqueItems": true},
+        "requested_external_effect": {"type": "boolean"},
+        "outcome_known": {"type": "boolean"},
+        "reexecute_preconditions": {"$ref": "#/$defs/reexecute_preconditions"}
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_task_id", "source_run_id", "source_manifest_id", "source_correlation_id", "source_event_seq"],
+      "properties": {
+        "source_task_id": {"type": "string"},
+        "source_run_id": {"type": "string"},
+        "source_manifest_id": {"type": "string"},
+        "source_correlation_id": {"type": "string"},
+        "source_event_seq": {"type": "integer", "minimum": 0}
+      }
+    },
+    "new_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "run_id", "correlation_id", "event_seq"],
+      "properties": {
+        "task_id": {"type": "string", "minLength": 1},
+        "run_id": {"type": "string", "minLength": 1},
+        "correlation_id": {"type": "string", "minLength": 1},
+        "event_seq": {"type": "integer", "minimum": 1}
+      }
+    },
+    "reexecute_preconditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["remote_state_observed", "fresh_effect_candidate", "current_revision", "fresh_approval", "fresh_nonce", "fresh_evidence", "exact_authority", "capability_available"],
+      "properties": {
+        "remote_state_observed": {"type": "boolean"},
+        "fresh_effect_candidate": {"type": "boolean"},
+        "current_revision": {"type": "boolean"},
+        "fresh_approval": {"type": "boolean"},
+        "fresh_nonce": {"type": "boolean"},
+        "fresh_evidence": {"type": "boolean"},
+        "exact_authority": {"type": "boolean"},
+        "capability_available": {"type": "boolean"}
+      }
+    },
+    "copied_control": {"enum": ["authority", "approval_token", "nonce", "credential", "publisher_token", "previous_dispatch_result"]},
+    "error_code": {"enum": ["REPLAY_SCHEMA_INVALID", "REPLAY_MODE_INVALID", "REPLAY_LINEAGE_MISSING", "REPLAY_IDENTITY_REUSED", "REPLAY_CONTROL_COPY_FORBIDDEN", "REPLAY_EXTERNAL_EFFECT_FORBIDDEN", "REPLAY_REAPPROVAL_REQUIRED", "REPLAY_RECONCILIATION_REQUIRED"]}
+  }
+}

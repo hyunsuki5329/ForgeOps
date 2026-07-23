@@ -1,0 +1,356 @@
+{
+  "assertions": {
+    "no_raw_sentinel": true,
+    "protected_denial_zero_probes": true
+  },
+  "cases": [
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_PROJECT_READ",
+      "kind": "positive",
+      "probes": {
+        "evidence_writes": 1,
+        "log_writes": 1,
+        "model_context_writes": 1,
+        "reader_calls": 1,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_NAMED_UPDATE",
+      "kind": "positive",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_NAMED_READ",
+      "kind": "positive",
+      "probes": {
+        "evidence_writes": 1,
+        "log_writes": 1,
+        "model_context_writes": 1,
+        "reader_calls": 1,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_PATH_INVALID",
+      "expected": "RESOURCE_PATH_INVALID",
+      "id": "NEGATIVE_ABSOLUTE_PATH",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_PATH_INVALID",
+      "expected": "RESOURCE_PATH_INVALID",
+      "id": "NEGATIVE_PARENT_TRAVERSAL",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_PATH_INVALID",
+      "expected": "RESOURCE_PATH_INVALID",
+      "id": "NEGATIVE_WILDCARD_PATH",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_PATH_INVALID",
+      "expected": "RESOURCE_PATH_INVALID",
+      "id": "NEGATIVE_REGEX_PATH",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_SCOPE_INVALID",
+      "expected": "RESOURCE_SCOPE_INVALID",
+      "id": "NEGATIVE_PROJECT_WITH_LIST",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_SCOPE_INVALID",
+      "expected": "RESOURCE_SCOPE_INVALID",
+      "id": "NEGATIVE_NAMED_EMPTY",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_SCOPE_INVALID",
+      "expected": "RESOURCE_SCOPE_INVALID",
+      "id": "NEGATIVE_NAMED_DUPLICATE",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_SCOPE_INVALID",
+      "expected": "RESOURCE_SCOPE_INVALID",
+      "id": "NEGATIVE_NAMED_WILDCARD_ENTRY",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_EXACT_MATCH_REQUIRED",
+      "expected": "RESOURCE_EXACT_MATCH_REQUIRED",
+      "id": "NEGATIVE_NAMED_PREFIX",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_EXACT_MATCH_REQUIRED",
+      "expected": "RESOURCE_EXACT_MATCH_REQUIRED",
+      "id": "NEGATIVE_NAMED_CASE",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_EXACT_MATCH_REQUIRED",
+      "expected": "RESOURCE_EXACT_MATCH_REQUIRED",
+      "id": "NEGATIVE_NAMED_SUFFIX",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_SCOPE_INVALID",
+      "expected": "RESOURCE_SCOPE_INVALID",
+      "id": "NEGATIVE_NONE_SCOPE",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_SCOPE_INVALID",
+      "expected": "RESOURCE_SCOPE_INVALID",
+      "id": "NEGATIVE_UNKNOWN_SCOPE",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_CAPABILITY_DENIED",
+      "expected": "RESOURCE_CAPABILITY_DENIED",
+      "id": "NEGATIVE_CAPABILITY_UNKNOWN",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_CAPABILITY_DENIED",
+      "expected": "RESOURCE_CAPABILITY_DENIED",
+      "id": "NEGATIVE_CAPABILITY_UNAVAILABLE",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_CAPABILITY_DENIED",
+      "expected": "RESOURCE_CAPABILITY_DENIED",
+      "id": "NEGATIVE_CANDIDATE_UNAPPROVED",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_CAPABILITY_DENIED",
+      "expected": "RESOURCE_CAPABILITY_DENIED",
+      "id": "NEGATIVE_STALE_REVISION",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_CAPABILITY_DENIED",
+      "expected": "RESOURCE_CAPABILITY_DENIED",
+      "id": "NEGATIVE_EXPLORE_MUTATION",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_CONTAINMENT_FAILED",
+      "expected": "RESOURCE_CONTAINMENT_FAILED",
+      "id": "NEGATIVE_PROJECT_ROOT_ESCAPE",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "RESOURCE_CONTAINMENT_FAILED",
+      "expected": "RESOURCE_CONTAINMENT_FAILED",
+      "id": "NEGATIVE_SYMLINK_ESCAPE",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "USER_CHANGE_CONFLICT",
+      "expected": "USER_CHANGE_CONFLICT",
+      "id": "NEGATIVE_USER_CHANGE_CONFLICT",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    }
+  ],
+  "catalog_match": true,
+  "command_id": "resource-authority-negative",
+  "observed_at": "2026-07-23T04:44:02Z",
+  "schema_sha256": "f7efb70700f16d93fa9b37c76140fa9a624e0f573625423b8b39637409b27a0c",
+  "sentinel_raw_value_recorded": false,
+  "status": "PASSED",
+  "suite_sha256": "e1eb71950525bf0d44a0da3b2ef2cda939eea7d821159072336d82fef25bdea2",
+  "summary": {
+    "failed": 0,
+    "passed": 24,
+    "total": 24
+  }
+}

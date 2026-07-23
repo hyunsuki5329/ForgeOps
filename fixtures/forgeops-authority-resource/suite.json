@@ -1,0 +1,277 @@
+{
+  "suite_id": "forgeops-authority-resource-v1",
+  "suite_version": "1.0",
+  "schema_ref": "contracts/forgeops-authority-policy/1.0/schema.json",
+  "cases": [
+    {
+      "id": "POSITIVE_PROJECT_READ", "kind": "positive",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": false, "current_revision": false, "operation_mode": "EXPLORE", "protected_target_approval": null
+      },
+      "expected_result": "PASSED"
+    },
+    {
+      "id": "POSITIVE_NAMED_UPDATE", "kind": "positive",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["src/app.py"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_result": "PASSED"
+    },
+    {
+      "id": "POSITIVE_NAMED_READ", "kind": "positive",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "docs/guide.md", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["docs/guide.md"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_result": "PASSED"
+    },
+    {
+      "id": "NEGATIVE_ABSOLUTE_PATH", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "C:/protected/value.txt", "root_contained": false, "symlink_contained": false, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_PATH_INVALID"
+    },
+    {
+      "id": "NEGATIVE_PARENT_TRAVERSAL", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/../.env", "root_contained": false, "symlink_contained": false, "classification": "PROTECTED"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_PATH_INVALID"
+    },
+    {
+      "id": "NEGATIVE_WILDCARD_PATH", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/*.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_PATH_INVALID"
+    },
+    {
+      "id": "NEGATIVE_REGEX_PATH", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "regex:^src/app.py$", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_PATH_INVALID"
+    },
+    {
+      "id": "NEGATIVE_PROJECT_WITH_LIST", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": ["src/app.py"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_SCOPE_INVALID"
+    },
+    {
+      "id": "NEGATIVE_NAMED_EMPTY", "kind": "negative",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_SCOPE_INVALID"
+    },
+    {
+      "id": "NEGATIVE_NAMED_DUPLICATE", "kind": "negative",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["src/app.py", "src/app.py"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_SCOPE_INVALID"
+    },
+    {
+      "id": "NEGATIVE_NAMED_WILDCARD_ENTRY", "kind": "negative",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["src/*.py"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_SCOPE_INVALID"
+    },
+    {
+      "id": "NEGATIVE_NAMED_PREFIX", "kind": "negative",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py.bak", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["src/app.py"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_EXACT_MATCH_REQUIRED"
+    },
+    {
+      "id": "NEGATIVE_NAMED_CASE", "kind": "negative",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "SRC/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["src/app.py"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_EXACT_MATCH_REQUIRED"
+    },
+    {
+      "id": "NEGATIVE_NAMED_SUFFIX", "kind": "negative",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "backup/src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["src/app.py"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_EXACT_MATCH_REQUIRED"
+    },
+    {
+      "id": "NEGATIVE_NONE_SCOPE", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NONE", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_SCOPE_INVALID"
+    },
+    {
+      "id": "NEGATIVE_UNKNOWN_SCOPE", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "UNKNOWN", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_SCOPE_INVALID"
+    },
+    {
+      "id": "NEGATIVE_CAPABILITY_UNKNOWN", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "UNKNOWN",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_CAPABILITY_DENIED"
+    },
+    {
+      "id": "NEGATIVE_CAPABILITY_UNAVAILABLE", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "UNAVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_CAPABILITY_DENIED"
+    },
+    {
+      "id": "NEGATIVE_CANDIDATE_UNAPPROVED", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": false, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_CAPABILITY_DENIED"
+    },
+    {
+      "id": "NEGATIVE_STALE_REVISION", "kind": "negative",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": false, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_CAPABILITY_DENIED"
+    },
+    {
+      "id": "NEGATIVE_EXPLORE_MUTATION", "kind": "negative",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/app.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXPLORE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_CAPABILITY_DENIED"
+    },
+    {
+      "id": "NEGATIVE_PROJECT_ROOT_ESCAPE", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "linked/outside.txt", "root_contained": false, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_CONTAINMENT_FAILED"
+    },
+    {
+      "id": "NEGATIVE_SYMLINK_ESCAPE", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "linked/value.txt", "root_contained": true, "symlink_contained": false, "classification": "PUBLIC"},
+        "authority": {"scope": "PROJECT", "resources": []}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "RESOURCE_CONTAINMENT_FAILED"
+    },
+    {
+      "id": "NEGATIVE_PROTECTED_READ_UNAPPROVED", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "protected/fixture.bin", "root_contained": true, "symlink_contained": true, "classification": "PROTECTED"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["protected/fixture.bin"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "PROTECTED_TARGET_APPROVAL_REQUIRED"
+    },
+    {
+      "id": "NEGATIVE_CREDENTIAL_READ_UNAPPROVED", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "fixtures/credential.bin", "root_contained": true, "symlink_contained": true, "classification": "CREDENTIAL"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["fixtures/credential.bin"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "PROTECTED_TARGET_APPROVAL_REQUIRED"
+    },
+    {
+      "id": "NEGATIVE_PRIVATE_DATA_READ_UNAPPROVED", "kind": "negative",
+      "request": {
+        "action": {"action_type": "READ_RESOURCE", "operation": "read", "user_change_owned": true},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "fixtures/private.bin", "root_contained": true, "symlink_contained": true, "classification": "PRIVATE_DATA"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["fixtures/private.bin"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "PROTECTED_TARGET_APPROVAL_REQUIRED"
+    },
+    {
+      "id": "NEGATIVE_USER_CHANGE_CONFLICT", "kind": "negative",
+      "request": {
+        "action": {"action_type": "UPDATE_RESOURCE", "operation": "update", "user_change_owned": false},
+        "identity": {"identity_kind": "RESOURCE", "resource_ref": "src/user-change.py", "root_contained": true, "symlink_contained": true, "classification": "PUBLIC"},
+        "authority": {"scope": "NAMED_RESOURCES", "resources": ["src/user-change.py"]}, "capability": "AVAILABLE",
+        "approved_candidate": true, "current_revision": true, "operation_mode": "EXECUTE", "protected_target_approval": null
+      },
+      "expected_error": "USER_CHANGE_CONFLICT"
+    }
+  ]
+}

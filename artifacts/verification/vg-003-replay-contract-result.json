@@ -1,0 +1,154 @@
+{
+  "cases": [
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_AUDIT_READ_ONLY",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_COUNTERFACTUAL_EFFECT_FREE",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_REEXECUTE_EFFECT_FREE",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_REEXECUTE_EXTERNAL_EFFECT",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_MODE_INVALID",
+      "expected": "REPLAY_MODE_INVALID",
+      "id": "NEGATIVE_INVALID_MODE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_LINEAGE_MISSING",
+      "expected": "REPLAY_LINEAGE_MISSING",
+      "id": "NEGATIVE_LINEAGE_MISSING",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_IDENTITY_REUSED",
+      "expected": "REPLAY_IDENTITY_REUSED",
+      "id": "NEGATIVE_RUN_REUSED",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_IDENTITY_REUSED",
+      "expected": "REPLAY_IDENTITY_REUSED",
+      "id": "NEGATIVE_CORRELATION_REUSED",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_IDENTITY_REUSED",
+      "expected": "REPLAY_IDENTITY_REUSED",
+      "id": "NEGATIVE_SEQUENCE_REUSED",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_IDENTITY_REUSED",
+      "expected": "REPLAY_IDENTITY_REUSED",
+      "id": "NEGATIVE_COUNTERFACTUAL_TASK_REUSED",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "expected": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "id": "NEGATIVE_COPY_AUTHORITY",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "expected": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "id": "NEGATIVE_COPY_APPROVAL_TOKEN",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "expected": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "id": "NEGATIVE_COPY_NONCE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "expected": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "id": "NEGATIVE_COPY_CREDENTIAL",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "expected": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "id": "NEGATIVE_COPY_PUBLISHER_TOKEN",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "expected": "REPLAY_CONTROL_COPY_FORBIDDEN",
+      "id": "NEGATIVE_COPY_PREVIOUS_DISPATCH_RESULT",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_EXTERNAL_EFFECT_FORBIDDEN",
+      "expected": "REPLAY_EXTERNAL_EFFECT_FORBIDDEN",
+      "id": "NEGATIVE_AUDIT_EXTERNAL_EFFECT",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_EXTERNAL_EFFECT_FORBIDDEN",
+      "expected": "REPLAY_EXTERNAL_EFFECT_FORBIDDEN",
+      "id": "NEGATIVE_COUNTERFACTUAL_EXTERNAL_EFFECT",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_REAPPROVAL_REQUIRED",
+      "expected": "REPLAY_REAPPROVAL_REQUIRED",
+      "id": "NEGATIVE_REEXECUTE_PRECONDITIONS_INCOMPLETE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "REPLAY_RECONCILIATION_REQUIRED",
+      "expected": "REPLAY_RECONCILIATION_REQUIRED",
+      "id": "NEGATIVE_UNKNOWN_OUTCOME_RETRY",
+      "kind": "negative",
+      "status": "PASSED"
+    }
+  ],
+  "command_id": "replay-contract-negative",
+  "observed_at": "2026-07-23T04:43:59Z",
+  "schema_sha256": "3c7e703949d7d2963086a4b28413619ff21dea3f4d19450ffdd597edb35a25f8",
+  "status": "PASSED",
+  "suite_sha256": "71ed7bbdd947dd84a983cad191726b1087214e7c30f456c3fc9a93963733a753",
+  "summary": {
+    "failed": 0,
+    "passed": 20,
+    "total": 20
+  }
+}

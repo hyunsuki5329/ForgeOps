@@ -1,0 +1,62 @@
+{
+  "assertions": {
+    "no_raw_sentinel": true,
+    "protected_denial_zero_probes": true
+  },
+  "cases": [
+    {
+      "actual": "PROTECTED_TARGET_APPROVAL_REQUIRED",
+      "expected": "PROTECTED_TARGET_APPROVAL_REQUIRED",
+      "id": "NEGATIVE_PROTECTED_READ_UNAPPROVED",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "PROTECTED_TARGET_APPROVAL_REQUIRED",
+      "expected": "PROTECTED_TARGET_APPROVAL_REQUIRED",
+      "id": "NEGATIVE_CREDENTIAL_READ_UNAPPROVED",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    },
+    {
+      "actual": "PROTECTED_TARGET_APPROVAL_REQUIRED",
+      "expected": "PROTECTED_TARGET_APPROVAL_REQUIRED",
+      "id": "NEGATIVE_PRIVATE_DATA_READ_UNAPPROVED",
+      "kind": "negative",
+      "probes": {
+        "evidence_writes": 0,
+        "log_writes": 0,
+        "model_context_writes": 0,
+        "reader_calls": 0,
+        "sentinel_occurrences": 0
+      },
+      "status": "PASSED"
+    }
+  ],
+  "catalog_match": true,
+  "command_id": "protected-read-negative",
+  "observed_at": "2026-07-23T04:44:03Z",
+  "schema_sha256": "f7efb70700f16d93fa9b37c76140fa9a624e0f573625423b8b39637409b27a0c",
+  "sentinel_raw_value_recorded": false,
+  "status": "PASSED",
+  "suite_sha256": "e1eb71950525bf0d44a0da3b2ef2cda939eea7d821159072336d82fef25bdea2",
+  "summary": {
+    "failed": 0,
+    "passed": 3,
+    "total": 3
+  }
+}

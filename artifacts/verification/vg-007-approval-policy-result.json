@@ -1,0 +1,710 @@
+{
+  "assertions": {
+    "atomic_single_nonce_consume": true,
+    "negative_zero_dispatcher_calls": true,
+    "no_approval_material_fields": true,
+    "no_real_effect_calls": true,
+    "permitted_single_spy_dispatch": true
+  },
+  "cases": [
+    {
+      "actual": "PASSED",
+      "dispatcher": {
+        "dispatcher_calls": 1,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "PASSED",
+      "id": "POSITIVE_DESTRUCTIVE_EXTERNAL",
+      "kind": "positive",
+      "nonce_outcome": "CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "dispatcher": {
+        "dispatcher_calls": 1,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "PASSED",
+      "id": "POSITIVE_LOCAL_NON_DESTRUCTIVE",
+      "kind": "positive",
+      "nonce_outcome": "CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "EFFECT_GATE_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "EFFECT_GATE_DENIED",
+      "id": "NEGATIVE_DESTRUCTIVE_DENIED",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "EFFECT_GATE_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "EFFECT_GATE_DENIED",
+      "id": "NEGATIVE_DESTRUCTIVE_UNKNOWN",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "EFFECT_GATE_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "EFFECT_GATE_DENIED",
+      "id": "NEGATIVE_EXTERNAL_AUTHORITY_DENIED",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "EFFECT_GATE_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "EFFECT_GATE_DENIED",
+      "id": "NEGATIVE_EXTERNAL_AUTHORITY_UNKNOWN",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_EXTERNAL_RUNTIME_UNAVAILABLE",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_EXTERNAL_RUNTIME_UNKNOWN",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_AUTHORITY_DENIED",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_AUTHORITY_UNKNOWN",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_CAPABILITY_UNKNOWN",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_CANDIDATE_UNAPPROVED",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_STALE_REVISION",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_EXPLORE_MODE",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "AUTHORITY_CAPABILITY_DENIED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "AUTHORITY_CAPABILITY_DENIED",
+      "id": "NEGATIVE_PREFLIGHT_FAILED",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_MISSING",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_MISSING",
+      "id": "NEGATIVE_APPROVAL_MISSING",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_REJECTED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_REJECTED",
+      "id": "NEGATIVE_APPROVAL_REJECTED",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_EXPIRED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_EXPIRED",
+      "id": "NEGATIVE_NOT_BEFORE",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_EXPIRED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_EXPIRED",
+      "id": "NEGATIVE_EXPIRED",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_AUDIENCE_INVALID",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_AUDIENCE_INVALID",
+      "id": "NEGATIVE_WRONG_ISSUER",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_AUDIENCE_INVALID",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_AUDIENCE_INVALID",
+      "id": "NEGATIVE_WRONG_AUDIENCE",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_TENANT_INVALID",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_TENANT_INVALID",
+      "id": "NEGATIVE_WRONG_TENANT",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_SIGNATURE_INVALID",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_SIGNATURE_INVALID",
+      "id": "NEGATIVE_WRONG_APPROVER",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_SIGNATURE_INVALID",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_SIGNATURE_INVALID",
+      "id": "NEGATIVE_WRONG_KEY",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_SIGNATURE_INVALID",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_SIGNATURE_INVALID",
+      "id": "NEGATIVE_SIGNATURE_REF",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_SIGNATURE_INVALID",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_SIGNATURE_INVALID",
+      "id": "NEGATIVE_SIGNATURE_UNVERIFIED",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_CANDIDATE",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_ACTION_IDENTITY",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_TARGET",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_REVISION",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_CONTRACT",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_PLAN",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_POLICY",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_DIFF",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_PAYLOAD",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_POLICY_VERSION",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_NOT_BEFORE",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_EXPIRES_AT",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_BINDING_MISMATCH",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_BINDING_MISMATCH",
+      "id": "NEGATIVE_BIND_NONCE",
+      "kind": "negative",
+      "nonce_outcome": "NOT_CONSUMED",
+      "scenario": "evaluate",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_NONCE_REUSED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_NONCE_REUSED",
+      "id": "NEGATIVE_NONCE_REUSE",
+      "kind": "negative",
+      "nonce_outcome": "REUSED_REJECTED",
+      "scenario": "nonce_reuse",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_NONCE_REUSED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_NONCE_REUSED",
+      "id": "NEGATIVE_REPLAYED_APPROVAL",
+      "kind": "negative",
+      "nonce_outcome": "REUSED_REJECTED",
+      "scenario": "replay",
+      "status": "PASSED"
+    },
+    {
+      "actual": "APPROVAL_NONCE_CONSUME_FAILED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "APPROVAL_NONCE_CONSUME_FAILED",
+      "id": "NEGATIVE_NONCE_CONSUME_FAILED",
+      "kind": "negative",
+      "nonce_outcome": "CONSUME_FAILED",
+      "scenario": "nonce_failure",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "dispatcher": {
+        "dispatcher_calls": 0,
+        "external_effect_calls": 0,
+        "network_calls": 0,
+        "process_calls": 0,
+        "store_calls": 0
+      },
+      "expected": "PASSED",
+      "id": "POSITIVE_ATOMIC_SINGLE_CONSUME",
+      "kind": "positive",
+      "nonce_outcome": "ATOMIC_SINGLE_CONSUME",
+      "scenario": "concurrent",
+      "status": "PASSED"
+    }
+  ],
+  "catalog_match": true,
+  "command_id": "approval-negative-fixture",
+  "observed_at": "2026-07-23T04:44:10Z",
+  "schema_sha256": "f7efb70700f16d93fa9b37c76140fa9a624e0f573625423b8b39637409b27a0c",
+  "status": "PASSED",
+  "suite_sha256": "60993c91fdfe0917ace88bd08d03c9d5e4a43df9fb0ba03454b8f4279585f3dd",
+  "summary": {
+    "failed": 0,
+    "passed": 43,
+    "total": 43
+  }
+}

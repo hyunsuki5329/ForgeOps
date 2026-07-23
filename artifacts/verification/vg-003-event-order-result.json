@@ -1,0 +1,119 @@
+{
+  "cases": [
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_CREATED_PENDING",
+      "kind": "mapping",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_ACTIVE_IN_PROGRESS",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_WAITING_FOR_HUMAN",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_PARTIAL",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_VERIFIED_SUCCESS",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_POLICY_BLOCK",
+      "kind": "positive",
+      "status": "PASSED"
+    },
+    {
+      "actual": "STATE_REVISION_STALE",
+      "expected": "STATE_REVISION_STALE",
+      "id": "NEGATIVE_STALE_REVISION",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "STATE_SEQUENCE_OUT_OF_ORDER",
+      "expected": "STATE_SEQUENCE_OUT_OF_ORDER",
+      "id": "NEGATIVE_SEQUENCE_REUSE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "STATE_SEQUENCE_OUT_OF_ORDER",
+      "expected": "STATE_SEQUENCE_OUT_OF_ORDER",
+      "id": "NEGATIVE_SEQUENCE_SKIP",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "STATE_OWNER_INVALID",
+      "expected": "STATE_OWNER_INVALID",
+      "id": "NEGATIVE_NON_MAIN_ACTOR",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "STATE_TRANSITION_INVALID",
+      "expected": "STATE_TRANSITION_INVALID",
+      "id": "NEGATIVE_TERMINAL_RESTART",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "STATE_EVIDENCE_INSUFFICIENT",
+      "expected": "STATE_EVIDENCE_INSUFFICIENT",
+      "id": "NEGATIVE_SUCCESS_WITHOUT_EVIDENCE",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "STATE_MAPPING_INVALID",
+      "expected": "STATE_MAPPING_INVALID",
+      "id": "NEGATIVE_MAPPING_INVALID",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "STATE_CANCELLED_COERCION_FORBIDDEN",
+      "expected": "STATE_CANCELLED_COERCION_FORBIDDEN",
+      "id": "NEGATIVE_CANCELLED_COERCION",
+      "kind": "negative",
+      "status": "PASSED"
+    },
+    {
+      "actual": "STATE_CANCELLED_COERCION_FORBIDDEN",
+      "expected": "STATE_CANCELLED_COERCION_FORBIDDEN",
+      "id": "NEGATIVE_CANCELLED_COERCION_BLOCKED",
+      "kind": "negative",
+      "status": "PASSED"
+    }
+  ],
+  "command_id": "event-order-fixture",
+  "observed_at": "2026-07-23T04:43:58Z",
+  "schema_sha256": "68993ea752060af48a00c6f68b66c297e4e3ffe53e2ef0257940adea966bad70",
+  "status": "PASSED",
+  "suite_sha256": "8ab57fdec7571498ffc5b4026b2a8e8f773b90c9973817f3de9e07688498dc40",
+  "summary": {
+    "failed": 0,
+    "passed": 15,
+    "total": 15
+  }
+}

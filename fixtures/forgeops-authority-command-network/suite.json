@@ -1,0 +1,1178 @@
+{
+    "suite_id":  "forgeops-authority-command-network-v1",
+    "suite_version":  "1.0",
+    "schema_ref":  "contracts/forgeops-authority-policy/1.0/schema.json",
+    "catalog":  {
+                    "commands":  {
+                                     "policy-tests":  {
+                                                          "id":  "policy-tests",
+                                                          "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                          "cwd":  "."
+                                                      }
+                                 },
+                    "network_destinations":  {
+                                                 "api.example.com":  "PUBLIC",
+                                                 "api.example.com:443":  "PUBLIC",
+                                                 "10.0.0.1":  "PRIVATE",
+                                                 "127.0.0.1":  "LOOPBACK",
+                                                 "169.254.1.1":  "LINK_LOCAL",
+                                                 "metadata.google.internal":  "METADATA"
+                                             }
+                },
+    "cases":  [
+                  {
+                      "id":  "POSITIVE_COMMAND_EXACT_TRIPLE",
+                      "kind":  "positive",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NAMED_COMMANDS",
+                                                        "execute_commands":  [
+                                                                                 "policy-tests"
+                                                                             ]
+                                                    },
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true,
+                                      "destination_class":  null,
+                                      "redirect_source":  null
+                                  },
+                      "expected_result":  "PASSED"
+                  },
+                  {
+                      "id":  "POSITIVE_NETWORK_HOST",
+                      "kind":  "positive",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com"
+                                                                          ]
+                                                    },
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true,
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null
+                                  },
+                      "expected_result":  "PASSED"
+                  },
+                  {
+                      "id":  "POSITIVE_NETWORK_HOST_PORT",
+                      "kind":  "positive",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com:443"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com:443"
+                                                                          ]
+                                                    },
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true,
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null
+                                  },
+                      "expected_result":  "PASSED"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_CAPABILITY_UNKNOWN",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NAMED_COMMANDS",
+                                                        "execute_commands":  [
+                                                                                 "policy-tests"
+                                                                             ]
+                                                    },
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "UNKNOWN",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true,
+                                      "destination_class":  null,
+                                      "redirect_source":  null
+                                  },
+                      "expected_error":  "AUTHORITY_CAPABILITY_DENIED"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_CANDIDATE_UNAPPROVED",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com"
+                                                                          ]
+                                                    },
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  false,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true,
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null
+                                  },
+                      "expected_error":  "AUTHORITY_CAPABILITY_DENIED"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_ID_MISMATCH",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "Policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NAMED_COMMANDS",
+                                                        "execute_commands":  [
+                                                                                 "Policy-tests"
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_IDENTITY_MISMATCH"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_TEXT_MISMATCH",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NAMED_COMMANDS",
+                                                        "execute_commands":  [
+                                                                                 "policy-tests"
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_IDENTITY_MISMATCH"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_CWD_MISMATCH",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "./"
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NAMED_COMMANDS",
+                                                        "execute_commands":  [
+                                                                                 "policy-tests"
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_IDENTITY_MISMATCH"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_RAW",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v"
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NAMED_COMMANDS",
+                                                        "execute_commands":  [
+                                                                                 "policy-tests"
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_RAW_FORBIDDEN"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_PROJECT_SCOPE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "PROJECT",
+                                                        "execute_commands":  [
+
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_NONE_SCOPE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NONE",
+                                                        "execute_commands":  [
+
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_UNKNOWN_SCOPE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "UNKNOWN",
+                                                        "execute_commands":  [
+
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_NAMED_EMPTY",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NAMED_COMMANDS",
+                                                        "execute_commands":  [
+
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_NAMED_DUPLICATE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NAMED_COMMANDS",
+                                                        "execute_commands":  [
+                                                                                 "policy-tests",
+                                                                                 "policy-tests"
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_COMMAND_NAMED_WILDCARD",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "EXECUTE_COMMAND",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "COMMAND",
+                                                       "command_id":  "policy-tests",
+                                                       "command":  "python -m unittest tests/policy_contract/test_resource.py -v",
+                                                       "cwd":  "."
+                                                   },
+                                      "authority":  {
+                                                        "execute_scope":  "NAMED_COMMANDS",
+                                                        "execute_commands":  [
+                                                                                 "policy-tests",
+                                                                                 "*"
+                                                                             ]
+                                                    },
+                                      "destination_class":  null,
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "COMMAND_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_SCHEME",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "https://api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "https://api.example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_PATH",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com/v1"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com/v1"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_QUERY",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com?x=1"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com?x=1"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_FRAGMENT",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com#x"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com#x"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_USERINFO",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "user@api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "user@api.example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_WHITESPACE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com "
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com "
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_UPPERCASE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "Api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "Api.example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_WILDCARD",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "*.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "*.example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_LABEL",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api..example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api..example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_EDGE_HYPHEN",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "-api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "-api.example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_MULTIPLE_COLONS",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com:443:1"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com:443:1"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_PORT_ZERO",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com:0"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com:0"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_PORT_HIGH",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com:65536"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com:65536"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_IDENTITY_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_EXACT_MISMATCH",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com:443"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_EXACT_MATCH_REQUIRED"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_PROJECT_SCOPE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "PROJECT",
+                                                        "network_hosts":  [
+
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_NAMED_EMPTY",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_NAMED_DUPLICATE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com",
+                                                                              "api.example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_INVALID_ALLOWLIST_EXTRA",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "api.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com",
+                                                                              "https://other.example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_SCOPE_INVALID"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_REDIRECT_INHERITANCE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "cdn.example.com"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "api.example.com"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  "api.example.com",
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_REDIRECT_INHERITANCE_FORBIDDEN"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_PRIVATE",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "10.0.0.1"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "10.0.0.1"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PRIVATE",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_DESTINATION_FORBIDDEN"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_LOOPBACK",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "127.0.0.1"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "127.0.0.1"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "LOOPBACK",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_DESTINATION_FORBIDDEN"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_LINK_LOCAL",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "169.254.1.1"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "169.254.1.1"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "LINK_LOCAL",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_DESTINATION_FORBIDDEN"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_METADATA",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "metadata.google.internal"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "metadata.google.internal"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "METADATA",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_DESTINATION_FORBIDDEN"
+                  },
+                  {
+                      "id":  "NEGATIVE_NETWORK_CLASSIFICATION_MISMATCH",
+                      "kind":  "negative",
+                      "request":  {
+                                      "action":  {
+                                                     "action_type":  "CALL_NETWORK",
+                                                     "operation":  "invoke"
+                                                 },
+                                      "identity":  {
+                                                       "identity_kind":  "NETWORK",
+                                                       "network_host":  "10.0.0.1"
+                                                   },
+                                      "authority":  {
+                                                        "network_scope":  "NAMED_HOSTS",
+                                                        "network_hosts":  [
+                                                                              "10.0.0.1"
+                                                                          ]
+                                                    },
+                                      "destination_class":  "PUBLIC",
+                                      "redirect_source":  null,
+                                      "operation_mode":  "EXECUTE",
+                                      "capability":  "AVAILABLE",
+                                      "approved_candidate":  true,
+                                      "current_revision":  true,
+                                      "all_preflights_passed":  true
+                                  },
+                      "expected_error":  "NETWORK_DESTINATION_FORBIDDEN"
+                  },
+                  {
+                      "id": "NEGATIVE_COMMAND_EXPLORE_MODE",
+                      "kind": "negative",
+                      "request": {
+                          "action": {"action_type": "EXECUTE_COMMAND", "operation": "invoke"},
+                          "identity": {"identity_kind": "COMMAND", "command_id": "policy-tests", "command": "python -m unittest tests/policy_contract/test_resource.py -v", "cwd": "."},
+                          "authority": {"execute_scope": "NAMED_COMMANDS", "execute_commands": ["policy-tests"]},
+                          "operation_mode": "EXPLORE", "capability": "AVAILABLE", "approved_candidate": true, "current_revision": true, "all_preflights_passed": true,
+                          "destination_class": null, "redirect_source": null
+                      },
+                      "expected_error": "AUTHORITY_CAPABILITY_DENIED"
+                  },
+                  {
+                      "id": "NEGATIVE_NETWORK_STALE_REVISION",
+                      "kind": "negative",
+                      "request": {
+                          "action": {"action_type": "CALL_NETWORK", "operation": "invoke"},
+                          "identity": {"identity_kind": "NETWORK", "network_host": "api.example.com"},
+                          "authority": {"network_scope": "NAMED_HOSTS", "network_hosts": ["api.example.com"]},
+                          "operation_mode": "EXECUTE", "capability": "AVAILABLE", "approved_candidate": true, "current_revision": false, "all_preflights_passed": true,
+                          "destination_class": "PUBLIC", "redirect_source": null
+                      },
+                      "expected_error": "AUTHORITY_CAPABILITY_DENIED"
+                  },
+                  {
+                      "id": "NEGATIVE_COMMAND_PREFLIGHT_FAILED",
+                      "kind": "negative",
+                      "request": {
+                          "action": {"action_type": "EXECUTE_COMMAND", "operation": "invoke"},
+                          "identity": {"identity_kind": "COMMAND", "command_id": "policy-tests", "command": "python -m unittest tests/policy_contract/test_resource.py -v", "cwd": "."},
+                          "authority": {"execute_scope": "NAMED_COMMANDS", "execute_commands": ["policy-tests"]},
+                          "operation_mode": "EXECUTE", "capability": "AVAILABLE", "approved_candidate": true, "current_revision": true, "all_preflights_passed": false,
+                          "destination_class": null, "redirect_source": null
+                      },
+                      "expected_error": "AUTHORITY_CAPABILITY_DENIED"
+                  }
+              ]
+}

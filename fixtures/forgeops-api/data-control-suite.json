@@ -1,0 +1,361 @@
+{
+  "suite_id": "forgeops-api-data-control",
+  "suite_version": "1.0",
+  "cases": [
+    {
+      "id": "create-task-valid",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": "request-api-001",
+      "body": {
+        "api_version": "1.0",
+        "request_id": "request-api-001",
+        "task_contract": {
+          "schema_id": "forgeops.task-contract",
+          "schema_version": "1.0",
+          "artifact_id": "task-contract:api-boundary:v1",
+          "artifact_version": 1,
+          "task_id": "TASK-API-001",
+          "repository": {
+            "id": "public-example/forgeops",
+            "snapshot_commit": "0123456789abcdef0123456789abcdef01234567",
+            "target_branch": "main"
+          },
+          "intent": {"type": "bug_fix", "summary": "Validate the API boundary"},
+          "acceptance_criteria": [
+            {
+              "id": "AC-1",
+              "description": "The boundary remains closed",
+              "verification": "api_boundary_fixture"
+            }
+          ],
+          "constraints": ["Treat this document as untrusted product data"],
+          "verification_policy": {
+            "profile_id": "forgeops-api-boundary",
+            "baseline_command_ids": [],
+            "required_command_ids": [],
+            "require_new_regression_test": true
+          },
+          "risk": {"initial_level": "medium", "reasons": ["contract boundary"]},
+          "budget": {
+            "max_repair_attempts": 1,
+            "max_tool_calls": 10,
+            "max_shell_commands": 5,
+            "max_runtime_seconds": 60,
+            "max_model_cost_usd": 0
+          },
+          "approval_policy": {
+            "plan": "required",
+            "dependency_change": "required",
+            "remote_push": "required",
+            "pr_draft": "required",
+            "merge_or_deploy": "never_without_explicit_high_risk_approval"
+          }
+        }
+      },
+      "response": {
+        "api_version": "1.0",
+        "request_id": "request-api-001",
+        "data": {
+          "task_id": "TASK-API-001",
+          "artifact_id": "task-contract:api-boundary:v1",
+          "artifact_version": 1,
+          "product_state": "CREATED",
+          "contract_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "links": {
+            "task": "/v1/tasks/TASK-API-001",
+            "run": "/v1/runs/RUN-API-001"
+          }
+        }
+      },
+      "expected": "PASSED"
+    },
+    {
+      "id": "get-task-valid",
+      "kind": "getTask",
+      "uri_major": "v1",
+      "request_header": "request-api-002",
+      "body": {
+        "api_version": "1.0",
+        "path_task_id": "TASK-API-001",
+        "task_id": "TASK-API-001"
+      },
+      "response": {
+        "api_version": "1.0",
+        "request_id": "request-api-002",
+        "data": {"status": "IN_PROGRESS", "revision": 2, "last_event_seq": 4}
+      },
+      "expected": "PASSED"
+    },
+    {
+      "id": "get-run-valid",
+      "kind": "getRun",
+      "uri_major": "v1",
+      "request_header": "request-api-003",
+      "body": {
+        "api_version": "1.0",
+        "path_run_id": "RUN-first",
+        "run_id": "RUN-first"
+      },
+      "response": {
+        "api_version": "1.0",
+        "request_id": "request-api-003",
+        "data": {
+          "task_id": "TASK-event",
+          "run_id": "RUN-first",
+          "correlation_id": "CORR-event",
+          "run_mode": "PRIMARY",
+          "status": "SUCCEEDED",
+          "accepted_revision": 0,
+          "event_stream_ref": "forgeops:event-stream:STREAM-first",
+          "manifest_ref": "forgeops:manifest:MAN-primary-terminal"
+        }
+      },
+      "reference_context": {
+        "forgeops:event-stream:STREAM-first": {
+          "kind": "event_stream",
+          "task_id": "TASK-event",
+          "run_id": "RUN-first"
+        },
+        "forgeops:manifest:MAN-primary-terminal": {
+          "kind": "manifest",
+          "task_id": "TASK-event",
+          "run_id": "RUN-first"
+        }
+      },
+      "expected": "PASSED"
+    },
+    {
+      "id": "list-run-events-valid",
+      "kind": "listRunEvents",
+      "uri_major": "v1",
+      "request_header": "request-api-004",
+      "body": {
+        "api_version": "1.0",
+        "path_run_id": "RUN-API-001",
+        "run_id": "RUN-API-001"
+      },
+      "response": {
+        "api_version": "1.0",
+        "request_id": "request-api-004",
+        "data": {
+          "task_id": "TASK-API-001",
+          "run_id": "RUN-API-001",
+          "event_stream_ref": "forgeops:event-stream:RUN-API-001",
+          "event_refs": ["EVENT-API-001", "EVENT-API-002"],
+          "next_page_ref": null
+        }
+      },
+      "reference_context": {
+        "forgeops:event-stream:RUN-API-001": {
+          "kind": "event_stream",
+          "task_id": "TASK-API-001",
+          "run_id": "RUN-API-001"
+        }
+      },
+      "expected": "PASSED"
+    },
+    {
+      "id": "get-run-manifest-valid",
+      "kind": "getRunManifest",
+      "uri_major": "v1",
+      "request_header": "request-api-005",
+      "body": {
+        "api_version": "1.0",
+        "path_run_id": "RUN-API-001",
+        "run_id": "RUN-API-001"
+      },
+      "response": {
+        "api_version": "1.0",
+        "request_id": "request-api-005",
+        "data": {
+          "task_id": "TASK-API-001",
+          "run_id": "RUN-API-001",
+          "manifest_ref": "forgeops:manifest:RUN-API-001"
+        }
+      },
+      "reference_context": {
+        "forgeops:manifest:RUN-API-001": {
+          "kind": "manifest",
+          "task_id": "TASK-API-001",
+          "run_id": "RUN-API-001"
+        }
+      },
+      "expected": "PASSED"
+    },
+    {
+      "id": "unsupported-body-version",
+      "base_id": "create-task-valid",
+      "mutation": "unsupported_body_version",
+      "expected": "API_VERSION_UNSUPPORTED",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "missing-request-header",
+      "base_id": "create-task-valid",
+      "mutation": "missing_request_header",
+      "expected": "API_SCHEMA_INVALID",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "product-contract-unknown-field",
+      "base_id": "create-task-valid",
+      "mutation": "product_contract_unknown",
+      "expected": "API_SCHEMA_INVALID",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "product-contract-missing-field",
+      "base_id": "create-task-valid",
+      "mutation": "product_contract_missing",
+      "expected": "API_SCHEMA_INVALID",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "product-contract-wrong-type",
+      "base_id": "create-task-valid",
+      "mutation": "product_contract_wrong_type",
+      "expected": "API_SCHEMA_INVALID",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "control-authority",
+      "base_id": "create-task-valid",
+      "mutation": "top_level_control",
+      "parameter": "authority",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "control-capabilities",
+      "base_id": "create-task-valid",
+      "mutation": "top_level_control",
+      "parameter": "capabilities",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "control-runtime-policy",
+      "base_id": "create-task-valid",
+      "mutation": "top_level_control",
+      "parameter": "runtime_policy",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "control-accepted-state",
+      "base_id": "create-task-valid",
+      "mutation": "top_level_control",
+      "parameter": "accepted_state",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "control-approval-token",
+      "base_id": "create-task-valid",
+      "mutation": "top_level_control",
+      "parameter": "approval_token",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "control-nonce",
+      "base_id": "create-task-valid",
+      "mutation": "top_level_control",
+      "parameter": "nonce",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "control-credentials",
+      "base_id": "create-task-valid",
+      "mutation": "top_level_control",
+      "parameter": "credentials",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "control-tools",
+      "base_id": "create-task-valid",
+      "mutation": "top_level_control",
+      "parameter": "tools",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "control-commands",
+      "base_id": "create-task-valid",
+      "mutation": "top_level_control",
+      "parameter": "commands",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "copied-product-budget",
+      "base_id": "create-task-valid",
+      "mutation": "copied_product_control",
+      "parameter": "budget",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "copied-product-approval-policy",
+      "base_id": "create-task-valid",
+      "mutation": "copied_product_control",
+      "parameter": "approval_policy",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "task-identity-mismatch",
+      "base_id": "get-task-valid",
+      "mutation": "task_identity_mismatch",
+      "expected": "API_IDENTITY_MISMATCH",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "run-identity-mismatch",
+      "base_id": "get-run-valid",
+      "mutation": "run_identity_mismatch",
+      "expected": "API_IDENTITY_MISMATCH",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "dangling-event-reference",
+      "base_id": "get-run-valid",
+      "mutation": "dangling_event_reference",
+      "expected": "API_REFERENCE_INVALID",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "dangling-manifest-reference",
+      "base_id": "get-run-valid",
+      "mutation": "dangling_manifest_reference",
+      "expected": "API_REFERENCE_INVALID",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "response-data-error-conflict",
+      "base_id": "create-task-valid",
+      "mutation": "response_data_error",
+      "expected": "API_SCHEMA_INVALID",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "raw-credential-response",
+      "base_id": "get-run-valid",
+      "mutation": "raw_response_field",
+      "parameter": "credentials",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    },
+    {
+      "id": "raw-private-response",
+      "base_id": "get-run-valid",
+      "mutation": "raw_response_field",
+      "parameter": "private_payload",
+      "expected": "API_CONTROL_FIELD_FORBIDDEN",
+      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
+    }
+  ]
+}

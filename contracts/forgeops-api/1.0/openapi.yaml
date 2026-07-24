@@ -1,0 +1,403 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ForgeOps API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/v1/tasks": {
+      "post": {
+        "operationId": "createTask",
+        "parameters": [
+          {"$ref": "#/components/parameters/RequestIdHeader"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CreateTaskRequest"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task accepted.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CreateTaskResponse"}
+              }
+            }
+          },
+          "400": {
+            "description": "Request rejected.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}": {
+      "get": {
+        "operationId": "getTask",
+        "parameters": [
+          {"$ref": "#/components/parameters/RequestIdHeader"},
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {"$ref": "#/components/schemas/Identifier"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task returned.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/TaskResponse"}
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/runs/{run_id}": {
+      "get": {
+        "operationId": "getRun",
+        "parameters": [
+          {"$ref": "#/components/parameters/RequestIdHeader"},
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {"$ref": "#/components/schemas/Identifier"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run returned.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/RunResponse"}
+              }
+            }
+          },
+          "404": {
+            "description": "Run not found.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/runs/{run_id}/events": {
+      "get": {
+        "operationId": "listRunEvents",
+        "parameters": [
+          {"$ref": "#/components/parameters/RequestIdHeader"},
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {"$ref": "#/components/schemas/Identifier"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run events returned.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/EventPageResponse"}
+              }
+            }
+          },
+          "404": {
+            "description": "Run not found.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/runs/{run_id}/manifest": {
+      "get": {
+        "operationId": "getRunManifest",
+        "parameters": [
+          {"$ref": "#/components/parameters/RequestIdHeader"},
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {"$ref": "#/components/schemas/Identifier"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run manifest returned.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ManifestResponse"}
+              }
+            }
+          },
+          "404": {
+            "description": "Run not found.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "RequestIdHeader": {
+        "name": "X-Request-ID",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "schemas": {
+      "Identifier": {
+        "type": "string",
+        "minLength": 1
+      },
+      "ApiVersion": {
+        "type": "string",
+        "const": "1.0"
+      },
+      "Status": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "IN_PROGRESS",
+          "WAITING_FOR_HUMAN",
+          "BLOCKED",
+          "SUCCEEDED",
+          "FAILED",
+          "PARTIAL"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "API_VERSION_UNSUPPORTED",
+              "API_SCHEMA_INVALID",
+              "API_IDENTITY_MISMATCH",
+              "API_CONTROL_FIELD_FORBIDDEN",
+              "API_REFERENCE_INVALID",
+              "API_RESOURCE_NOT_FOUND"
+            ]
+          },
+          "message": {"type": "string"}
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["api_version", "request_id", "error"],
+        "properties": {
+          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
+          "request_id": {"$ref": "#/components/schemas/Identifier"},
+          "error": {"$ref": "#/components/schemas/Error"}
+        }
+      },
+      "SuccessEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["api_version"],
+        "properties": {
+          "api_version": {"$ref": "#/components/schemas/ApiVersion"}
+        }
+      },
+      "CreateTaskRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["api_version", "request_id", "task_contract"],
+        "properties": {
+          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
+          "request_id": {"$ref": "#/components/schemas/Identifier"},
+          "task_contract": {"$ref": "../../product-task-contract/1.0/schema.json"}
+        }
+      },
+      "CreateTaskData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "artifact_id",
+          "artifact_version",
+          "product_state",
+          "contract_sha256",
+          "links"
+        ],
+        "properties": {
+          "task_id": {"$ref": "#/components/schemas/Identifier"},
+          "artifact_id": {"$ref": "#/components/schemas/Identifier"},
+          "artifact_version": {"type": "integer", "minimum": 1},
+          "product_state": {"type": "string", "const": "CREATED"},
+          "contract_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["task", "run"],
+            "properties": {
+              "task": {"$ref": "#/components/schemas/Identifier"},
+              "run": {"$ref": "#/components/schemas/Identifier"}
+            }
+          }
+        }
+      },
+      "TaskData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision", "last_event_seq"],
+        "properties": {
+          "status": {"$ref": "#/components/schemas/Status"},
+          "revision": {"type": "integer", "minimum": 0},
+          "last_event_seq": {"type": "integer", "minimum": 0}
+        }
+      },
+      "RunData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "run_id",
+          "correlation_id",
+          "run_mode",
+          "status",
+          "accepted_revision",
+          "event_stream_ref",
+          "manifest_ref"
+        ],
+        "properties": {
+          "task_id": {"$ref": "#/components/schemas/Identifier"},
+          "run_id": {"$ref": "#/components/schemas/Identifier"},
+          "correlation_id": {"$ref": "#/components/schemas/Identifier"},
+          "run_mode": {
+            "type": "string",
+            "enum": ["PRIMARY", "AUDIT_REPLAY", "COUNTERFACTUAL", "REEXECUTE"]
+          },
+          "status": {"$ref": "#/components/schemas/Status"},
+          "accepted_revision": {"type": "integer", "minimum": 0},
+          "event_stream_ref": {"$ref": "#/components/schemas/Identifier"},
+          "manifest_ref": {"$ref": "#/components/schemas/Identifier"}
+        }
+      },
+      "EventPageData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "run_id",
+          "event_stream_ref",
+          "event_refs",
+          "next_page_ref"
+        ],
+        "properties": {
+          "task_id": {"$ref": "#/components/schemas/Identifier"},
+          "run_id": {"$ref": "#/components/schemas/Identifier"},
+          "event_stream_ref": {"$ref": "#/components/schemas/Identifier"},
+          "event_refs": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {"$ref": "#/components/schemas/Identifier"}
+          },
+          "next_page_ref": {"type": ["string", "null"], "minLength": 1}
+        }
+      },
+      "ManifestData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "run_id", "manifest_ref"],
+        "properties": {
+          "task_id": {"$ref": "#/components/schemas/Identifier"},
+          "run_id": {"$ref": "#/components/schemas/Identifier"},
+          "manifest_ref": {"$ref": "#/components/schemas/Identifier"}
+        }
+      },
+      "CreateTaskResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["api_version", "request_id", "data"],
+        "properties": {
+          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
+          "request_id": {"$ref": "#/components/schemas/Identifier"},
+          "data": {"$ref": "#/components/schemas/CreateTaskData"}
+        }
+      },
+      "TaskResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["api_version", "request_id", "data"],
+        "properties": {
+          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
+          "request_id": {"$ref": "#/components/schemas/Identifier"},
+          "data": {"$ref": "#/components/schemas/TaskData"}
+        }
+      },
+      "RunResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["api_version", "request_id", "data"],
+        "properties": {
+          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
+          "request_id": {"$ref": "#/components/schemas/Identifier"},
+          "data": {"$ref": "#/components/schemas/RunData"}
+        }
+      },
+      "EventPageResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["api_version", "request_id", "data"],
+        "properties": {
+          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
+          "request_id": {"$ref": "#/components/schemas/Identifier"},
+          "data": {"$ref": "#/components/schemas/EventPageData"}
+        }
+      },
+      "ManifestResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["api_version", "request_id", "data"],
+        "properties": {
+          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
+          "request_id": {"$ref": "#/components/schemas/Identifier"},
+          "data": {"$ref": "#/components/schemas/ManifestData"}
+        }
+      }
+    }
+  }
+}

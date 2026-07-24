@@ -1,0 +1,568 @@
+# Review package: uncommitted W3-1 Task 1
+## Files changed
+tools/interface_contract/__init__.py
+tools/interface_contract/common.py
+tools/interface_contract/openapi_contract.py
+contracts/forgeops-api/1.0/openapi.yaml
+tests/interface_contract/__init__.py
+tests/interface_contract/test_openapi_version.py
+## Diff
+diff --git a/tools/interface_contract/__init__.py b/tools/interface_contract/__init__.py
+new file mode 100644
+index 0000000..1a376e9
+--- /dev/null
++++ b/tools/interface_contract/__init__.py
+@@ -0,0 +1 @@
++"""ForgeOps interface-contract validation helpers."""
+diff --git a/tools/interface_contract/common.py b/tools/interface_contract/common.py
+new file mode 100644
+index 0000000..2129a86
+--- /dev/null
++++ b/tools/interface_contract/common.py
+@@ -0,0 +1,58 @@
++"""Shared primitives for the ForgeOps interface-contract checks."""
++
++from __future__ import annotations
++
++import hashlib
++import json
++from datetime import datetime
++from pathlib import Path
++from typing import Any
++
++
++class ContractError(Exception):
++    """A stable public API contract rejection."""
++
++    def __init__(self, code: str):
++        super().__init__(code)
++        self.code = code
++
++
++def load_json(path: Path) -> dict[str, Any]:
++    """Load UTF-8 JSON-compatible YAML and require an object root."""
++    try:
++        with path.open("r", encoding="utf-8") as stream:
++            value = json.load(stream)
++    except (OSError, json.JSONDecodeError) as exc:
++        raise ContractError("API_SCHEMA_INVALID") from exc
++    if not isinstance(value, dict):
++        raise ContractError("API_SCHEMA_INVALID")
++    return value
++
++
++def assert_exact_fields(
++    value: dict[str, Any], required: set[str], optional: set[str], code: str
++) -> None:
++    """Reject missing and unknown fields without changing the supplied object."""
++    if not isinstance(value, dict) or not required.issubset(value) or set(value) - required - optional:
++        raise ContractError(code)
++
++
++def sha256_file(path: Path) -> str:
++    """Return the SHA-256 digest for a file using bounded binary reads."""
++    digest = hashlib.sha256()
++    with path.open("rb") as stream:
++        for block in iter(lambda: stream.read(65536), b""):
++            digest.update(block)
++    return digest.hexdigest()
++
++
++def is_strict_utc(value: object) -> bool:
++    """Accept only an exact UTC second timestamp in the API wire format."""
++    if not isinstance(value, str):
++        return False
++    try:
++        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").strftime(
++            "%Y-%m-%dT%H:%M:%SZ"
++        ) == value
++    except ValueError:
++        return False
+diff --git a/tools/interface_contract/openapi_contract.py b/tools/interface_contract/openapi_contract.py
+new file mode 100644
+index 0000000..681667e
+--- /dev/null
++++ b/tools/interface_contract/openapi_contract.py
+@@ -0,0 +1,206 @@
++"""Validation for the approved ForgeOps OpenAPI 3.1 document subset."""
++
++from __future__ import annotations
++
++from typing import Any
++
++from tools.interface_contract.common import ContractError, assert_exact_fields
++
++
++API_VERSION = "1.0"
++OPENAPI_VERSION = "3.1.0"
++DOCUMENT_VERSION = "1.0.0"
++API_ERROR_CODES = {
++    "API_VERSION_UNSUPPORTED",
++    "API_SCHEMA_INVALID",
++    "API_IDENTITY_MISMATCH",
++    "API_CONTROL_FIELD_FORBIDDEN",
++    "API_REFERENCE_INVALID",
++    "API_RESOURCE_NOT_FOUND",
++}
++EXPECTED_OPERATIONS = {
++    ("post", "/v1/tasks"): "createTask",
++    ("get", "/v1/tasks/{task_id}"): "getTask",
++    ("get", "/v1/runs/{run_id}"): "getRun",
++    ("get", "/v1/runs/{run_id}/events"): "listRunEvents",
++    ("get", "/v1/runs/{run_id}/manifest"): "getRunManifest",
++}
++
++
++def _schema_error() -> ContractError:
++    return ContractError("API_SCHEMA_INVALID")
++
++
++def _resolve_local_ref(document: dict[str, Any], reference: object) -> object:
++    if not isinstance(reference, str) or not reference.startswith("#/"):
++        raise ContractError("API_REFERENCE_INVALID")
++    target: object = document
++    for part in reference[2:].split("/"):
++        if not isinstance(target, dict):
++            raise ContractError("API_REFERENCE_INVALID")
++        key = part.replace("~1", "/").replace("~0", "~")
++        if key not in target:
++            raise ContractError("API_REFERENCE_INVALID")
++        target = target[key]
++    return target
++
++
++def _validate_schema(schema: object) -> None:
++    if not isinstance(schema, dict):
++        raise _schema_error()
++
++    if schema.get("type") == "object" and schema.get("additionalProperties") is not False:
++        raise _schema_error()
++
++    composition = [key for key in ("allOf", "anyOf", "oneOf") if key in schema]
++    if composition and schema.get("unevaluatedProperties") is not False:
++        raise _schema_error()
++
++    properties = schema.get("properties")
++    if properties is not None:
++        if not isinstance(properties, dict):
++            raise _schema_error()
++        for property_schema in properties.values():
++            _validate_schema(property_schema)
++
++    if "items" in schema:
++        _validate_schema(schema["items"])
++
++    for key in composition:
++        choices = schema[key]
++        if not isinstance(choices, list) or not choices:
++            raise _schema_error()
++        for choice in choices:
++            _validate_schema(choice)
++
++
++def _validate_request_id_parameter(parameter: object) -> None:
++    if not isinstance(parameter, dict):
++        raise _schema_error()
++    assert_exact_fields(parameter, {"name", "in", "required", "schema"}, set(), "API_SCHEMA_INVALID")
++    if (
++        parameter["name"] != "X-Request-ID"
++        or parameter["in"] != "header"
++        or parameter["required"] is not True
++        or not isinstance(parameter["schema"], dict)
++    ):
++        raise _schema_error()
++    _validate_schema(parameter["schema"])
++
++
++def _validate_json_content(content: object) -> None:
++    if not isinstance(content, dict) or set(content) != {"application/json"}:
++        raise _schema_error()
++    media = content["application/json"]
++    if not isinstance(media, dict):
++        raise _schema_error()
++    assert_exact_fields(media, {"schema"}, set(), "API_SCHEMA_INVALID")
++    _validate_schema(media["schema"])
++
++
++def _validate_operation(
++    operation: object, method: str, path: str
++) -> None:
++    expected_id = EXPECTED_OPERATIONS[(method, path)]
++    required = {"operationId", "parameters", "responses"}
++    if method == "post":
++        required.add("requestBody")
++    assert_exact_fields(operation, required, set(), "API_SCHEMA_INVALID")
++    if not isinstance(operation, dict) or operation["operationId"] != expected_id:
++        raise _schema_error()
++
++    parameters = operation["parameters"]
++    if not isinstance(parameters, list) or len(parameters) != 1:
++        raise _schema_error()
++    if parameters[0] != {"$ref": "#/components/parameters/RequestIdHeader"}:
++        raise _schema_error()
++
++    if method == "post":
++        request_body = operation["requestBody"]
++        if not isinstance(request_body, dict):
++            raise _schema_error()
++        assert_exact_fields(request_body, {"required", "content"}, set(), "API_SCHEMA_INVALID")
++        if request_body["required"] is not True:
++            raise _schema_error()
++        _validate_json_content(request_body["content"])
++
++    responses = operation["responses"]
++    if not isinstance(responses, dict) or not responses:
++        raise _schema_error()
++    for response in responses.values():
++        if not isinstance(response, dict):
++            raise _schema_error()
++        assert_exact_fields(response, {"description", "content"}, set(), "API_SCHEMA_INVALID")
++        if not isinstance(response["description"], str):
++            raise _schema_error()
++        _validate_json_content(response["content"])
++
++
++def _validate_component_schemas(schemas: object) -> None:
++    required = {"Identifier", "ApiVersion", "Error", "ErrorEnvelope", "SuccessEnvelope"}
++    if not isinstance(schemas, dict) or set(schemas) != required:
++        raise _schema_error()
++    for schema in schemas.values():
++        _validate_schema(schema)
++
++    if schemas["Identifier"] != {"type": "string", "minLength": 1}:
++        raise _schema_error()
++    if schemas["ApiVersion"] != {"type": "string", "const": API_VERSION}:
++        raise _schema_error()
++
++
++def validate_openapi_document(document: dict[str, Any]) -> None:
++    """Validate the closed local OpenAPI surface for the first W3 interface task."""
++    assert_exact_fields(document, {"openapi", "info", "paths", "components"}, set(), "API_SCHEMA_INVALID")
++    if document["openapi"] != OPENAPI_VERSION:
++        raise ContractError("API_VERSION_UNSUPPORTED")
++
++    info = document["info"]
++    assert_exact_fields(info, {"title", "version"}, set(), "API_SCHEMA_INVALID")
++    if info["version"] != DOCUMENT_VERSION:
++        raise ContractError("API_VERSION_UNSUPPORTED")
++    if not isinstance(info["title"], str) or not info["title"]:
++        raise _schema_error()
++
++    paths = document["paths"]
++    if not isinstance(paths, dict) or set(paths) != {path for _, path in EXPECTED_OPERATIONS}:
++        raise _schema_error()
++    actual_operations: set[tuple[str, str]] = set()
++    for path, item in paths.items():
++        if not isinstance(item, dict):
++            raise _schema_error()
++        for method, operation in item.items():
++            identity = (method, path)
++            if identity not in EXPECTED_OPERATIONS or identity in actual_operations:
++                raise _schema_error()
++            actual_operations.add(identity)
++            _validate_operation(operation, method, path)
++    if actual_operations != set(EXPECTED_OPERATIONS):
++        raise _schema_error()
++
++    components = document["components"]
++    assert_exact_fields(components, {"parameters", "schemas"}, set(), "API_SCHEMA_INVALID")
++    parameters = components["parameters"]
++    if not isinstance(parameters, dict) or set(parameters) != {"RequestIdHeader"}:
++        raise _schema_error()
++    _validate_request_id_parameter(parameters["RequestIdHeader"])
++    _validate_component_schemas(components["schemas"])
++
++    def visit(value: object) -> None:
++        if isinstance(value, dict):
++            if "$ref" in value:
++                if set(value) != {"$ref"}:
++                    raise ContractError("API_REFERENCE_INVALID")
++                _resolve_local_ref(document, value["$ref"])
++            for nested in value.values():
++                visit(nested)
++        elif isinstance(value, list):
++            for nested in value:
++                visit(nested)
++
++    visit(document)
++
++
++def evaluate_version_envelope(case: dict[str, Any], document: dict[str, Any]) -> str:
++    """Placeholder for the later version-envelope fixture suite."""
++    raise NotImplementedError("version-envelope fixture evaluation is not implemented")
+diff --git a/contracts/forgeops-api/1.0/openapi.yaml b/contracts/forgeops-api/1.0/openapi.yaml
+new file mode 100644
+index 0000000..93c41b3
+--- /dev/null
++++ b/contracts/forgeops-api/1.0/openapi.yaml
+@@ -0,0 +1,213 @@
++{
++  "openapi": "3.1.0",
++  "info": {
++    "title": "ForgeOps API",
++    "version": "1.0.0"
++  },
++  "paths": {
++    "/v1/tasks": {
++      "post": {
++        "operationId": "createTask",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"}
++        ],
++        "requestBody": {
++          "required": true,
++          "content": {
++            "application/json": {
++              "schema": {
++                "type": "object",
++                "additionalProperties": false,
++                "required": ["api_version"],
++                "properties": {
++                  "api_version": {"$ref": "#/components/schemas/ApiVersion"}
++                }
++              }
++            }
++          }
++        },
++        "responses": {
++          "201": {
++            "description": "Task accepted.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/SuccessEnvelope"}
++              }
++            }
++          },
++          "400": {
++            "description": "Request rejected.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    },
++    "/v1/tasks/{task_id}": {
++      "get": {
++        "operationId": "getTask",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"}
++        ],
++        "responses": {
++          "200": {
++            "description": "Task returned.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/SuccessEnvelope"}
++              }
++            }
++          },
++          "404": {
++            "description": "Task not found.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    },
++    "/v1/runs/{run_id}": {
++      "get": {
++        "operationId": "getRun",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"}
++        ],
++        "responses": {
++          "200": {
++            "description": "Run returned.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/SuccessEnvelope"}
++              }
++            }
++          },
++          "404": {
++            "description": "Run not found.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    },
++    "/v1/runs/{run_id}/events": {
++      "get": {
++        "operationId": "listRunEvents",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"}
++        ],
++        "responses": {
++          "200": {
++            "description": "Run events returned.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/SuccessEnvelope"}
++              }
++            }
++          },
++          "404": {
++            "description": "Run not found.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    },
++    "/v1/runs/{run_id}/manifest": {
++      "get": {
++        "operationId": "getRunManifest",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"}
++        ],
++        "responses": {
++          "200": {
++            "description": "Run manifest returned.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/SuccessEnvelope"}
++              }
++            }
++          },
++          "404": {
++            "description": "Run not found.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    }
++  },
++  "components": {
++    "parameters": {
++      "RequestIdHeader": {
++        "name": "X-Request-ID",
++        "in": "header",
++        "required": true,
++        "schema": {
++          "type": "string",
++          "minLength": 1
++        }
++      }
++    },
++    "schemas": {
++      "Identifier": {
++        "type": "string",
++        "minLength": 1
++      },
++      "ApiVersion": {
++        "type": "string",
++        "const": "1.0"
++      },
++      "Error": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["code", "message"],
++        "properties": {
++          "code": {
++            "type": "string",
++            "enum": [
++              "API_VERSION_UNSUPPORTED",
++              "API_SCHEMA_INVALID",
++              "API_IDENTITY_MISMATCH",
++              "API_CONTROL_FIELD_FORBIDDEN",
++              "API_REFERENCE_INVALID",
++              "API_RESOURCE_NOT_FOUND"
++            ]
++          },
++          "message": {"type": "string"}
++        }
++      },
++      "ErrorEnvelope": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version", "error"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++          "error": {"$ref": "#/components/schemas/Error"}
++        }
++      },
++      "SuccessEnvelope": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"}
++        }
++      }
++    }
++  }
++}
+diff --git a/tests/interface_contract/__init__.py b/tests/interface_contract/__init__.py
+new file mode 100644
+index 0000000..fd6c154
+--- /dev/null
++++ b/tests/interface_contract/__init__.py
+@@ -0,0 +1 @@
++"""Tests for the ForgeOps interface contract helpers."""
+diff --git a/tests/interface_contract/test_openapi_version.py b/tests/interface_contract/test_openapi_version.py
+new file mode 100644
+index 0000000..e5f04c7
+--- /dev/null
++++ b/tests/interface_contract/test_openapi_version.py
+@@ -0,0 +1,44 @@
++from __future__ import annotations
++
++import unittest
++from pathlib import Path
++
++from tools.interface_contract.common import load_json
++from tools.interface_contract.openapi_contract import validate_openapi_document
++
++
++ROOT = Path(__file__).resolve().parents[2]
++
++
++class OpenApiDocumentTests(unittest.TestCase):
++    def test_document_has_exact_version_and_operations(self):
++        document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++        validate_openapi_document(document)
++        self.assertEqual("3.1.0", document["openapi"])
++        self.assertEqual("1.0.0", document["info"]["version"])
++        actual = {
++            (method.upper(), path, operation["operationId"])
++            for path, item in document["paths"].items()
++            for method, operation in item.items()
++        }
++        self.assertEqual(
++            {
++                ("POST", "/v1/tasks", "createTask"),
++                ("GET", "/v1/tasks/{task_id}", "getTask"),
++                ("GET", "/v1/runs/{run_id}", "getRun"),
++                ("GET", "/v1/runs/{run_id}/events", "listRunEvents"),
++                ("GET", "/v1/runs/{run_id}/manifest", "getRunManifest"),
++            },
++            actual,
++        )
++
++    def test_every_operation_requires_request_id_header(self):
++        document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++        for path_item in document["paths"].values():
++            for operation in path_item.values():
++                refs = [item.get("$ref") for item in operation["parameters"]]
++                self.assertIn("#/components/parameters/RequestIdHeader", refs)
++
++
++if __name__ == "__main__":
++    unittest.main()

@@ -1,0 +1,803 @@
+# Review package: uncommitted W3-1 Task 2
+## Files changed
+fixtures/forgeops-api/version-envelope-suite.json
+tools/interface_contract/openapi_contract.py
+tests/interface_contract/test_openapi_version.py
+## Diff
+diff --git a/fixtures/forgeops-api/version-envelope-suite.json b/fixtures/forgeops-api/version-envelope-suite.json
+new file mode 100644
+index 0000000..010e6f0
+--- /dev/null
++++ b/fixtures/forgeops-api/version-envelope-suite.json
+@@ -0,0 +1,150 @@
++{
++  "suite_id": "forgeops-api-version-envelope",
++  "suite_version": "1.0",
++  "cases": [
++    {
++      "id": "valid-create-task",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": "request-001",
++      "body": {"api_version": "1.0", "request_id": "request-001", "task_id": "task-001"},
++      "response": {"api_version": "1.0", "request_id": "request-001", "data": {}},
++      "expected": "PASSED"
++    },
++    {
++      "id": "valid-get-task",
++      "kind": "getTask",
++      "uri_major": "v1",
++      "request_header": "request-002",
++      "body": {"api_version": "1.0", "path_task_id": "task-002", "task_id": "task-002"},
++      "response": {"api_version": "1.0", "request_id": "request-002", "data": {}},
++      "expected": "PASSED"
++    },
++    {
++      "id": "valid-get-run",
++      "kind": "getRun",
++      "uri_major": "v1",
++      "request_header": "request-003",
++      "body": {"api_version": "1.0", "path_run_id": "run-003", "run_id": "run-003"},
++      "response": {"api_version": "1.0", "request_id": "request-003", "data": {}},
++      "expected": "PASSED"
++    },
++    {
++      "id": "valid-list-run-events",
++      "kind": "listRunEvents",
++      "uri_major": "v1",
++      "request_header": "request-004",
++      "body": {"api_version": "1.0", "path_run_id": "run-004", "run_id": "run-004"},
++      "response": {"api_version": "1.0", "request_id": "request-004", "data": {}},
++      "expected": "PASSED"
++    },
++    {
++      "id": "valid-get-run-manifest",
++      "kind": "getRunManifest",
++      "uri_major": "v1",
++      "request_header": "request-005",
++      "body": {"api_version": "1.0", "path_run_id": "run-005", "run_id": "run-005"},
++      "response": {"api_version": "1.0", "request_id": "request-005", "data": {}},
++      "expected": "PASSED"
++    },
++    {
++      "id": "unsupported-uri-major",
++      "kind": "createTask",
++      "uri_major": "v2",
++      "request_header": "request-006",
++      "body": {"api_version": "1.0", "request_id": "request-006", "task_id": "task-006"},
++      "response": {"api_version": "1.0", "request_id": "request-006", "data": {}},
++      "expected": "API_VERSION_UNSUPPORTED"
++    },
++    {
++      "id": "unsupported-body-version",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": "request-007",
++      "body": {"api_version": "2.0", "request_id": "request-007", "task_id": "task-007"},
++      "response": {"api_version": "1.0", "request_id": "request-007", "data": {}},
++      "expected": "API_VERSION_UNSUPPORTED"
++    },
++    {
++      "id": "missing-request-header",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": null,
++      "body": {"api_version": "1.0", "request_id": "request-008", "task_id": "task-008"},
++      "response": {"api_version": "1.0", "request_id": "request-008", "data": {}},
++      "expected": "API_SCHEMA_INVALID"
++    },
++    {
++      "id": "invalid-request-id-type",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": 9,
++      "body": {"api_version": "1.0", "request_id": "request-009", "task_id": "task-009"},
++      "response": {"api_version": "1.0", "request_id": "request-009", "data": {}},
++      "expected": "API_SCHEMA_INVALID"
++    },
++    {
++      "id": "request-id-header-body-mismatch",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": "request-010-header",
++      "body": {"api_version": "1.0", "request_id": "request-010-body", "task_id": "task-010"},
++      "response": {"api_version": "1.0", "request_id": "request-010-header", "data": {}},
++      "expected": "API_IDENTITY_MISMATCH"
++    },
++    {
++      "id": "response-request-id-mismatch",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": "request-011",
++      "body": {"api_version": "1.0", "request_id": "request-011", "task_id": "task-011"},
++      "response": {"api_version": "1.0", "request_id": "request-011-response", "data": {}},
++      "expected": "API_IDENTITY_MISMATCH"
++    },
++    {
++      "id": "endpoint-unknown-field",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": "request-012",
++      "body": {"api_version": "1.0", "request_id": "request-012", "task_id": "task-012", "unknown": true},
++      "response": {"api_version": "1.0", "request_id": "request-012", "data": {}},
++      "expected": "API_SCHEMA_INVALID"
++    },
++    {
++      "id": "endpoint-missing-required-field",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": "request-013",
++      "body": {"api_version": "1.0", "request_id": "request-013"},
++      "response": {"api_version": "1.0", "request_id": "request-013", "data": {}},
++      "expected": "API_SCHEMA_INVALID"
++    },
++    {
++      "id": "endpoint-wrong-field-type",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": "request-014",
++      "body": {"api_version": "1.0", "request_id": "request-014", "task_id": 14},
++      "response": {"api_version": "1.0", "request_id": "request-014", "data": {}},
++      "expected": "API_SCHEMA_INVALID"
++    },
++    {
++      "id": "path-body-identity-mismatch",
++      "kind": "getTask",
++      "uri_major": "v1",
++      "request_header": "request-015",
++      "body": {"api_version": "1.0", "path_task_id": "task-015-path", "task_id": "task-015-body"},
++      "response": {"api_version": "1.0", "request_id": "request-015", "data": {}},
++      "expected": "API_IDENTITY_MISMATCH"
++    },
++    {
++      "id": "response-data-error-conflict",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": "request-016",
++      "body": {"api_version": "1.0", "request_id": "request-016", "task_id": "task-016"},
++      "response": {"api_version": "1.0", "request_id": "request-016", "data": {}, "error": {"code": "API_SCHEMA_INVALID", "message": "rejected"}},
++      "expected": "API_SCHEMA_INVALID"
++    }
++  ]
++}
+diff --git a/tools/interface_contract/openapi_contract.py b/tools/interface_contract/openapi_contract.py
+new file mode 100644
+index 0000000..21fb14f
+--- /dev/null
++++ b/tools/interface_contract/openapi_contract.py
+@@ -0,0 +1,431 @@
++"""Validation for the approved ForgeOps OpenAPI 3.1 document subset."""
++
++from __future__ import annotations
++
++from typing import Any
++
++from tools.interface_contract.common import ContractError, assert_exact_fields
++
++
++API_VERSION = "1.0"
++OPENAPI_VERSION = "3.1.0"
++DOCUMENT_VERSION = "1.0.0"
++API_ERROR_CODE_ENUM = (
++    "API_VERSION_UNSUPPORTED",
++    "API_SCHEMA_INVALID",
++    "API_IDENTITY_MISMATCH",
++    "API_CONTROL_FIELD_FORBIDDEN",
++    "API_REFERENCE_INVALID",
++    "API_RESOURCE_NOT_FOUND",
++)
++API_ERROR_CODES = frozenset(API_ERROR_CODE_ENUM)
++EXPECTED_OPERATIONS = {
++    ("post", "/v1/tasks"): "createTask",
++    ("get", "/v1/tasks/{task_id}"): "getTask",
++    ("get", "/v1/runs/{run_id}"): "getRun",
++    ("get", "/v1/runs/{run_id}/events"): "listRunEvents",
++    ("get", "/v1/runs/{run_id}/manifest"): "getRunManifest",
++}
++PATH_PARAMETER_NAMES = {
++    "/v1/tasks": (),
++    "/v1/tasks/{task_id}": ("task_id",),
++    "/v1/runs/{run_id}": ("run_id",),
++    "/v1/runs/{run_id}/events": ("run_id",),
++    "/v1/runs/{run_id}/manifest": ("run_id",),
++}
++VERSION_ENVELOPE_CASE_FIELDS = {
++    "id",
++    "kind",
++    "uri_major",
++    "request_header",
++    "body",
++    "response",
++    "expected",
++}
++VERSION_ENVELOPE_KINDS = frozenset(EXPECTED_OPERATIONS.values())
++ENDPOINT_BODY_FIELDS = {
++    "createTask": {"api_version", "request_id", "task_id"},
++    "getTask": {"api_version", "path_task_id", "task_id"},
++    "getRun": {"api_version", "path_run_id", "run_id"},
++    "listRunEvents": {"api_version", "path_run_id", "run_id"},
++    "getRunManifest": {"api_version", "path_run_id", "run_id"},
++}
++FORBIDDEN_CONTROL_FIELDS = frozenset(
++    {"accepted_state", "approval", "authority", "capabilities", "control"}
++)
++
++
++def _schema_error() -> ContractError:
++    return ContractError("API_SCHEMA_INVALID")
++
++
++def _resolve_local_ref(document: dict[str, Any], reference: object) -> object:
++    if not isinstance(reference, str) or not reference.startswith("#/"):
++        raise ContractError("API_REFERENCE_INVALID")
++    target: object = document
++    for part in reference[2:].split("/"):
++        if not isinstance(target, dict):
++            raise ContractError("API_REFERENCE_INVALID")
++        key = part.replace("~1", "/").replace("~0", "~")
++        if key not in target:
++            raise ContractError("API_REFERENCE_INVALID")
++        target = target[key]
++    return target
++
++
++def _validate_schema(schema: object) -> None:
++    if not isinstance(schema, dict):
++        raise _schema_error()
++
++    if schema.get("type") == "object" and schema.get("additionalProperties") is not False:
++        raise _schema_error()
++
++    composition = [key for key in ("allOf", "anyOf", "oneOf") if key in schema]
++    if composition and schema.get("unevaluatedProperties") is not False:
++        raise _schema_error()
++
++    properties = schema.get("properties")
++    if properties is not None:
++        if not isinstance(properties, dict):
++            raise _schema_error()
++        for property_schema in properties.values():
++            _validate_schema(property_schema)
++
++    if "items" in schema:
++        _validate_schema(schema["items"])
++
++    for key in composition:
++        choices = schema[key]
++        if not isinstance(choices, list) or not choices:
++            raise _schema_error()
++        for choice in choices:
++            _validate_schema(choice)
++
++
++def _validate_request_id_parameter(parameter: object) -> None:
++    if not isinstance(parameter, dict):
++        raise _schema_error()
++    assert_exact_fields(parameter, {"name", "in", "required", "schema"}, set(), "API_SCHEMA_INVALID")
++    if (
++        parameter["name"] != "X-Request-ID"
++        or parameter["in"] != "header"
++        or parameter["required"] is not True
++        or not isinstance(parameter["schema"], dict)
++    ):
++        raise _schema_error()
++    _validate_schema(parameter["schema"])
++
++
++def _path_parameter(name: str) -> dict[str, object]:
++    return {
++        "name": name,
++        "in": "path",
++        "required": True,
++        "schema": {"$ref": "#/components/schemas/Identifier"},
++    }
++
++
++def _validate_json_content(content: object) -> None:
++    if not isinstance(content, dict) or set(content) != {"application/json"}:
++        raise _schema_error()
++    media = content["application/json"]
++    if not isinstance(media, dict):
++        raise _schema_error()
++    assert_exact_fields(media, {"schema"}, set(), "API_SCHEMA_INVALID")
++    _validate_schema(media["schema"])
++
++
++def _validate_operation(
++    operation: object, method: str, path: str
++) -> None:
++    expected_id = EXPECTED_OPERATIONS[(method, path)]
++    required = {"operationId", "parameters", "responses"}
++    if method == "post":
++        required.add("requestBody")
++    assert_exact_fields(operation, required, set(), "API_SCHEMA_INVALID")
++    if not isinstance(operation, dict) or operation["operationId"] != expected_id:
++        raise _schema_error()
++
++    parameters = operation["parameters"]
++    expected_parameters: list[object] = [
++        {"$ref": "#/components/parameters/RequestIdHeader"}
++    ]
++    expected_parameters.extend(_path_parameter(name) for name in PATH_PARAMETER_NAMES[path])
++    if not isinstance(parameters, list) or parameters != expected_parameters:
++        raise _schema_error()
++
++    if method == "post":
++        request_body = operation["requestBody"]
++        if not isinstance(request_body, dict):
++            raise _schema_error()
++        assert_exact_fields(request_body, {"required", "content"}, set(), "API_SCHEMA_INVALID")
++        if request_body["required"] is not True:
++            raise _schema_error()
++        _validate_json_content(request_body["content"])
++
++    responses = operation["responses"]
++    if not isinstance(responses, dict) or not responses:
++        raise _schema_error()
++    for response in responses.values():
++        if not isinstance(response, dict):
++            raise _schema_error()
++        assert_exact_fields(response, {"description", "content"}, set(), "API_SCHEMA_INVALID")
++        if not isinstance(response["description"], str):
++            raise _schema_error()
++        _validate_json_content(response["content"])
++
++
++def _validate_component_schemas(schemas: object) -> None:
++    required = {"Identifier", "ApiVersion", "Error", "ErrorEnvelope", "SuccessEnvelope"}
++    if not isinstance(schemas, dict) or set(schemas) != required:
++        raise _schema_error()
++    for schema in schemas.values():
++        _validate_schema(schema)
++
++    if schemas["Identifier"] != {"type": "string", "minLength": 1}:
++        raise _schema_error()
++    if schemas["ApiVersion"] != {"type": "string", "const": API_VERSION}:
++        raise _schema_error()
++    if schemas["Error"] != {
++        "type": "object",
++        "additionalProperties": False,
++        "required": ["code", "message"],
++        "properties": {
++            "code": {"type": "string", "enum": list(API_ERROR_CODE_ENUM)},
++            "message": {"type": "string"},
++        },
++    }:
++        raise _schema_error()
++    if schemas["ErrorEnvelope"] != {
++        "type": "object",
++        "additionalProperties": False,
++        "required": ["api_version", "error"],
++        "properties": {
++            "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++            "error": {"$ref": "#/components/schemas/Error"},
++        },
++    }:
++        raise _schema_error()
++    if schemas["SuccessEnvelope"] != {
++        "type": "object",
++        "additionalProperties": False,
++        "required": ["api_version"],
++        "properties": {
++            "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++        },
++    }:
++        raise _schema_error()
++
++
++def validate_openapi_document(document: dict[str, Any]) -> None:
++    """Validate the closed local OpenAPI surface for the first W3 interface task."""
++    assert_exact_fields(document, {"openapi", "info", "paths", "components"}, set(), "API_SCHEMA_INVALID")
++    if document["openapi"] != OPENAPI_VERSION:
++        raise ContractError("API_VERSION_UNSUPPORTED")
++
++    info = document["info"]
++    assert_exact_fields(info, {"title", "version"}, set(), "API_SCHEMA_INVALID")
++    if info["version"] != DOCUMENT_VERSION:
++        raise ContractError("API_VERSION_UNSUPPORTED")
++    if not isinstance(info["title"], str) or not info["title"]:
++        raise _schema_error()
++
++    paths = document["paths"]
++    if not isinstance(paths, dict) or set(paths) != {path for _, path in EXPECTED_OPERATIONS}:
++        raise _schema_error()
++    actual_operations: set[tuple[str, str]] = set()
++    for path, item in paths.items():
++        if not isinstance(item, dict):
++            raise _schema_error()
++        for method, operation in item.items():
++            identity = (method, path)
++            if identity not in EXPECTED_OPERATIONS or identity in actual_operations:
++                raise _schema_error()
++            actual_operations.add(identity)
++            _validate_operation(operation, method, path)
++    if actual_operations != set(EXPECTED_OPERATIONS):
++        raise _schema_error()
++
++    components = document["components"]
++    assert_exact_fields(components, {"parameters", "schemas"}, set(), "API_SCHEMA_INVALID")
++    parameters = components["parameters"]
++    if not isinstance(parameters, dict) or set(parameters) != {"RequestIdHeader"}:
++        raise _schema_error()
++    _validate_request_id_parameter(parameters["RequestIdHeader"])
++    _validate_component_schemas(components["schemas"])
++
++    def visit(value: object) -> None:
++        if isinstance(value, dict):
++            if "$ref" in value:
++                if set(value) != {"$ref"}:
++                    raise ContractError("API_REFERENCE_INVALID")
++                _resolve_local_ref(document, value["$ref"])
++            for nested in value.values():
++                visit(nested)
++        elif isinstance(value, list):
++            for nested in value:
++                visit(nested)
++
++    visit(document)
++
++
++def _is_ascii_identifier(value: object) -> bool:
++    return (
++        isinstance(value, str)
++        and bool(value)
++        and all(0x21 <= ord(character) <= 0x7E for character in value)
++    )
++
++
++def _validate_common_envelope(case: dict[str, Any]) -> None:
++    body = case["body"]
++    response = case["response"]
++    if not isinstance(body, dict) or not isinstance(response, dict):
++        raise _schema_error()
++    if not isinstance(body.get("api_version"), str):
++        raise _schema_error()
++    if not {"api_version", "request_id"}.issubset(response):
++        raise _schema_error()
++    if not isinstance(response["api_version"], str) or not isinstance(response["request_id"], str):
++        raise _schema_error()
++    if response["api_version"] != API_VERSION:
++        raise ContractError("API_VERSION_UNSUPPORTED")
++
++
++def validate_request_id(case: dict[str, Any]) -> None:
++    """Validate request-ID presence, ASCII type, and exact envelope equality."""
++    header = case["request_header"]
++    body = case["body"]
++    response = case["response"]
++    identifiers = [header, response.get("request_id")]
++    if case["kind"] == "createTask":
++        identifiers.append(body.get("request_id"))
++    if not all(_is_ascii_identifier(value) for value in identifiers):
++        raise _schema_error()
++    if response["request_id"] != header:
++        raise ContractError("API_IDENTITY_MISMATCH")
++    if case["kind"] == "createTask" and body["request_id"] != header:
++        raise ContractError("API_IDENTITY_MISMATCH")
++
++
++def _scan_forbidden_control_fields(body: dict[str, Any]) -> None:
++    if any(field in body for field in FORBIDDEN_CONTROL_FIELDS):
++        raise ContractError("API_CONTROL_FIELD_FORBIDDEN")
++
++
++def validate_endpoint_shape(case: dict[str, Any]) -> None:
++    """Require the fixture-only simple inputs and a closed success/error envelope."""
++    body = case["body"]
++    expected_fields = ENDPOINT_BODY_FIELDS[case["kind"]]
++    assert_exact_fields(body, expected_fields, set(), "API_SCHEMA_INVALID")
++    for field in expected_fields - {"api_version"}:
++        if not _is_ascii_identifier(body[field]):
++            raise _schema_error()
++
++    response = case["response"]
++    has_data = "data" in response
++    has_error = "error" in response
++    if has_data == has_error:
++        raise _schema_error()
++    branch = "data" if has_data else "error"
++    assert_exact_fields(
++        response,
++        {"api_version", "request_id", branch},
++        set(),
++        "API_SCHEMA_INVALID",
++    )
++    if branch == "data":
++        if not isinstance(response["data"], dict):
++            raise _schema_error()
++        return
++
++    error = response["error"]
++    assert_exact_fields(error, {"code", "message"}, set(), "API_SCHEMA_INVALID")
++    if error["code"] not in API_ERROR_CODES or not isinstance(error["message"], str):
++        raise _schema_error()
++
++
++def _validate_path_body_identity(case: dict[str, Any]) -> None:
++    body = case["body"]
++    if case["kind"] == "getTask":
++        if body["path_task_id"] != body["task_id"]:
++            raise ContractError("API_IDENTITY_MISMATCH")
++    elif case["kind"] != "createTask" and body["path_run_id"] != body["run_id"]:
++        raise ContractError("API_IDENTITY_MISMATCH")
++
++
++def _validate_component_reference(case: dict[str, Any], document: dict[str, Any]) -> None:
++    for (method, path), operation_id in EXPECTED_OPERATIONS.items():
++        if operation_id != case["kind"]:
++            continue
++        operation = document["paths"][path][method]
++        for response in operation["responses"].values():
++            schema = response["content"]["application/json"]["schema"]
++            if not isinstance(schema, dict) or "$ref" not in schema:
++                raise ContractError("API_REFERENCE_INVALID")
++            _resolve_local_ref(document, schema["$ref"])
++        return
++    raise _schema_error()
++
++
++def evaluate_version_envelope(case: dict[str, Any], document: dict[str, Any]) -> str:
++    """Evaluate one version/envelope fixture with the approved stable ordering."""
++    validate_openapi_document(document)
++    assert_exact_fields(case, VERSION_ENVELOPE_CASE_FIELDS, set(), "API_SCHEMA_INVALID")
++    if not _is_ascii_identifier(case["id"]) or case["kind"] not in VERSION_ENVELOPE_KINDS:
++        raise _schema_error()
++    if not isinstance(case["uri_major"], str):
++        raise _schema_error()
++    if case["uri_major"] != "v1":
++        raise ContractError("API_VERSION_UNSUPPORTED")
++    body = case["body"]
++    if isinstance(body, dict) and "api_version" in body:
++        if not isinstance(body["api_version"], str):
++            raise _schema_error()
++        if body["api_version"] != API_VERSION:
++            raise ContractError("API_VERSION_UNSUPPORTED")
++
++    _validate_common_envelope(case)
++    _scan_forbidden_control_fields(body)
++    validate_endpoint_shape(case)
++    validate_request_id(case)
++    _validate_path_body_identity(case)
++    _validate_component_reference(case, document)
++    return "PASSED"
++
++
++def run_version_envelope_suite(
++    document: dict[str, Any], suite: dict[str, Any]
++) -> list[dict[str, str]]:
++    """Run a closed fixture catalog and expose only public-safe result records."""
++    assert_exact_fields(suite, {"suite_id", "suite_version", "cases"}, set(), "API_SCHEMA_INVALID")
++    if suite["suite_id"] != "forgeops-api-version-envelope" or suite["suite_version"] != API_VERSION:
++        raise _schema_error()
++    cases = suite["cases"]
++    if not isinstance(cases, list):
++        raise _schema_error()
++
++    records: list[dict[str, str]] = []
++    for case in cases:
++        if not isinstance(case, dict):
++            raise _schema_error()
++        assert_exact_fields(case, VERSION_ENVELOPE_CASE_FIELDS, set(), "API_SCHEMA_INVALID")
++        if not _is_ascii_identifier(case["id"]) or case["kind"] not in VERSION_ENVELOPE_KINDS:
++            raise _schema_error()
++        expected = case["expected"]
++        if expected != "PASSED" and expected not in API_ERROR_CODES:
++            raise _schema_error()
++        try:
++            actual = evaluate_version_envelope(case, document)
++        except ContractError as error:
++            actual = error.code
++        records.append(
++            {
++                "id": case["id"],
++                "kind": case["kind"],
++                "expected": expected,
++                "actual": actual,
++                "status": "PASSED" if actual == expected else "FAILED",
++            }
++        )
++    return records
+diff --git a/tests/interface_contract/test_openapi_version.py b/tests/interface_contract/test_openapi_version.py
+new file mode 100644
+index 0000000..58f58a9
+--- /dev/null
++++ b/tests/interface_contract/test_openapi_version.py
+@@ -0,0 +1,198 @@
++from __future__ import annotations
++
++import copy
++import unittest
++from pathlib import Path
++
++from tools.interface_contract.common import ContractError, load_json
++from tools.interface_contract.openapi_contract import (
++    evaluate_version_envelope,
++    run_version_envelope_suite,
++    validate_openapi_document,
++)
++
++
++ROOT = Path(__file__).resolve().parents[2]
++VERSION_ENVELOPE_CASE_IDS = [
++    "valid-create-task",
++    "valid-get-task",
++    "valid-get-run",
++    "valid-list-run-events",
++    "valid-get-run-manifest",
++    "unsupported-uri-major",
++    "unsupported-body-version",
++    "missing-request-header",
++    "invalid-request-id-type",
++    "request-id-header-body-mismatch",
++    "response-request-id-mismatch",
++    "endpoint-unknown-field",
++    "endpoint-missing-required-field",
++    "endpoint-wrong-field-type",
++    "path-body-identity-mismatch",
++    "response-data-error-conflict",
++]
++
++
++class OpenApiDocumentTests(unittest.TestCase):
++    def test_document_has_exact_version_and_operations(self):
++        document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++        validate_openapi_document(document)
++        self.assertEqual("3.1.0", document["openapi"])
++        self.assertEqual("1.0.0", document["info"]["version"])
++        actual = {
++            (method.upper(), path, operation["operationId"])
++            for path, item in document["paths"].items()
++            for method, operation in item.items()
++        }
++        self.assertEqual(
++            {
++                ("POST", "/v1/tasks", "createTask"),
++                ("GET", "/v1/tasks/{task_id}", "getTask"),
++                ("GET", "/v1/runs/{run_id}", "getRun"),
++                ("GET", "/v1/runs/{run_id}/events", "listRunEvents"),
++                ("GET", "/v1/runs/{run_id}/manifest", "getRunManifest"),
++            },
++            actual,
++        )
++
++    def test_every_operation_requires_request_id_header(self):
++        document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++        for path_item in document["paths"].values():
++            for operation in path_item.values():
++                refs = [item.get("$ref") for item in operation["parameters"]]
++                self.assertIn("#/components/parameters/RequestIdHeader", refs)
++
++    def test_path_templates_require_matching_path_parameter(self):
++        document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++        changed = copy.deepcopy(document)
++        for path, path_item in changed["paths"].items():
++            if "{" not in path:
++                continue
++            operation = path_item["get"]
++            operation["parameters"] = [
++                parameter
++                for parameter in operation["parameters"]
++                if parameter.get("in") != "path"
++            ]
++
++        with self.assertRaisesRegex(ContractError, "API_SCHEMA_INVALID"):
++            validate_openapi_document(changed)
++
++    def test_error_schema_rejects_missing_stable_category(self):
++        document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++        changed = copy.deepcopy(document)
++        changed["components"]["schemas"]["Error"]["properties"]["code"]["enum"].pop()
++
++        with self.assertRaisesRegex(ContractError, "API_SCHEMA_INVALID"):
++            validate_openapi_document(changed)
++
++    def test_envelopes_require_api_version_schema_wiring(self):
++        document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++        for envelope in ("ErrorEnvelope", "SuccessEnvelope"):
++            changed = copy.deepcopy(document)
++            changed["components"]["schemas"][envelope]["properties"]["api_version"] = {
++                "$ref": "#/components/schemas/Identifier"
++            }
++
++            with self.subTest(envelope=envelope):
++                with self.assertRaisesRegex(ContractError, "API_SCHEMA_INVALID"):
++                    validate_openapi_document(changed)
++
++
++class VersionEnvelopeTests(unittest.TestCase):
++    def setUp(self):
++        self.document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++
++    def test_exact_case_catalog(self):
++        suite = load_json(ROOT / "fixtures/forgeops-api/version-envelope-suite.json")
++        self.assertEqual("forgeops-api-version-envelope", suite["suite_id"])
++        self.assertEqual("1.0", suite["suite_version"])
++        self.assertEqual(VERSION_ENVELOPE_CASE_IDS, [case["id"] for case in suite["cases"]])
++
++    def test_version_error_precedes_closed_body_error(self):
++        case = {
++            "id": "priority-case",
++            "kind": "createTask",
++            "uri_major": "v2",
++            "request_header": "request-001",
++            "body": {
++                "api_version": "1.0",
++                "request_id": "request-001",
++                "task_id": "task-001",
++                "unknown": True,
++            },
++            "response": {
++                "api_version": "1.0",
++                "request_id": "request-001",
++                "data": {},
++            },
++            "expected": "API_VERSION_UNSUPPORTED",
++        }
++
++        with self.assertRaisesRegex(ContractError, "API_VERSION_UNSUPPORTED"):
++            evaluate_version_envelope(case, self.document)
++
++    def test_response_api_version_must_be_exact(self):
++        case = {
++            "id": "response-version-case",
++            "kind": "createTask",
++            "uri_major": "v1",
++            "request_header": "request-response-version",
++            "body": {
++                "api_version": "1.0",
++                "request_id": "request-response-version",
++                "task_id": "task-response-version",
++            },
++            "response": {
++                "api_version": "2.0",
++                "request_id": "request-response-version",
++                "data": {},
++            },
++            "expected": "API_VERSION_UNSUPPORTED",
++        }
++
++        with self.assertRaisesRegex(ContractError, "API_VERSION_UNSUPPORTED"):
++            evaluate_version_envelope(case, self.document)
++
++        case["response"]["api_version"] = 2
++        with self.assertRaisesRegex(ContractError, "API_SCHEMA_INVALID"):
++            evaluate_version_envelope(case, self.document)
++
++    def test_non_string_body_version_is_schema_invalid(self):
++        case = {
++            "id": "body-version-type-case",
++            "kind": "createTask",
++            "uri_major": "v1",
++            "request_header": "request-body-version-type",
++            "body": {
++                "api_version": 1,
++                "request_id": "request-body-version-type",
++                "task_id": "task-body-version-type",
++            },
++            "response": {
++                "api_version": "1.0",
++                "request_id": "request-body-version-type",
++                "data": {},
++            },
++            "expected": "API_SCHEMA_INVALID",
++        }
++
++        with self.assertRaisesRegex(ContractError, "API_SCHEMA_INVALID"):
++            evaluate_version_envelope(case, self.document)
++
++    def test_result_records_are_public_safe_and_match_expected(self):
++        suite = load_json(ROOT / "fixtures/forgeops-api/version-envelope-suite.json")
++        records = run_version_envelope_suite(self.document, suite)
++
++        self.assertTrue(
++            all(
++                set(record) == {"id", "kind", "expected", "actual", "status"}
++                for record in records
++            )
++        )
++        self.assertTrue(all(record["actual"] == record["expected"] for record in records))
++        self.assertTrue(all(record["status"] == "PASSED" for record in records))
++
++
++if __name__ == "__main__":
++    unittest.main()

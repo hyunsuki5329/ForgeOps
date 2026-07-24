@@ -1,0 +1,627 @@
+{
+  "suite_id": "forgeops-event-contract-1.0",
+  "schema_version": "1.0",
+  "positive": [
+    {
+      "id": "first-append",
+      "source_revisions": {
+        "EVT-first": 0
+      },
+      "source_main_decisions": {
+        "MDEC-first": {
+          "source_kind": "MAIN_DECISION",
+          "task_id": "TASK-event",
+          "correlation_id": "CORR-event",
+          "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "records": [
+        {
+          "schema_id": "forgeops.event",
+          "schema_version": "1.0",
+          "event_id": "EVT-first",
+          "task_id": "TASK-event",
+          "run_id": "RUN-first",
+          "correlation_id": "CORR-event",
+          "stream_id": "STREAM-first",
+          "stream_seq": 1,
+          "recorded_at": "2026-07-24T00:00:00Z",
+          "accepted_revision": 0,
+          "canonical_event": {
+            "seq": 1,
+            "task_id": "TASK-event",
+            "correlation_id": "CORR-event",
+            "actor": "main",
+            "phase": "DECIDE",
+            "attempt": 1,
+            "severity": "STANDARD",
+            "code": "STATE_ACCEPTED",
+            "action": "SUCCEEDED",
+            "evidence_refs": [
+              "EVID-first"
+            ]
+          },
+          "provenance": {
+            "source_kind": "MAIN_DECISION",
+            "source_ref": "MDEC-first",
+            "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "recorder_id": "main-recorder"
+          }
+        }
+      ]
+    },
+    {
+      "id": "consecutive-append",
+      "source_revisions": {
+        "EVT-consecutive-1": 0,
+        "EVT-consecutive-2": 0
+      },
+      "records": [
+        {
+          "schema_id": "forgeops.event",
+          "schema_version": "1.0",
+          "event_id": "EVT-consecutive-1",
+          "task_id": "TASK-consecutive",
+          "run_id": "RUN-consecutive",
+          "correlation_id": "CORR-consecutive",
+          "stream_id": "STREAM-consecutive",
+          "stream_seq": 1,
+          "recorded_at": "2026-07-24T00:01:00Z",
+          "accepted_revision": 0,
+          "canonical_event": {
+            "seq": 1,
+            "task_id": "TASK-consecutive",
+            "correlation_id": "CORR-consecutive",
+            "actor": "main",
+            "phase": "EXECUTE",
+            "attempt": 1,
+            "severity": "INFO",
+            "code": "EXECUTION_STARTED",
+            "action": "CONTINUE",
+            "evidence_refs": []
+          },
+          "provenance": {
+            "source_kind": "MAIN_DECISION",
+            "source_ref": "MDEC-consecutive-1",
+            "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "recorder_id": "main-recorder"
+          }
+        },
+        {
+          "schema_id": "forgeops.event",
+          "schema_version": "1.0",
+          "event_id": "EVT-consecutive-2",
+          "task_id": "TASK-consecutive",
+          "run_id": "RUN-consecutive",
+          "correlation_id": "CORR-consecutive",
+          "stream_id": "STREAM-consecutive",
+          "stream_seq": 2,
+          "recorded_at": "2026-07-24T00:02:00Z",
+          "accepted_revision": 0,
+          "canonical_event": {
+            "seq": 2,
+            "task_id": "TASK-consecutive",
+            "correlation_id": "CORR-consecutive",
+            "actor": "main",
+            "phase": "VERIFY",
+            "attempt": 1,
+            "severity": "INFO",
+            "code": "EXECUTION_VERIFIED",
+            "action": "DECIDE",
+            "evidence_refs": [
+              "EVID-consecutive"
+            ]
+          },
+          "provenance": {
+            "source_kind": "MAIN_DECISION",
+            "source_ref": "MDEC-consecutive-2",
+            "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "recorder_id": "main-recorder"
+          }
+        }
+      ]
+    },
+    {
+      "id": "revision-increase",
+      "source_revisions": {
+        "EVT-revision-1": 0,
+        "EVT-revision-2": 1
+      },
+      "records": [
+        {
+          "schema_id": "forgeops.event",
+          "schema_version": "1.0",
+          "event_id": "EVT-revision-1",
+          "task_id": "TASK-revision",
+          "run_id": "RUN-revision",
+          "correlation_id": "CORR-revision",
+          "stream_id": "STREAM-revision",
+          "stream_seq": 1,
+          "recorded_at": "2026-07-24T00:03:00Z",
+          "accepted_revision": 0,
+          "canonical_event": {
+            "seq": 1,
+            "task_id": "TASK-revision",
+            "correlation_id": "CORR-revision",
+            "actor": "main",
+            "phase": "DECIDE",
+            "attempt": 1,
+            "severity": "STANDARD",
+            "code": "REVISION_ZERO",
+            "action": "CONTINUE",
+            "evidence_refs": []
+          },
+          "provenance": {
+            "source_kind": "MAIN_DECISION",
+            "source_ref": "MDEC-revision-1",
+            "content_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "recorder_id": "main-recorder"
+          }
+        },
+        {
+          "schema_id": "forgeops.event",
+          "schema_version": "1.0",
+          "event_id": "EVT-revision-2",
+          "task_id": "TASK-revision",
+          "run_id": "RUN-revision",
+          "correlation_id": "CORR-revision",
+          "stream_id": "STREAM-revision",
+          "stream_seq": 2,
+          "recorded_at": "2026-07-24T00:04:00Z",
+          "accepted_revision": 1,
+          "canonical_event": {
+            "seq": 2,
+            "task_id": "TASK-revision",
+            "correlation_id": "CORR-revision",
+            "actor": "main",
+            "phase": "DECIDE",
+            "attempt": 1,
+            "severity": "STANDARD",
+            "code": "REVISION_ONE",
+            "action": "CONTINUE",
+            "evidence_refs": []
+          },
+          "provenance": {
+            "source_kind": "MAIN_DECISION",
+            "source_ref": "MDEC-revision-2",
+            "content_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "recorder_id": "main-recorder"
+          }
+        }
+      ]
+    },
+    {
+      "id": "main-normalized-part-actor",
+      "source_revisions": {
+        "EVT-part": 2
+      },
+      "records": [
+        {
+          "schema_id": "forgeops.event",
+          "schema_version": "1.0",
+          "event_id": "EVT-part",
+          "task_id": "TASK-part",
+          "run_id": "RUN-part",
+          "correlation_id": "CORR-part",
+          "stream_id": "STREAM-part",
+          "stream_seq": 1,
+          "recorded_at": "2026-07-24T00:05:00Z",
+          "accepted_revision": 2,
+          "canonical_event": {
+            "seq": 1,
+            "task_id": "TASK-part",
+            "correlation_id": "CORR-part",
+            "actor": "part",
+            "phase": "DISCOVER",
+            "attempt": 1,
+            "severity": "INFO",
+            "code": "PART_SUGGESTION_ACCEPTED",
+            "action": "NORMALIZE",
+            "evidence_refs": [
+              "EVID-part"
+            ]
+          },
+          "provenance": {
+            "source_kind": "MAIN_DECISION",
+            "source_ref": "MDEC-part",
+            "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "recorder_id": "main-recorder"
+          }
+        }
+      ]
+    },
+    {
+      "id": "main-normalized-work-actor",
+      "source_revisions": {
+        "EVT-work": 3
+      },
+      "records": [
+        {
+          "schema_id": "forgeops.event",
+          "schema_version": "1.0",
+          "event_id": "EVT-work",
+          "task_id": "TASK-work",
+          "run_id": "RUN-work",
+          "correlation_id": "CORR-work",
+          "stream_id": "STREAM-work",
+          "stream_seq": 1,
+          "recorded_at": "2026-07-24T00:06:00Z",
+          "accepted_revision": 3,
+          "canonical_event": {
+            "seq": 1,
+            "task_id": "TASK-work",
+            "correlation_id": "CORR-work",
+            "actor": "work",
+            "phase": "VERIFY",
+            "attempt": 1,
+            "severity": "INFO",
+            "code": "WORK_RESULT_ACCEPTED",
+            "action": "NORMALIZE",
+            "evidence_refs": [
+              "EVID-work"
+            ]
+          },
+          "provenance": {
+            "source_kind": "MAIN_DECISION",
+            "source_ref": "MDEC-work",
+            "content_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "recorder_id": "main-recorder"
+          }
+        }
+      ]
+    },
+    {
+      "id": "main-actor",
+      "source_revisions": {
+        "EVT-main": 4
+      },
+      "records": [
+        {
+          "schema_id": "forgeops.event",
+          "schema_version": "1.0",
+          "event_id": "EVT-main",
+          "task_id": "TASK-main",
+          "run_id": "RUN-main",
+          "correlation_id": "CORR-main",
+          "stream_id": "STREAM-main",
+          "stream_seq": 1,
+          "recorded_at": "2026-07-24T00:07:00Z",
+          "accepted_revision": 4,
+          "canonical_event": {
+            "seq": 1,
+            "task_id": "TASK-main",
+            "correlation_id": "CORR-main",
+            "actor": "main",
+            "phase": "DECIDE",
+            "attempt": 1,
+            "severity": "STANDARD",
+            "code": "MAIN_DECISION_RECORDED",
+            "action": "RECORD",
+            "evidence_refs": [
+              "EVID-main"
+            ]
+          },
+          "provenance": {
+            "source_kind": "MAIN_DECISION",
+            "source_ref": "MDEC-main",
+            "content_sha256": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+            "recorder_id": "main-recorder"
+          }
+        }
+      ]
+    }
+  ],
+  "negative_records": [
+    {
+      "id": "wrapper-canonical-task-mismatch",
+      "base_case": "first-append",
+      "expected_error": "EVENT_IDENTITY_MISMATCH",
+      "mutation": {
+        "operation": "replace",
+        "path": [
+          "canonical_event",
+          "task_id"
+        ],
+        "value": "TASK-case-variant"
+      }
+    },
+    {
+      "id": "non-main-source",
+      "base_case": "first-append",
+      "expected_error": "EVENT_OWNER_INVALID",
+      "mutation": {
+        "operation": "replace",
+        "path": [
+          "provenance",
+          "source_kind"
+        ],
+        "value": "PART_SUGGESTION"
+      }
+    },
+    {
+      "id": "missing-source-hash",
+      "base_case": "first-append",
+      "expected_error": "EVENT_SCHEMA_INVALID",
+      "mutation": {
+        "operation": "remove",
+        "path": [
+          "provenance",
+          "content_sha256"
+        ]
+      }
+    },
+    {
+      "id": "bad-source-hash",
+      "base_case": "first-append",
+      "expected_error": "EVENT_SCHEMA_INVALID",
+      "mutation": {
+        "operation": "replace",
+        "path": [
+          "provenance",
+          "content_sha256"
+        ],
+        "value": "NOT-A-SHA256"
+      }
+    },
+    {
+      "id": "duplicate-evidence-ref",
+      "base_case": "first-append",
+      "expected_error": "EVENT_REFERENCE_INVALID",
+      "mutation": {
+        "operation": "replace",
+        "path": [
+          "canonical_event",
+          "evidence_refs"
+        ],
+        "value": [
+          "EVID-duplicate",
+          "EVID-duplicate"
+        ]
+      }
+    },
+    {
+      "id": "empty-evidence-ref",
+      "base_case": "first-append",
+      "expected_error": "EVENT_REFERENCE_INVALID",
+      "mutation": {
+        "operation": "replace",
+        "path": [
+          "canonical_event",
+          "evidence_refs"
+        ],
+        "value": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "forbidden-raw-field",
+      "base_case": "first-append",
+      "expected_error": "EVENT_SCHEMA_INVALID",
+      "mutation": {
+        "operation": "replace",
+        "path": [
+          "raw_prompt"
+        ],
+        "value": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "invalid-timestamp",
+      "base_case": "first-append",
+      "expected_error": "EVENT_TIMESTAMP_INVALID",
+      "mutation": {
+        "operation": "replace",
+        "path": [
+          "recorded_at"
+        ],
+        "value": "2026-02-30T12:00:00Z"
+      }
+    }
+  ],
+  "negative_streams": [
+    {
+      "id": "stream-seq-reuse",
+      "base_case": "consecutive-append",
+      "expected_error": "EVENT_STREAM_OUT_OF_ORDER",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 1,
+          "path": ["stream_seq"],
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "stream-seq-skip",
+      "base_case": "consecutive-append",
+      "expected_error": "EVENT_STREAM_OUT_OF_ORDER",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 1,
+          "path": ["stream_seq"],
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "stream-seq-decrease",
+      "base_case": "consecutive-append",
+      "expected_error": "EVENT_STREAM_OUT_OF_ORDER",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 0,
+          "path": ["stream_seq"],
+          "value": 2
+        },
+        {
+          "record_index": 1,
+          "path": ["stream_seq"],
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "cross-run-stream-mix",
+      "base_case": "consecutive-append",
+      "expected_error": "EVENT_STREAM_OUT_OF_ORDER",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 1,
+          "path": ["run_id"],
+          "value": "RUN-other"
+        }
+      ]
+    },
+    {
+      "id": "task-mix",
+      "base_case": "consecutive-append",
+      "expected_error": "EVENT_IDENTITY_MISMATCH",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 1,
+          "path": ["task_id"],
+          "value": "TASK-other"
+        },
+        {
+          "record_index": 1,
+          "path": ["canonical_event", "task_id"],
+          "value": "TASK-other"
+        }
+      ]
+    },
+    {
+      "id": "correlation-mix",
+      "base_case": "consecutive-append",
+      "expected_error": "EVENT_IDENTITY_MISMATCH",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 1,
+          "path": ["correlation_id"],
+          "value": "CORR-other"
+        },
+        {
+          "record_index": 1,
+          "path": ["canonical_event", "correlation_id"],
+          "value": "CORR-other"
+        }
+      ]
+    },
+    {
+      "id": "canonical-seq-reuse",
+      "base_case": "consecutive-append",
+      "expected_error": "EVENT_CANONICAL_SEQUENCE_INVALID",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 1,
+          "path": ["canonical_event", "seq"],
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "canonical-seq-decrease",
+      "base_case": "consecutive-append",
+      "expected_error": "EVENT_CANONICAL_SEQUENCE_INVALID",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 0,
+          "path": ["canonical_event", "seq"],
+          "value": 2
+        },
+        {
+          "record_index": 1,
+          "path": ["canonical_event", "seq"],
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "stale-revision",
+      "base_case": "revision-increase",
+      "expected_error": "EVENT_REVISION_MISMATCH",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 1,
+          "path": ["accepted_revision"],
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": "revision-decrease",
+      "base_case": "revision-increase",
+      "expected_error": "EVENT_REVISION_MISMATCH",
+      "expected_append_calls": 0,
+      "source_revision_overrides": {
+        "EVT-revision-1": 1,
+        "EVT-revision-2": 0
+      },
+      "mutations": [
+        {
+          "record_index": 0,
+          "path": ["accepted_revision"],
+          "value": 1
+        },
+        {
+          "record_index": 1,
+          "path": ["accepted_revision"],
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": "duplicate-state-accepted",
+      "base_case": "revision-increase",
+      "expected_error": "EVENT_REVISION_MISMATCH",
+      "expected_append_calls": 0,
+      "source_revision_overrides": {
+        "EVT-revision-2": 0
+      },
+      "mutations": [
+        {
+          "record_index": 0,
+          "path": ["canonical_event", "code"],
+          "value": "STATE_ACCEPTED"
+        },
+        {
+          "record_index": 1,
+          "path": ["accepted_revision"],
+          "value": 0
+        },
+        {
+          "record_index": 1,
+          "path": ["canonical_event", "code"],
+          "value": "STATE_ACCEPTED"
+        }
+      ]
+    },
+    {
+      "id": "work-owned-state-accepted",
+      "base_case": "first-append",
+      "expected_error": "EVENT_OWNER_INVALID",
+      "expected_append_calls": 0,
+      "mutations": [
+        {
+          "record_index": 0,
+          "path": ["canonical_event", "actor"],
+          "value": "work"
+        },
+        {
+          "record_index": 0,
+          "path": ["canonical_event", "code"],
+          "value": "STATE_ACCEPTED"
+        }
+      ]
+    }
+  ]
+}

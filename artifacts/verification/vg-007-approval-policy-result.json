@@ -698,7 +698,7 @@
   ],
   "catalog_match": true,
   "command_id": "approval-negative-fixture",
-  "observed_at": "2026-07-23T04:44:10Z",
+  "observed_at": "2026-07-24T13:40:03Z",
   "schema_sha256": "f7efb70700f16d93fa9b37c76140fa9a624e0f573625423b8b39637409b27a0c",
   "status": "PASSED",
   "suite_sha256": "60993c91fdfe0917ace88bd08d03c9d5e4a43df9fb0ba03454b8f4279585f3dd",

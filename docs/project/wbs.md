@@ -2,7 +2,7 @@
 
 **문서 상태:** 초안
 
-**최종 검토일:** 2026-07-14
+**최종 검토일:** 2026-07-24
 
 **대상 독자:** 1인 개발자, 포트폴리오 검토자
 
@@ -14,7 +14,7 @@
 
 이 문서는 ForgeOps의 Phase 0 Executable Contracts와 Phase 1 Local Vertical Slice를 1인 개발자가 상대 일정 10주 안에서 실행·검토할 수 있도록 작업 패키지, 의존성, 용량, 완료 정의와 검증 연결로 분해한다. 제품이 무엇을 왜 제공하는지는 PRD가 소유하고, 이 WBS는 구현 순서와 산출물 및 완료 조건을 소유한다. 요구사항, Protocol 2.0 불변식, 보안 통제와 품질 게이트의 의미를 재정의하지 않는다.
 
-현재 기준선은 Harness Foundation과 W1의 WBS-001~WBS-003 완료다. 아래 Status는 실제 작업 상태이며 Expected evidence type은 계획된 관찰 형식을 뜻한다. WBS-002·WBS-003의 fresh VG-002 결과만 RTM에 기록돼 있고, 다른 계획값은 current evidence, PASSED 결과 또는 Phase Exit 달성 주장이 아니다. 실제 fresh evidence reference와 관찰 revision 또는 시각은 RTM이 소유한다.
+현재 기준선은 Harness Foundation과 W1의 WBS-001~WBS-003, W2의 WBS-004~WBS-005, W3의 WBS-006~WBS-007 완료다. WBS-008은 VG-004 E2가 통과했지만 Definition of Done에 함께 연결된 VG-023이 미실행이므로 `WBS_IN_PROGRESS`이며, W4의 WBS-009~WBS-012는 시작되지 않았다. 아래 Status는 실제 작업 상태이며 Expected evidence type은 계획된 관찰 형식을 뜻한다. 실제 fresh evidence reference와 관찰 revision 또는 시각은 RTM이 소유하며, 이 기준선은 Phase 0 Exit 달성 주장이 아니다.
 
 ## 2. 일정과 용량 가정
 
@@ -63,9 +63,9 @@ Expected evidence type은 Protocol 2.0의 closed evidence type 중 향후 생성
 | WBS-003 | Phase 0 | W1 | WBS_DONE | 1.0 | WBS-002 | PRD-FR-001, PRD-NFR-006, PRD-NFR-011 | bridge review and portfolio checkpoint | bridge review and portfolio checkpoint가 bridge schema, 경계 설명과 공개 가능한 검토 요약을 포함하고 발견된 VG-002 위반이 해소되어 있다. | VG-002 | file, render |
 | WBS-004 | Phase 0 | W2 | WBS_DONE | 2.0 | WBS-002 | PRD-FR-002, PRD-NFR-001, PRD-NFR-006 | state transition validator and mapping fixture | state transition validator and mapping fixture가 유효 전이만 허용하고 stale revision과 out-of-order sequence를 거부하며 CANCELLED를 강제 변환하지 않는다. replay closed mode·새 identity를 강제하고 과거 authority·approval·nonce·credential 복사 및 `AUDIT_REPLAY`·`COUNTERFACTUAL` external effect를 계약에서 거부해 VG-003 조건을 충족한다. | VG-003 | file, test |
 | WBS-005 | Phase 0 | W2 | WBS_DONE | 2.0 | WBS-004 | PRD-FR-006, PRD-NFR-002, PRD-NFR-005, PRD-NFR-012 | authority/approval policy matrix and negative fixture | authority/approval policy matrix and negative fixture가 RESOURCE, COMMAND, NETWORK, destructive와 external effect의 exact gate 및 deny·expiry·nonce reuse를 다룬다. protected resource·credential·private data는 exact target 인간 승인 전 첫 byte read와 model context·log·evidence 유입이 0임을 확인해 VG-005, VG-006, VG-007 조건을 충족한다. | VG-005, VG-006, VG-007 | file, test |
-| WBS-006 | Phase 0 | W3 | WBS_NOT_STARTED | 1.5 | WBS-002 | PRD-FR-003, PRD-NFR-006 | versioned OpenAPI schema | versioned OpenAPI schema가 version과 closed request/response를 정의하고 valid/invalid example을 결정론적으로 판정한다. 비신뢰 field가 policy·authority·budget·state·tool schema로 승격되는 example을 stable error로 거부해 VG-004의 API와 data/control 경계 조건을 충족한다. | VG-004 | file, test |
-| WBS-007 | Phase 0 | W3 | WBS_NOT_STARTED | 1.0 | WBS-004 | PRD-FR-004, PRD-NFR-006 | durable event wrapper schema | durable event wrapper schema가 task/run identity, actor, ordering, revision과 provenance를 보존하고 VG-003 및 VG-004의 event 조건을 충족한다. | VG-003, VG-004 | file, test |
-| WBS-008 | Phase 0 | W3 | WBS_NOT_STARTED | 1.5 | WBS-006, WBS-007 | PRD-FR-004, PRD-NFR-004, PRD-NFR-006 | run manifest schema and reference rules | run manifest schema and reference rules가 identity, ordering, provenance, artifact/evidence reference를 closed schema로 검증하고 dangling·duplicate·wrong-mode reference를 거부해 VG-004와 VG-023 조건을 충족한다. | VG-004, VG-023 | file, test |
+| WBS-006 | Phase 0 | W3 | WBS_DONE | 1.5 | WBS-002 | PRD-FR-003, PRD-NFR-006 | versioned OpenAPI schema | versioned OpenAPI schema가 version과 closed request/response를 정의하고 valid/invalid example을 결정론적으로 판정한다. 비신뢰 field가 policy·authority·budget·state·tool schema로 승격되는 example을 stable error로 거부해 VG-004의 API와 data/control 경계 조건을 충족한다. | VG-004 | file, test |
+| WBS-007 | Phase 0 | W3 | WBS_DONE | 1.0 | WBS-004 | PRD-FR-004, PRD-NFR-006 | durable event wrapper schema | durable event wrapper schema가 task/run identity, actor, ordering, revision과 provenance를 보존하고 VG-003 및 VG-004의 event 조건을 충족한다. | VG-003, VG-004 | file, test |
+| WBS-008 | Phase 0 | W3 | WBS_IN_PROGRESS | 1.5 | WBS-006, WBS-007 | PRD-FR-004, PRD-NFR-004, PRD-NFR-006 | run manifest schema and reference rules | run manifest schema and reference rules의 identity, ordering, provenance, artifact/evidence reference 및 dangling·duplicate·wrong-mode 거부는 VG-004 E2를 통과했다. 다만 Phase 4 evidence/provenance gate인 VG-023이 미실행이므로 완료 조건은 아직 충족되지 않았다. | VG-004, VG-023 | file, test |
 | WBS-009 | Phase 0 | W4 | WBS_NOT_STARTED | 1.0 | WBS-006, WBS-008 | PRD-FR-005, PRD-NFR-001, PRD-NFR-009 | sample repository and benchmark fixture | sample repository and benchmark fixture가 고정 source/hash와 positive/negative expected result를 가지며 반복 conformance에서 VG-001 조건을 판정할 수 있다. | VG-001 | file, test |
 | WBS-010 | Phase 0 | W4 | WBS_NOT_STARTED | 1.5 | WBS-005, WBS-009 | PRD-FR-007, PRD-NFR-002, PRD-NFR-003, PRD-NFR-012 | sandbox containment PoC | sandbox containment PoC가 signed image, rootless/read-only 경계, exact NETWORK authority를 포함한 egress, quota와 teardown negative case를 실행하고 금지 surface·authority 우회·잔존 resource가 0이어야 하는 VG-008 조건을 충족한다. | VG-008 | file, test, runtime |
 | WBS-011 | Phase 0 | W4 | WBS_NOT_STARTED | 1.0 | WBS-005, WBS-009 | PRD-FR-007, PRD-NFR-004, PRD-NFR-006, PRD-NFR-012 | redaction and artifact fixture | redaction and artifact fixture가 packet, event, prompt, artifact, trace, telemetry와 응답 surface를 검사하고 raw secret 0 및 tenant/reference 규칙으로 VG-009 조건을 충족한다. | VG-009 | file, test |
@@ -96,6 +96,8 @@ Expected evidence type은 Protocol 2.0의 closed evidence type 중 향후 생성
 아래 항목은 전체 제품 비전을 보존하기 위한 상위 마일스톤이다. 확정 주차, 상세 sprint, person-day 또는 구현 순서를 추가하지 않는다.
 
 **W2 acceptance note — WBS-005:** completion was accepted only after the registered runs produced fresh `PASSED` results in `artifacts/verification/vg-003-replay-contract-result.json` (`observed_at=2026-07-23T03:57:14Z`), `artifacts/verification/vg-005-resource-authority-result.json` (`observed_at=2026-07-23T03:57:17Z`), `artifacts/verification/vg-005-protected-read-result.json` (`observed_at=2026-07-23T03:57:18Z`), `artifacts/verification/vg-006-command-network-result.json` (`observed_at=2026-07-23T03:57:22Z`), and `artifacts/verification/vg-007-approval-policy-result.json` (`observed_at=2026-07-23T03:57:26Z`).
+
+**W3 status note — WBS-008:** the registered `forgeops-interface-contract` profile produced fresh VG-004 E2 evidence for the implemented manifest contract. WBS-008 remains `WBS_IN_PROGRESS` until the separately scoped VG-023 evidence/provenance gate is implemented and passes; this does not block recording the VG-004 result for PRD-FR-004 and does not declare Phase 0 Exit.
 
 | ID | Phase | Week | Status | person-day | Predecessor | PRD IDs | Exit | VG IDs | Expected evidence type |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

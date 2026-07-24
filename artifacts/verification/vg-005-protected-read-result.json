@@ -49,7 +49,7 @@
   ],
   "catalog_match": true,
   "command_id": "protected-read-negative",
-  "observed_at": "2026-07-23T04:44:03Z",
+  "observed_at": "2026-07-24T13:39:53Z",
   "schema_sha256": "f7efb70700f16d93fa9b37c76140fa9a624e0f573625423b8b39637409b27a0c",
   "sentinel_raw_value_recorded": false,
   "status": "PASSED",

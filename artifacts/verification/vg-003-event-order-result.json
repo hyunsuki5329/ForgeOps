@@ -107,7 +107,7 @@
     }
   ],
   "command_id": "event-order-fixture",
-  "observed_at": "2026-07-23T04:43:58Z",
+  "observed_at": "2026-07-24T13:39:48Z",
   "schema_sha256": "68993ea752060af48a00c6f68b66c297e4e3ffe53e2ef0257940adea966bad70",
   "status": "PASSED",
   "suite_sha256": "8ab57fdec7571498ffc5b4026b2a8e8f773b90c9973817f3de9e07688498dc40",

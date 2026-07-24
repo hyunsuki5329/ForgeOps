@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forgeops.local/contracts/forgeops-run-manifest/1.0/schema.json",
+  "title": "ForgeOps Run Manifest 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "manifest_id",
+    "manifest_version",
+    "task_id",
+    "run_id",
+    "correlation_id",
+    "run_mode",
+    "status",
+    "accepted_revision",
+    "source_contract",
+    "event_stream",
+    "artifacts",
+    "evidence",
+    "decision_refs",
+    "created_at",
+    "manifest_sha256"
+  ],
+  "properties": {
+    "schema_id": {"const": "forgeops.run-manifest"},
+    "schema_version": {"const": "1.0"},
+    "manifest_id": {"type": "string", "pattern": "^MAN-[A-Za-z0-9][A-Za-z0-9._:-]{0,122}$", "maxLength": 127},
+    "manifest_version": {"type": "integer", "minimum": 1},
+    "task_id": {"type": "string", "pattern": "^TASK-[A-Za-z0-9][A-Za-z0-9._:-]{0,121}$", "maxLength": 126},
+    "run_id": {"type": "string", "pattern": "^RUN-[A-Za-z0-9][A-Za-z0-9._:-]{0,122}$", "maxLength": 127},
+    "correlation_id": {"type": "string", "pattern": "^CORR-[A-Za-z0-9][A-Za-z0-9._:-]{0,121}$", "maxLength": 126},
+    "run_mode": {
+      "type": "string",
+      "enum": ["PRIMARY", "AUDIT_REPLAY", "COUNTERFACTUAL", "REEXECUTE"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["PENDING", "IN_PROGRESS", "WAITING_FOR_HUMAN", "BLOCKED", "SUCCEEDED", "FAILED", "PARTIAL"]
+    },
+    "accepted_revision": {"type": "integer", "minimum": 0},
+    "source_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "artifact_version", "content_sha256"],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "artifact_version": {"type": "integer", "minimum": 1},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "event_stream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stream_id", "first_seq", "last_seq", "count", "content_sha256"],
+      "properties": {
+        "stream_id": {"type": "string", "pattern": "^STREAM-[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$", "maxLength": 126},
+        "first_seq": {"type": "integer", "minimum": 1},
+        "last_seq": {"type": "integer", "minimum": 1},
+        "count": {"type": "integer", "minimum": 1},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifact_id", "artifact_version", "kind", "content_sha256", "media_type", "classification", "producer_event_seq"],
+        "properties": {
+          "artifact_id": {"type": "string", "pattern": "^ART-[A-Za-z0-9][A-Za-z0-9._:-]{0,122}$", "maxLength": 127},
+          "artifact_version": {"type": "integer", "minimum": 1},
+          "kind": {"type": "string", "enum": ["SOURCE", "PLAN", "PATCH", "REPORT", "RESULT", "BINARY"]},
+          "content_sha256": {"$ref": "#/$defs/sha256"},
+          "media_type": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$", "maxLength": 127},
+          "classification": {"type": "string", "enum": ["PUBLIC", "INTERNAL", "PRIVATE", "SECRET"]},
+          "producer_event_seq": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidence_id", "tier", "type", "source_ref", "producer_event_seq"],
+        "properties": {
+          "evidence_id": {"type": "string", "pattern": "^EVID-[A-Za-z0-9][A-Za-z0-9._:-]{0,122}$", "maxLength": 127},
+          "tier": {"type": "string", "enum": ["E0", "E1", "E2", "E3"]},
+          "type": {"type": "string", "enum": ["file", "diff", "command", "test", "render", "runtime", "approval"]},
+          "source_ref": {"type": "string", "minLength": 1, "maxLength": 255},
+          "producer_event_seq": {"type": "integer", "minimum": 1},
+          "observed_revision": {"type": "integer", "minimum": 0},
+          "observed_at": {"$ref": "#/$defs/strict_utc"}
+        },
+        "oneOf": [
+          {
+            "properties": {"type": {"enum": ["file", "diff"]}},
+            "required": ["observed_revision"],
+            "not": {"required": ["observed_at"]}
+          },
+          {
+            "properties": {"type": {"enum": ["command", "test", "render", "runtime", "approval"]}},
+            "required": ["observed_at"],
+            "not": {"required": ["observed_revision"]}
+          }
+        ]
+      }
+    },
+    "decision_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["decision_id", "decision_kind", "subject_id", "artifact_refs", "evidence_refs", "producer_event_seq"],
+        "properties": {
+          "decision_id": {"type": "string", "pattern": "^DEC-[A-Za-z0-9][A-Za-z0-9._:-]{0,122}$", "maxLength": 127},
+          "decision_kind": {"type": "string", "enum": ["CANDIDATE", "CRITERION", "TERMINAL"]},
+          "subject_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,126}$", "maxLength": 127},
+          "artifact_refs": {"type": "array", "items": {"type": "string", "pattern": "^ART-[A-Za-z0-9][A-Za-z0-9._:-]{0,122}$", "maxLength": 127}},
+          "evidence_refs": {"type": "array", "items": {"type": "string", "pattern": "^EVID-[A-Za-z0-9][A-Za-z0-9._:-]{0,122}$", "maxLength": 127}},
+          "producer_event_seq": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "created_at": {"$ref": "#/$defs/strict_utc"},
+    "finalized_at": {"$ref": "#/$defs/strict_utc"},
+    "manifest_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "strict_utc": {"type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"}
+  }
+}

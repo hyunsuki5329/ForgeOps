@@ -1,0 +1,778 @@
+{
+  "assertions": {
+    "negative_effect_calls": 0,
+    "no_sensitive_content": true
+  },
+  "command_id": "interface-contract-fixture",
+  "components": {
+    "api_boundary": {
+      "cases": [
+        {
+          "actual": "PASSED",
+          "case_id": "create-task-valid",
+          "expected": "PASSED",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "get-task-valid",
+          "expected": "PASSED",
+          "kind": "getTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "get-run-valid",
+          "expected": "PASSED",
+          "kind": "getRun",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "list-run-events-valid",
+          "expected": "PASSED",
+          "kind": "listRunEvents",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "get-run-manifest-valid",
+          "expected": "PASSED",
+          "kind": "getRunManifest",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_VERSION_UNSUPPORTED",
+          "case_id": "unsupported-body-version",
+          "expected": "API_VERSION_UNSUPPORTED",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "missing-request-header",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "product-contract-unknown-field",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "product-contract-missing-field",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "product-contract-wrong-type",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "control-authority",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "control-capabilities",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "control-runtime-policy",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "control-accepted-state",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "control-approval-token",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "control-nonce",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "control-credentials",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "control-tools",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "control-commands",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "copied-product-budget",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "copied-product-approval-policy",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_IDENTITY_MISMATCH",
+          "case_id": "task-identity-mismatch",
+          "expected": "API_IDENTITY_MISMATCH",
+          "kind": "getTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_IDENTITY_MISMATCH",
+          "case_id": "run-identity-mismatch",
+          "expected": "API_IDENTITY_MISMATCH",
+          "kind": "getRun",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_REFERENCE_INVALID",
+          "case_id": "dangling-event-reference",
+          "expected": "API_REFERENCE_INVALID",
+          "kind": "getRun",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_REFERENCE_INVALID",
+          "case_id": "dangling-manifest-reference",
+          "expected": "API_REFERENCE_INVALID",
+          "kind": "getRun",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "response-data-error-conflict",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "raw-credential-response",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "getRun",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_CONTROL_FIELD_FORBIDDEN",
+          "case_id": "raw-private-response",
+          "expected": "API_CONTROL_FIELD_FORBIDDEN",
+          "kind": "getRun",
+          "status": "PASSED"
+        }
+      ],
+      "failed": 0,
+      "passed": 28,
+      "total": 28
+    },
+    "api_version": {
+      "cases": [
+        {
+          "actual": "PASSED",
+          "case_id": "valid-create-task",
+          "expected": "PASSED",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "valid-get-task",
+          "expected": "PASSED",
+          "kind": "getTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "valid-get-run",
+          "expected": "PASSED",
+          "kind": "getRun",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "valid-list-run-events",
+          "expected": "PASSED",
+          "kind": "listRunEvents",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "valid-get-run-manifest",
+          "expected": "PASSED",
+          "kind": "getRunManifest",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_VERSION_UNSUPPORTED",
+          "case_id": "unsupported-uri-major",
+          "expected": "API_VERSION_UNSUPPORTED",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_VERSION_UNSUPPORTED",
+          "case_id": "unsupported-body-version",
+          "expected": "API_VERSION_UNSUPPORTED",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "missing-request-header",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "invalid-request-id-type",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_IDENTITY_MISMATCH",
+          "case_id": "request-id-header-body-mismatch",
+          "expected": "API_IDENTITY_MISMATCH",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_IDENTITY_MISMATCH",
+          "case_id": "response-request-id-mismatch",
+          "expected": "API_IDENTITY_MISMATCH",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "endpoint-unknown-field",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "endpoint-missing-required-field",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "endpoint-wrong-field-type",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_IDENTITY_MISMATCH",
+          "case_id": "path-body-identity-mismatch",
+          "expected": "API_IDENTITY_MISMATCH",
+          "kind": "getTask",
+          "status": "PASSED"
+        },
+        {
+          "actual": "API_SCHEMA_INVALID",
+          "case_id": "response-data-error-conflict",
+          "expected": "API_SCHEMA_INVALID",
+          "kind": "createTask",
+          "status": "PASSED"
+        }
+      ],
+      "failed": 0,
+      "passed": 16,
+      "total": 16
+    },
+    "event": {
+      "cases": [
+        {
+          "actual": "PASSED",
+          "case_id": "first-append",
+          "expected": "PASSED",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "consecutive-append",
+          "expected": "PASSED",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "revision-increase",
+          "expected": "PASSED",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "main-normalized-part-actor",
+          "expected": "PASSED",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "main-normalized-work-actor",
+          "expected": "PASSED",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "main-actor",
+          "expected": "PASSED",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_IDENTITY_MISMATCH",
+          "case_id": "wrapper-canonical-task-mismatch",
+          "expected": "EVENT_IDENTITY_MISMATCH",
+          "kind": "record",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_OWNER_INVALID",
+          "case_id": "non-main-source",
+          "expected": "EVENT_OWNER_INVALID",
+          "kind": "record",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_SCHEMA_INVALID",
+          "case_id": "missing-source-hash",
+          "expected": "EVENT_SCHEMA_INVALID",
+          "kind": "record",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_SCHEMA_INVALID",
+          "case_id": "bad-source-hash",
+          "expected": "EVENT_SCHEMA_INVALID",
+          "kind": "record",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_REFERENCE_INVALID",
+          "case_id": "duplicate-evidence-ref",
+          "expected": "EVENT_REFERENCE_INVALID",
+          "kind": "record",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_REFERENCE_INVALID",
+          "case_id": "empty-evidence-ref",
+          "expected": "EVENT_REFERENCE_INVALID",
+          "kind": "record",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_SCHEMA_INVALID",
+          "case_id": "forbidden-raw-field",
+          "expected": "EVENT_SCHEMA_INVALID",
+          "kind": "record",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_TIMESTAMP_INVALID",
+          "case_id": "invalid-timestamp",
+          "expected": "EVENT_TIMESTAMP_INVALID",
+          "kind": "record",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_STREAM_OUT_OF_ORDER",
+          "case_id": "stream-seq-reuse",
+          "expected": "EVENT_STREAM_OUT_OF_ORDER",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_STREAM_OUT_OF_ORDER",
+          "case_id": "stream-seq-skip",
+          "expected": "EVENT_STREAM_OUT_OF_ORDER",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_STREAM_OUT_OF_ORDER",
+          "case_id": "stream-seq-decrease",
+          "expected": "EVENT_STREAM_OUT_OF_ORDER",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_STREAM_OUT_OF_ORDER",
+          "case_id": "cross-run-stream-mix",
+          "expected": "EVENT_STREAM_OUT_OF_ORDER",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_IDENTITY_MISMATCH",
+          "case_id": "task-mix",
+          "expected": "EVENT_IDENTITY_MISMATCH",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_IDENTITY_MISMATCH",
+          "case_id": "correlation-mix",
+          "expected": "EVENT_IDENTITY_MISMATCH",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_CANONICAL_SEQUENCE_INVALID",
+          "case_id": "canonical-seq-reuse",
+          "expected": "EVENT_CANONICAL_SEQUENCE_INVALID",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_CANONICAL_SEQUENCE_INVALID",
+          "case_id": "canonical-seq-decrease",
+          "expected": "EVENT_CANONICAL_SEQUENCE_INVALID",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_REVISION_MISMATCH",
+          "case_id": "stale-revision",
+          "expected": "EVENT_REVISION_MISMATCH",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_REVISION_MISMATCH",
+          "case_id": "revision-decrease",
+          "expected": "EVENT_REVISION_MISMATCH",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_REVISION_MISMATCH",
+          "case_id": "duplicate-state-accepted",
+          "expected": "EVENT_REVISION_MISMATCH",
+          "kind": "stream",
+          "status": "PASSED"
+        },
+        {
+          "actual": "EVENT_OWNER_INVALID",
+          "case_id": "work-owned-state-accepted",
+          "expected": "EVENT_OWNER_INVALID",
+          "kind": "stream",
+          "status": "PASSED"
+        }
+      ],
+      "failed": 0,
+      "passed": 26,
+      "total": 26
+    },
+    "manifest": {
+      "cases": [
+        {
+          "actual": "PASSED",
+          "case_id": "primary-terminal",
+          "expected": "PASSED",
+          "kind": "primary_terminal",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "non-terminal-snapshot",
+          "expected": "PASSED",
+          "kind": "non_terminal_snapshot",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "audit-replay",
+          "expected": "PASSED",
+          "kind": "audit_replay",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "counterfactual",
+          "expected": "PASSED",
+          "kind": "counterfactual",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "revision-evidence",
+          "expected": "PASSED",
+          "kind": "revision_evidence",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "time-evidence",
+          "expected": "PASSED",
+          "kind": "time_evidence",
+          "status": "PASSED"
+        },
+        {
+          "actual": "PASSED",
+          "case_id": "blocked-terminal",
+          "expected": "PASSED",
+          "kind": "blocked_terminal",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_EVENT_RANGE_INVALID",
+          "case_id": "event-count-mismatch",
+          "expected": "MANIFEST_EVENT_RANGE_INVALID",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_IDENTITY_MISMATCH",
+          "case_id": "terminal-missing-finalized",
+          "expected": "MANIFEST_IDENTITY_MISMATCH",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_IDENTITY_MISMATCH",
+          "case_id": "terminal-missing-decision",
+          "expected": "MANIFEST_IDENTITY_MISMATCH",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_IDENTITY_MISMATCH",
+          "case_id": "non-terminal-has-finalized",
+          "expected": "MANIFEST_IDENTITY_MISMATCH",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_IDENTITY_MISMATCH",
+          "case_id": "non-terminal-has-terminal-decision",
+          "expected": "MANIFEST_IDENTITY_MISMATCH",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_IDENTITY_MISMATCH",
+          "case_id": "finalized-before-created",
+          "expected": "MANIFEST_IDENTITY_MISMATCH",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_HASH_INVALID",
+          "case_id": "bad-self-hash",
+          "expected": "MANIFEST_HASH_INVALID",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SCHEMA_INVALID",
+          "case_id": "missing-self-hash",
+          "expected": "MANIFEST_SCHEMA_INVALID",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SCHEMA_INVALID",
+          "case_id": "missing-content-hash",
+          "expected": "MANIFEST_SCHEMA_INVALID",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SCHEMA_INVALID",
+          "case_id": "bad-content-hash",
+          "expected": "MANIFEST_SCHEMA_INVALID",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SCHEMA_INVALID",
+          "case_id": "unknown-root-field",
+          "expected": "MANIFEST_SCHEMA_INVALID",
+          "kind": "lifecycle_or_hash",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_ID_DUPLICATE",
+          "case_id": "duplicate-evidence-id",
+          "expected": "MANIFEST_ID_DUPLICATE",
+          "kind": "duplicate_identity",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_REFERENCE_DANGLING",
+          "case_id": "dangling-reference",
+          "expected": "MANIFEST_REFERENCE_DANGLING",
+          "kind": "dangling_reference",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_PRODUCER_SEQUENCE_INVALID",
+          "case_id": "producer-outside-range",
+          "expected": "MANIFEST_PRODUCER_SEQUENCE_INVALID",
+          "kind": "producer_sequence",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_EVIDENCE_FRESHNESS_INVALID",
+          "case_id": "file-evidence-with-time",
+          "expected": "MANIFEST_EVIDENCE_FRESHNESS_INVALID",
+          "kind": "freshness_union",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_EVIDENCE_FRESHNESS_INVALID",
+          "case_id": "time-evidence-with-revision",
+          "expected": "MANIFEST_EVIDENCE_FRESHNESS_INVALID",
+          "kind": "freshness_union",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_EVIDENCE_FRESHNESS_INVALID",
+          "case_id": "invalid-strict-utc",
+          "expected": "MANIFEST_EVIDENCE_FRESHNESS_INVALID",
+          "kind": "freshness_timestamp",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "case_id": "raw-secret-field",
+          "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "kind": "sensitive_boundary",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "case_id": "absolute-source-ref",
+          "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "kind": "source_reference",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "case_id": "traversal-source-ref",
+          "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "kind": "source_reference",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "case_id": "signed-url-source-ref",
+          "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "kind": "source_reference",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_REFERENCE_CROSS_RUN",
+          "case_id": "cross-run-reference",
+          "expected": "MANIFEST_REFERENCE_CROSS_RUN",
+          "kind": "reference_resolution",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_MODE_INVALID",
+          "case_id": "invalid-run-mode",
+          "expected": "MANIFEST_MODE_INVALID",
+          "kind": "run_mode",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "case_id": "sensitive-urn-token",
+          "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "kind": "source_reference",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "case_id": "sensitive-urn-credential",
+          "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "kind": "source_reference",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "case_id": "sensitive-urn-tenant",
+          "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "kind": "source_reference",
+          "status": "PASSED"
+        },
+        {
+          "actual": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "case_id": "sensitive-urn-secret",
+          "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+          "kind": "source_reference",
+          "status": "PASSED"
+        }
+      ],
+      "failed": 0,
+      "passed": 34,
+      "total": 34
+    }
+  },
+  "gate_id": "VG-004",
+  "hashes": {
+    "api_boundary_suite_sha256": "48a158d7a3c8c86751cb93a0fcd6f8d66321971daf3094542ad84618f84d0176",
+    "api_version_suite_sha256": "9b0d91b11697cdb698b28b2825a805228db94570aaa66854ef4895e902e160ec",
+    "event_schema_sha256": "5b42a9f3c5f18f7a2679c8b2be95ccbfff614d2294916907de01f14c865cd84f",
+    "event_suite_sha256": "5cc6c0036bd45aa2628421dc04138739d34d2a9de8b2b0644220e69c8f03dd7a",
+    "manifest_schema_sha256": "0c4913990fbc0144fe22c53b4375a32473a5febf04cfc5719a594c5f2424752e",
+    "manifest_suite_sha256": "2da1c307ad1d353bdc5073057edfeb778ecb0582da23f018d920c74759bcf7eb",
+    "openapi_sha256": "05cef4530553750e021cd8c24c87d1099fa493f4354623ca57ceaa63953d2047"
+  },
+  "observed_at": "2026-07-24T13:40:04Z",
+  "profile_id": "forgeops-interface-contract",
+  "status": "PASSED"
+}

@@ -1,3 +1,23 @@
+# Task 2: Rewrite the top-level README as a project guide
+
+**Files:**
+- Modify: `README.md`
+- Reference: `docs/superpowers/specs/2026-07-24-readme-introduction-design.md`
+- Reference: `docs/project/wbs.md`
+
+**Binding constraints:**
+
+- Replace the top-level README as authorized by the user; do not preserve obsolete standalone text only because it already exists.
+- Keep Korean copy concise and accessible to developers and evaluators.
+- Do not claim Phase 0 Exit, WBS-008 completion, deployment, or external integration.
+- Use only repository-relative links to existing files.
+- Do not stage, commit, push, publish, or modify Git internals.
+
+**Required README content:**
+
+Replace `README.md` with exactly the following Markdown content:
+
+````markdown
 # ForgeOps
 
 ForgeOps는 AI 에이전트가 소프트웨어 작업을 수행할 때 필요한 계약, 권한, 상태 전이, 증빙을 명확하게 정의하고 검증하는 안전 중심 프레임워크입니다. 제품 요청 데이터와 실행 제어 정보를 분리해, 에이전트의 판단과 실행 결과를 재현 가능하고 감사 가능한 형태로 관리합니다.
@@ -57,3 +77,13 @@ ForgeOps의 Portable Agent Harness는 프로젝트 독립적인 Protocol 2.0 규
 - [Main orchestrator](.github/agents/main_instruction.prompt.md)
 - [Part analyst](.github/agents/part_agent.prompt.md)
 - [Work executor](.github/agents/work_agent.prompt.md)
+````
+
+**Verification:**
+
+1. `rg -n "^# ForgeOps$|^## (ForgeOps란\?|핵심 원칙|역할과 책임|현재 구현 상태|검증 실행|문서 안내|다른 프로젝트에 적용하기)$|WBS-008|VG-023|interface-contract-fixture" README.md`
+2. Verify each Markdown link targets an existing repository file.
+3. `git diff --check -- README.md`
+4. `git diff -- README.md`
+
+Expected: all headings occur once; all links exist; WBS-008 is `WBS_IN_PROGRESS` pending VG-023; no whitespace errors; README is a coherent replacement.

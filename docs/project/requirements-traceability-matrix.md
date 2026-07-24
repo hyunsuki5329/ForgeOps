@@ -2,7 +2,7 @@
 
 **문서 상태:** 초안
 
-**최종 검토일:** 2026-07-14
+**최종 검토일:** 2026-07-24
 
 **대상 독자:** 1인 개발자, 포트폴리오 검토자
 
@@ -10,7 +10,7 @@
 
 **문서 범위:** PRD 37개, ARC 14개, THR 12개, CTL 20개, RSK 14개, WBS 35개, VG 24개의 planned linkage와 초기 검증 상태
 
-**현재 상태:** 37개 요구사항의 planned linkage는 `COVERED`; PRD-FR-001은 fresh VG-002 E2로 `PASSED`, 나머지는 `NOT_RUN`
+**현재 상태:** 37개 요구사항의 planned linkage는 `COVERED`; PRD-FR-001~PRD-FR-004의 4개는 fresh mapped E2 evidence로 `PASSED`, 나머지 33개는 `NOT_RUN`
 
 **기준 출처:** [제품 요구사항](../product/prd.md), [시스템 아키텍처](../architecture/system-architecture.md), [위협 모델](../security/threat-model.md), [검증 및 평가 계획](../quality/verification-and-evaluation-plan.md), [WBS](wbs.md), [위험 등록부](risk-register.md), [ForgeOps 제품 기초 문서 실행 계획](../superpowers/plans/2026-07-14-forgeops-product-documentation.md)
 
@@ -28,7 +28,7 @@
 
 ## 2. 상태와 evidence 표현
 
-요구사항의 검증 Result는 `PASSED`, `FAILED`, `NOT_RUN`만 사용한다. PRD-FR-001의 Product Task Contract bridge는 `IMPLEMENTED`이고 trusted VG-002 실행 결과를 가진다. 나머지 요구사항은 `SPECIFIED` 또는 `PLANNED`이며 아직 `NOT_RUN`이다.
+요구사항의 검증 Result는 `PASSED`, `FAILED`, `NOT_RUN`만 사용한다. PRD-FR-001~PRD-FR-004는 `IMPLEMENTED`이고 각각 trusted mapped VG 실행 결과를 가진다. 나머지 33개 요구사항은 `SPECIFIED` 또는 `PLANNED`이며 아직 `NOT_RUN`이다.
 
 | Maturity | 초기 표현 | 다음 갱신 조건 |
 | --- | --- | --- |
@@ -46,8 +46,8 @@ Raw shell text, 문서의 예시 명령, 계획된 `verification_profile_id` 또
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | PRD-FR-001 | Phase 0 / 필수 | IMPLEMENTED | ARC-002, ARC-010 | THR-001, THR-003 | CTL-001, CTL-005 | RSK-002 | WBS-002, WBS-003 | VG-002 | E2 | PASSED | E2 | artifacts/verification/vg-002-contract-bridge-result.json | observed_at=2026-07-20T05:53:16Z | COVERED | VG-002 fixture와 WBS-003 review 완료 |
 | PRD-FR-002 | Phase 0 / 필수 | IMPLEMENTED | ARC-009 | THR-009, THR-010 | CTL-008, CTL-015 | RSK-003 | WBS-004 | VG-003 | E2 | PASSED | E2 | artifacts/verification/vg-003-state-transition-result.json; artifacts/verification/vg-003-event-order-result.json; artifacts/verification/vg-003-replay-contract-result.json | observed_at=2026-07-23T03:57:12Z; 2026-07-23T03:57:13Z; 2026-07-23T03:57:14Z | COVERED | state transition, event order, replay fixture E2 PASSED |
-| PRD-FR-003 | Phase 0 / 필수 | SPECIFIED | ARC-012 | THR-001, THR-010 | CTL-001, CTL-015 | RSK-002 | WBS-006 | VG-004 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | 계약 구현 후 mapped VG 실행·RTM 갱신 |
-| PRD-FR-004 | Phase 0 / 필수 | SPECIFIED | ARC-011 | THR-008, THR-010 | CTL-014, CTL-015, CTL-020 | RSK-003, RSK-012 | WBS-007, WBS-008 | VG-004 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | 계약 구현 후 mapped VG 실행·RTM 갱신 |
+| PRD-FR-003 | Phase 0 / 필수 | IMPLEMENTED | ARC-012 | THR-001, THR-010 | CTL-001, CTL-015 | RSK-002 | WBS-006 | VG-004 | E2 | PASSED | E2 | artifacts/verification/vg-004-interface-contract-result.json | observed_at=2026-07-24T12:12:53Z | COVERED | versioned OpenAPI와 data/control 경계 fixture E2 PASSED |
+| PRD-FR-004 | Phase 0 / 필수 | IMPLEMENTED | ARC-011 | THR-008, THR-010 | CTL-014, CTL-015, CTL-020 | RSK-003, RSK-012 | WBS-007, WBS-008 | VG-004 | E2 | PASSED | E2 | artifacts/verification/vg-004-interface-contract-result.json | observed_at=2026-07-24T12:12:53Z | COVERED | durable event와 run manifest reference fixture E2 PASSED |
 | PRD-FR-005 | Phase 0 / 필수 | PLANNED | ARC-008 | THR-011 | CTL-016 | RSK-007 | WBS-009 | VG-001 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-FR-006 | Phase 0 / 필수 | SPECIFIED | ARC-003, ARC-013 | THR-006 | CTL-006, CTL-007 | RSK-005, RSK-009 | WBS-005 | VG-007 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | VG-007 policy fixture E2 PASSED; approval UX는 Phase 0 범위에서 구현하지 않아 요구사항 전체 Result는 NOT_RUN 유지 |
 | PRD-FR-007 | Phase 0 / 필수 | PLANNED | ARC-007, ARC-011 | THR-004, THR-005, THR-007 | CTL-009, CTL-010, CTL-011, CTL-012, CTL-013 | RSK-004, RSK-006 | WBS-010, WBS-011, WBS-012 | VG-008, VG-009 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
@@ -74,7 +74,7 @@ Raw shell text, 문서의 예시 명령, 계획된 `verification_profile_id` 또
 | PRD-NFR-003 | Phase 0~4 / 필수 | PLANNED | ARC-007 | THR-005 | CTL-009, CTL-010, CTL-011 | RSK-004 | WBS-010, WBS-013, WBS-024, WBS-028 | VG-008, VG-010, VG-014 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-NFR-004 | 전 단계 / 필수 | SPECIFIED | ARC-006, ARC-011 | THR-007, THR-008 | CTL-013, CTL-014 | RSK-006 | WBS-011, WBS-028, WBS-031 | VG-009, VG-024 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | 계약 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-NFR-005 | Phase 1~4 / 필수 | PLANNED | ARC-003, ARC-011, ARC-013 | THR-009, THR-012 | CTL-008, CTL-011, CTL-017, CTL-019 | RSK-003, RSK-009 | WBS-024, WBS-030, WBS-034 | VG-014, VG-015, VG-019 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | VG-003 replay와 VG-007 atomic nonce E2 범위 PASSED; mapped VG-014·VG-015·VG-019 E3 미실행 |
-| PRD-NFR-006 | Phase 0~4 / 필수 | SPECIFIED | ARC-011, ARC-012 | THR-008, THR-010 | CTL-014, CTL-015, CTL-020 | RSK-012 | WBS-003, WBS-007, WBS-008, WBS-025, WBS-031 | VG-004, VG-015 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | WBS-003 bridge review 완료; VG-004·VG-015 미실행 |
+| PRD-NFR-006 | Phase 0~4 / 필수 | SPECIFIED | ARC-011, ARC-012 | THR-008, THR-010 | CTL-014, CTL-015, CTL-020 | RSK-012 | WBS-003, WBS-007, WBS-008, WBS-025, WBS-031 | VG-004, VG-015 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | WBS-003 bridge review와 VG-004 E2 PASSED; VG-015 미실행으로 요구사항 전체 Result는 NOT_RUN 유지 |
 | PRD-NFR-007 | Phase 4 / 필수 | PLANNED | ARC-014 | THR-012 | CTL-011 | RSK-010 | WBS-035 | VG-022 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-NFR-008 | 전 단계 / 필수 | SPECIFIED | ARC-003, ARC-008 | THR-012 | CTL-011, CTL-017 | RSK-001, RSK-011, RSK-014 | WBS-023, WBS-032 | VG-014 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | 계약 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-NFR-009 | 전 단계 / 권장 | SPECIFIED | ARC-001, ARC-002, ARC-006, ARC-010, ARC-014 | THR-001, THR-003 | CTL-001, CTL-003, CTL-018 | RSK-010 | WBS-001, WBS-002, WBS-035 | VG-001, VG-002, VG-023 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | VG-002 bridge 범위 PASSED; VG-001·VG-023 미실행 |
@@ -94,13 +94,13 @@ Raw shell text, 문서의 예시 명령, 계획된 `verification_profile_id` 또
 | WBS | `docs/project/wbs.md` | 35 | 35 | COVERED — validator PASS |
 | RSK | `docs/project/risk-register.md` | 14 | 14 | COVERED — validator PASS |
 
-37개 요구사항 행은 모두 `COVERED`로 계획돼 있다. 이 상태는 ID linkage의 완전성만 나타낸다. Fresh success coverage는 VG-002가 연결된 PRD-FR-001의 1/37이며 나머지 36개는 `NOT_RUN`이다.
+37개 요구사항 행은 모두 `COVERED`로 계획돼 있다. 이 상태는 ID linkage의 완전성만 나타낸다. Fresh success coverage는 VG-002, VG-003, VG-004가 각각 연결된 PRD-FR-001~PRD-FR-004의 4/37이며 나머지 33개는 `NOT_RUN`이다.
 
 ## 5. Orphan 검사 결과
 
 Task 7 exact cross-document validator가 `RTM_VALIDATE=PASS`로 통과했다. 확인된 definition count는 PRD 37, ARC 14, THR 12, CTL 20, VG 24, WBS 35, RSK 14이고, 37개 requirement row에서 모든 definition ID가 적어도 한 번 exact 참조된다.
 
-**Orphan count: 0.** 이 수치는 planned cross-document linkage의 orphan이 없다는 뜻이다. Product Task Contract bridge의 VG-002만 fresh E2 `PASSED`이며 나머지 36개 Result는 계속 `NOT_RUN`이다. 이 결과로 제품 runtime이나 Phase 0 Exit를 주장하지 않는다.
+**Orphan count: 0.** 이 수치는 planned cross-document linkage의 orphan이 없다는 뜻이다. PRD-FR-001~PRD-FR-004의 mapped VG-002, VG-003, VG-004는 fresh E2 `PASSED`이며 나머지 33개 Result는 계속 `NOT_RUN`이다. 이 결과로 제품 runtime이나 Phase 0 Exit를 주장하지 않는다.
 
 ## 6. 갱신 규칙
 

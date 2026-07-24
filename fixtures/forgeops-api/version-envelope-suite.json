@@ -1,0 +1,150 @@
+{
+  "suite_id": "forgeops-api-version-envelope",
+  "suite_version": "1.0",
+  "cases": [
+    {
+      "id": "valid-create-task",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": "request-001",
+      "body": {"api_version": "1.0", "request_id": "request-001", "task_id": "task-001"},
+      "response": {"api_version": "1.0", "request_id": "request-001", "data": {}},
+      "expected": "PASSED"
+    },
+    {
+      "id": "valid-get-task",
+      "kind": "getTask",
+      "uri_major": "v1",
+      "request_header": "request-002",
+      "body": {"api_version": "1.0", "path_task_id": "task-002", "task_id": "task-002"},
+      "response": {"api_version": "1.0", "request_id": "request-002", "data": {}},
+      "expected": "PASSED"
+    },
+    {
+      "id": "valid-get-run",
+      "kind": "getRun",
+      "uri_major": "v1",
+      "request_header": "request-003",
+      "body": {"api_version": "1.0", "path_run_id": "run-003", "run_id": "run-003"},
+      "response": {"api_version": "1.0", "request_id": "request-003", "data": {}},
+      "expected": "PASSED"
+    },
+    {
+      "id": "valid-list-run-events",
+      "kind": "listRunEvents",
+      "uri_major": "v1",
+      "request_header": "request-004",
+      "body": {"api_version": "1.0", "path_run_id": "run-004", "run_id": "run-004"},
+      "response": {"api_version": "1.0", "request_id": "request-004", "data": {}},
+      "expected": "PASSED"
+    },
+    {
+      "id": "valid-get-run-manifest",
+      "kind": "getRunManifest",
+      "uri_major": "v1",
+      "request_header": "request-005",
+      "body": {"api_version": "1.0", "path_run_id": "run-005", "run_id": "run-005"},
+      "response": {"api_version": "1.0", "request_id": "request-005", "data": {}},
+      "expected": "PASSED"
+    },
+    {
+      "id": "unsupported-uri-major",
+      "kind": "createTask",
+      "uri_major": "v2",
+      "request_header": "request-006",
+      "body": {"api_version": "1.0", "request_id": "request-006", "task_id": "task-006"},
+      "response": {"api_version": "1.0", "request_id": "request-006", "data": {}},
+      "expected": "API_VERSION_UNSUPPORTED"
+    },
+    {
+      "id": "unsupported-body-version",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": "request-007",
+      "body": {"api_version": "2.0", "request_id": "request-007", "task_id": "task-007"},
+      "response": {"api_version": "1.0", "request_id": "request-007", "data": {}},
+      "expected": "API_VERSION_UNSUPPORTED"
+    },
+    {
+      "id": "missing-request-header",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": null,
+      "body": {"api_version": "1.0", "request_id": "request-008", "task_id": "task-008"},
+      "response": {"api_version": "1.0", "request_id": "request-008", "data": {}},
+      "expected": "API_SCHEMA_INVALID"
+    },
+    {
+      "id": "invalid-request-id-type",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": 9,
+      "body": {"api_version": "1.0", "request_id": "request-009", "task_id": "task-009"},
+      "response": {"api_version": "1.0", "request_id": "request-009", "data": {}},
+      "expected": "API_SCHEMA_INVALID"
+    },
+    {
+      "id": "request-id-header-body-mismatch",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": "request-010-header",
+      "body": {"api_version": "1.0", "request_id": "request-010-body", "task_id": "task-010"},
+      "response": {"api_version": "1.0", "request_id": "request-010-header", "data": {}},
+      "expected": "API_IDENTITY_MISMATCH"
+    },
+    {
+      "id": "response-request-id-mismatch",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": "request-011",
+      "body": {"api_version": "1.0", "request_id": "request-011", "task_id": "task-011"},
+      "response": {"api_version": "1.0", "request_id": "request-011-response", "data": {}},
+      "expected": "API_IDENTITY_MISMATCH"
+    },
+    {
+      "id": "endpoint-unknown-field",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": "request-012",
+      "body": {"api_version": "1.0", "request_id": "request-012", "task_id": "task-012", "unknown": true},
+      "response": {"api_version": "1.0", "request_id": "request-012", "data": {}},
+      "expected": "API_SCHEMA_INVALID"
+    },
+    {
+      "id": "endpoint-missing-required-field",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": "request-013",
+      "body": {"api_version": "1.0", "request_id": "request-013"},
+      "response": {"api_version": "1.0", "request_id": "request-013", "data": {}},
+      "expected": "API_SCHEMA_INVALID"
+    },
+    {
+      "id": "endpoint-wrong-field-type",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": "request-014",
+      "body": {"api_version": "1.0", "request_id": "request-014", "task_id": 14},
+      "response": {"api_version": "1.0", "request_id": "request-014", "data": {}},
+      "expected": "API_SCHEMA_INVALID"
+    },
+    {
+      "id": "path-body-identity-mismatch",
+      "kind": "getTask",
+      "uri_major": "v1",
+      "request_header": "request-015",
+      "body": {"api_version": "1.0", "path_task_id": "task-015-path", "task_id": "task-015-body"},
+      "response": {"api_version": "1.0", "request_id": "request-015", "data": {}},
+      "expected": "API_IDENTITY_MISMATCH"
+    },
+    {
+      "id": "response-data-error-conflict",
+      "kind": "createTask",
+      "uri_major": "v1",
+      "request_header": "request-016",
+      "body": {"api_version": "1.0", "request_id": "request-016", "task_id": "task-016"},
+      "response": {"api_version": "1.0", "request_id": "request-016", "data": {}, "error": {"code": "API_SCHEMA_INVALID", "message": "rejected"}},
+      "expected": "API_SCHEMA_INVALID"
+    }
+  ]
+}

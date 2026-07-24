@@ -142,7 +142,7 @@
     }
   ],
   "command_id": "replay-contract-negative",
-  "observed_at": "2026-07-23T04:43:59Z",
+  "observed_at": "2026-07-24T13:39:49Z",
   "schema_sha256": "3c7e703949d7d2963086a4b28413619ff21dea3f4d19450ffdd597edb35a25f8",
   "status": "PASSED",
   "suite_sha256": "71ed7bbdd947dd84a983cad191726b1087214e7c30f456c3fc9a93963733a753",

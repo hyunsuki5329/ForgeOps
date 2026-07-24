@@ -1,0 +1,585 @@
+{
+  "suite_id": "forgeops-run-manifest-1.0",
+  "schema_version": "1.0",
+  "positive": [
+    {
+      "id": "primary-terminal",
+      "kind": "primary_terminal",
+      "manifest": {
+        "schema_id": "forgeops.run-manifest",
+        "schema_version": "1.0",
+        "manifest_id": "MAN-primary-terminal",
+        "manifest_version": 1,
+        "task_id": "TASK-event",
+        "run_id": "RUN-first",
+        "correlation_id": "CORR-event",
+        "run_mode": "PRIMARY",
+        "status": "SUCCEEDED",
+        "accepted_revision": 0,
+        "source_contract": {
+          "artifact_id": "ART-task-contract-primary",
+          "artifact_version": 1,
+          "content_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        "event_stream": {
+          "stream_id": "STREAM-first",
+          "first_seq": 1,
+          "last_seq": 1,
+          "count": 1,
+          "content_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "artifacts": [
+          {
+            "artifact_id": "ART-primary-result",
+            "artifact_version": 1,
+            "kind": "RESULT",
+            "content_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "media_type": "application/json",
+            "classification": "PUBLIC",
+            "producer_event_seq": 1
+          }
+        ],
+        "evidence": [
+          {
+            "evidence_id": "EVID-first",
+            "tier": "E2",
+            "type": "test",
+            "source_ref": "artifacts/verification/primary-result.json",
+            "producer_event_seq": 1,
+            "observed_at": "2026-07-24T01:00:00Z"
+          }
+        ],
+        "decision_refs": [
+          {
+            "decision_id": "DEC-primary-terminal",
+            "decision_kind": "TERMINAL",
+            "subject_id": "TASK-event",
+            "artifact_refs": ["ART-primary-result"],
+            "evidence_refs": ["EVID-first"],
+            "producer_event_seq": 1
+          }
+        ],
+        "created_at": "2026-07-24T00:00:00Z",
+        "finalized_at": "2026-07-24T01:01:00Z",
+        "manifest_sha256": "36a16d8193feaec168056614c5e9d1c0958179d445a9d985369dc34c2577be59"
+      },
+      "resolution_context": {
+        "ART-primary-result": {"task_id": "TASK-event", "run_id": "RUN-first"},
+        "EVID-first": {"task_id": "TASK-event", "run_id": "RUN-first"}
+      },
+      "expected": "PASSED",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "non-terminal-snapshot",
+      "kind": "non_terminal_snapshot",
+      "manifest": {
+        "schema_id": "forgeops.run-manifest",
+        "schema_version": "1.0",
+        "manifest_id": "MAN-snapshot",
+        "manifest_version": 2,
+        "task_id": "TASK-snapshot",
+        "run_id": "RUN-snapshot",
+        "correlation_id": "CORR-snapshot",
+        "run_mode": "PRIMARY",
+        "status": "IN_PROGRESS",
+        "accepted_revision": 2,
+        "source_contract": {
+          "artifact_id": "ART-task-contract-snapshot",
+          "artifact_version": 1,
+          "content_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+        },
+        "event_stream": {
+          "stream_id": "STREAM-snapshot",
+          "first_seq": 1,
+          "last_seq": 3,
+          "count": 3,
+          "content_sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+        },
+        "artifacts": [],
+        "evidence": [],
+        "decision_refs": [],
+        "created_at": "2026-07-24T01:10:00Z",
+        "manifest_sha256": "daaefd27db295dff03bd1028e493c9d220047a9907e983daeda5814a705483aa"
+      },
+      "resolution_context": {},
+      "expected": "PASSED",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "audit-replay",
+      "kind": "audit_replay",
+      "manifest": {
+        "schema_id": "forgeops.run-manifest",
+        "schema_version": "1.0",
+        "manifest_id": "MAN-audit-replay",
+        "manifest_version": 1,
+        "task_id": "TASK-audit",
+        "run_id": "RUN-audit-new",
+        "correlation_id": "CORR-audit-new",
+        "run_mode": "AUDIT_REPLAY",
+        "status": "SUCCEEDED",
+        "accepted_revision": 4,
+        "source_contract": {
+          "artifact_id": "ART-task-contract-audit",
+          "artifact_version": 1,
+          "content_sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+        },
+        "event_stream": {
+          "stream_id": "STREAM-audit-new",
+          "first_seq": 1,
+          "last_seq": 2,
+          "count": 2,
+          "content_sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+        },
+        "artifacts": [],
+        "evidence": [
+          {
+            "evidence_id": "EVID-audit",
+            "tier": "E2",
+            "type": "runtime",
+            "source_ref": "forgeops:evidence:audit-run",
+            "producer_event_seq": 2,
+            "observed_at": "2026-07-24T02:00:00Z"
+          }
+        ],
+        "decision_refs": [
+          {
+            "decision_id": "DEC-audit-terminal",
+            "decision_kind": "TERMINAL",
+            "subject_id": "RUN-audit-new",
+            "artifact_refs": [],
+            "evidence_refs": ["EVID-audit"],
+            "producer_event_seq": 2
+          }
+        ],
+        "created_at": "2026-07-24T01:50:00Z",
+        "finalized_at": "2026-07-24T02:01:00Z",
+        "manifest_sha256": "a5426fbf92f2bd8088eb71a418293644c203c9fa26ef2a138c73ea68791426d0"
+      },
+      "resolution_context": {
+        "EVID-audit": {"task_id": "TASK-audit", "run_id": "RUN-audit-new"}
+      },
+      "expected": "PASSED",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "counterfactual",
+      "kind": "counterfactual",
+      "manifest": {
+        "schema_id": "forgeops.run-manifest",
+        "schema_version": "1.0",
+        "manifest_id": "MAN-counterfactual",
+        "manifest_version": 1,
+        "task_id": "TASK-counterfactual",
+        "run_id": "RUN-counterfactual-new",
+        "correlation_id": "CORR-counterfactual-new",
+        "run_mode": "COUNTERFACTUAL",
+        "status": "PARTIAL",
+        "accepted_revision": 1,
+        "source_contract": {
+          "artifact_id": "ART-task-contract-counterfactual",
+          "artifact_version": 1,
+          "content_sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+        },
+        "event_stream": {
+          "stream_id": "STREAM-counterfactual-new",
+          "first_seq": 1,
+          "last_seq": 1,
+          "count": 1,
+          "content_sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+        },
+        "artifacts": [],
+        "evidence": [],
+        "decision_refs": [],
+        "created_at": "2026-07-24T02:10:00Z",
+        "manifest_sha256": "284c6d14aa29bfe2c3aa8324af1785779097bd668448530a63a4c47927d17bf5"
+      },
+      "resolution_context": {},
+      "expected": "PASSED",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "revision-evidence",
+      "kind": "revision_evidence",
+      "manifest": {
+        "schema_id": "forgeops.run-manifest",
+        "schema_version": "1.0",
+        "manifest_id": "MAN-revision-evidence",
+        "manifest_version": 1,
+        "task_id": "TASK-revision-evidence",
+        "run_id": "RUN-revision-evidence",
+        "correlation_id": "CORR-revision-evidence",
+        "run_mode": "PRIMARY",
+        "status": "IN_PROGRESS",
+        "accepted_revision": 3,
+        "source_contract": {
+          "artifact_id": "ART-task-contract-revision",
+          "artifact_version": 1,
+          "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "event_stream": {
+          "stream_id": "STREAM-revision-evidence",
+          "first_seq": 1,
+          "last_seq": 2,
+          "count": 2,
+          "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "artifacts": [],
+        "evidence": [
+          {
+            "evidence_id": "EVID-revision",
+            "tier": "E1",
+            "type": "file",
+            "source_ref": "docs/project/wbs.md",
+            "producer_event_seq": 2,
+            "observed_revision": 3
+          }
+        ],
+        "decision_refs": [
+          {
+            "decision_id": "DEC-revision-criterion",
+            "decision_kind": "CRITERION",
+            "subject_id": "criterion-revision",
+            "artifact_refs": [],
+            "evidence_refs": ["EVID-revision"],
+            "producer_event_seq": 2
+          }
+        ],
+        "created_at": "2026-07-24T02:20:00Z",
+        "manifest_sha256": "c45f91b7c06d4d9826b9d870691316176534431c8af641ccf351c5f9db575a20"
+      },
+      "resolution_context": {
+        "EVID-revision": {"task_id": "TASK-revision-evidence", "run_id": "RUN-revision-evidence"}
+      },
+      "expected": "PASSED",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "time-evidence",
+      "kind": "time_evidence",
+      "manifest": {
+        "schema_id": "forgeops.run-manifest",
+        "schema_version": "1.0",
+        "manifest_id": "MAN-time-evidence",
+        "manifest_version": 1,
+        "task_id": "TASK-time-evidence",
+        "run_id": "RUN-time-evidence",
+        "correlation_id": "CORR-time-evidence",
+        "run_mode": "REEXECUTE",
+        "status": "IN_PROGRESS",
+        "accepted_revision": 1,
+        "source_contract": {
+          "artifact_id": "ART-task-contract-time",
+          "artifact_version": 1,
+          "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "event_stream": {
+          "stream_id": "STREAM-time-evidence",
+          "first_seq": 7,
+          "last_seq": 8,
+          "count": 2,
+          "content_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        },
+        "artifacts": [],
+        "evidence": [
+          {
+            "evidence_id": "EVID-time",
+            "tier": "E2",
+            "type": "command",
+            "source_ref": "forgeops:command:manifest-fixture",
+            "producer_event_seq": 8,
+            "observed_at": "2026-07-24T02:30:00Z"
+          }
+        ],
+        "decision_refs": [
+          {
+            "decision_id": "DEC-time-criterion",
+            "decision_kind": "CRITERION",
+            "subject_id": "criterion-time",
+            "artifact_refs": [],
+            "evidence_refs": ["EVID-time"],
+            "producer_event_seq": 8
+          }
+        ],
+        "created_at": "2026-07-24T02:25:00Z",
+        "manifest_sha256": "22a552b27e3fdbc2bb23a9cd125d89ca0853e2182729d70ad3d810dccafccc4c"
+      },
+      "resolution_context": {
+        "EVID-time": {"task_id": "TASK-time-evidence", "run_id": "RUN-time-evidence"}
+      },
+      "expected": "PASSED",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "blocked-terminal",
+      "kind": "blocked_terminal",
+      "manifest": {
+        "schema_id": "forgeops.run-manifest",
+        "schema_version": "1.0",
+        "manifest_id": "MAN-blocked-terminal",
+        "manifest_version": 1,
+        "task_id": "TASK-blocked",
+        "run_id": "RUN-blocked",
+        "correlation_id": "CORR-blocked",
+        "run_mode": "PRIMARY",
+        "status": "BLOCKED",
+        "accepted_revision": 2,
+        "source_contract": {
+          "artifact_id": "task_contract:blocked:v1",
+          "artifact_version": 1,
+          "content_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        },
+        "event_stream": {
+          "stream_id": "STREAM-blocked",
+          "first_seq": 1,
+          "last_seq": 2,
+          "count": 2,
+          "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "artifacts": [],
+        "evidence": [],
+        "decision_refs": [
+          {
+            "decision_id": "DEC-blocked-terminal",
+            "decision_kind": "TERMINAL",
+            "subject_id": "TASK-blocked",
+            "artifact_refs": [],
+            "evidence_refs": [],
+            "producer_event_seq": 2
+          }
+        ],
+        "created_at": "2026-07-24T02:40:00Z",
+        "finalized_at": "2026-07-24T02:45:00Z",
+        "manifest_sha256": "ed5a45316d1fc25f53cada336a2f52f7c5ca9a8d70170b3d28c8f5a72a4b0463"
+      },
+      "resolution_context": {},
+      "expected": "PASSED",
+      "expected_storage_calls": 0
+    }
+  ],
+  "negative_lifecycle": [
+    {
+      "id": "event-count-mismatch",
+      "base_case": "primary-terminal",
+      "mutations": [{"operation": "replace", "path": ["event_stream", "count"], "value": 2}],
+      "rehash": true,
+      "expected_error": "MANIFEST_EVENT_RANGE_INVALID"
+    },
+    {
+      "id": "terminal-missing-finalized",
+      "base_case": "primary-terminal",
+      "mutations": [{"operation": "remove", "path": ["finalized_at"]}],
+      "rehash": true,
+      "expected_error": "MANIFEST_IDENTITY_MISMATCH"
+    },
+    {
+      "id": "terminal-missing-decision",
+      "base_case": "primary-terminal",
+      "mutations": [{"operation": "replace", "path": ["decision_refs"], "value": []}],
+      "rehash": true,
+      "expected_error": "MANIFEST_IDENTITY_MISMATCH"
+    },
+    {
+      "id": "non-terminal-has-finalized",
+      "base_case": "non-terminal-snapshot",
+      "mutations": [{"operation": "replace", "path": ["finalized_at"], "value": "2026-07-24T01:20:00Z"}],
+      "rehash": true,
+      "expected_error": "MANIFEST_IDENTITY_MISMATCH"
+    },
+    {
+      "id": "non-terminal-has-terminal-decision",
+      "base_case": "non-terminal-snapshot",
+      "mutations": [
+        {
+          "operation": "replace",
+          "path": ["decision_refs"],
+          "value": [
+            {
+              "decision_id": "DEC-invalid-terminal",
+              "decision_kind": "TERMINAL",
+              "subject_id": "TASK-snapshot",
+              "artifact_refs": [],
+              "evidence_refs": [],
+              "producer_event_seq": 3
+            }
+          ]
+        }
+      ],
+      "rehash": true,
+      "expected_error": "MANIFEST_IDENTITY_MISMATCH"
+    },
+    {
+      "id": "finalized-before-created",
+      "base_case": "primary-terminal",
+      "mutations": [{"operation": "replace", "path": ["finalized_at"], "value": "2026-07-23T23:59:59Z"}],
+      "rehash": true,
+      "expected_error": "MANIFEST_IDENTITY_MISMATCH"
+    },
+    {
+      "id": "bad-self-hash",
+      "base_case": "primary-terminal",
+      "mutations": [{"operation": "replace", "path": ["manifest_sha256"], "value": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}],
+      "rehash": false,
+      "expected_error": "MANIFEST_HASH_INVALID"
+    },
+    {
+      "id": "missing-self-hash",
+      "base_case": "non-terminal-snapshot",
+      "mutations": [{"operation": "remove", "path": ["manifest_sha256"]}],
+      "rehash": false,
+      "expected_error": "MANIFEST_SCHEMA_INVALID"
+    },
+    {
+      "id": "missing-content-hash",
+      "base_case": "primary-terminal",
+      "mutations": [{"operation": "remove", "path": ["artifacts", 0, "content_sha256"]}],
+      "rehash": true,
+      "expected_error": "MANIFEST_SCHEMA_INVALID"
+    },
+    {
+      "id": "bad-content-hash",
+      "base_case": "primary-terminal",
+      "mutations": [{"operation": "replace", "path": ["artifacts", 0, "content_sha256"], "value": "not-a-sha256"}],
+      "rehash": true,
+      "expected_error": "MANIFEST_SCHEMA_INVALID"
+    },
+    {
+      "id": "unknown-root-field",
+      "base_case": "non-terminal-snapshot",
+      "mutations": [{"operation": "replace", "path": ["raw_manifest"], "value": "forbidden"}],
+      "rehash": true,
+      "expected_error": "MANIFEST_SCHEMA_INVALID"
+    }
+  ],
+  "negative_reference": [
+    {
+      "id": "duplicate-evidence-id",
+      "kind": "duplicate_identity",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-duplicate","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-duplicate","tier":"E2","type":"test","source_ref":"artifacts/verification/result.json","producer_event_seq":1,"observed_at":"2026-07-24T03:00:00Z"},{"evidence_id":"EVID-duplicate","tier":"E2","type":"test","source_ref":"artifacts/verification/result.json","producer_event_seq":2,"observed_at":"2026-07-24T03:00:01Z"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_ID_DUPLICATE",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "dangling-reference",
+      "kind": "dangling_reference",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-dangling","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[],"decision_refs":[{"decision_id":"DEC-dangling","decision_kind":"CRITERION","subject_id":"criterion-negative","artifact_refs":["ART-missing"],"evidence_refs":[],"producer_event_seq":1}],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_REFERENCE_DANGLING",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "producer-outside-range",
+      "kind": "producer_sequence",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-producer","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-outside","tier":"E2","type":"test","source_ref":"artifacts/verification/result.json","producer_event_seq":3,"observed_at":"2026-07-24T03:00:00Z"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_PRODUCER_SEQUENCE_INVALID",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "file-evidence-with-time",
+      "kind": "freshness_union",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-file-time","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-file-time","tier":"E1","type":"file","source_ref":"docs/project/wbs.md","producer_event_seq":1,"observed_revision":1,"observed_at":"2026-07-24T03:00:00Z"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_EVIDENCE_FRESHNESS_INVALID",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "time-evidence-with-revision",
+      "kind": "freshness_union",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-time-revision","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-time-revision","tier":"E2","type":"test","source_ref":"forgeops:test:manifest","producer_event_seq":1,"observed_revision":1,"observed_at":"2026-07-24T03:00:00Z"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_EVIDENCE_FRESHNESS_INVALID",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "invalid-strict-utc",
+      "kind": "freshness_timestamp",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-utc","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-invalid-utc","tier":"E2","type":"test","source_ref":"forgeops:test:manifest","producer_event_seq":1,"observed_at":"2026-07-24T03:00:00+00:00"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_EVIDENCE_FRESHNESS_INVALID",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "raw-secret-field",
+      "kind": "sensitive_boundary",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-secret","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000","raw_secret":"do-not-store"},
+      "resolution_context": {},
+      "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "absolute-source-ref",
+      "kind": "source_reference",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-absolute","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-absolute","tier":"E1","type":"file","source_ref":"C:/private/result.json","producer_event_seq":1,"observed_revision":1}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "traversal-source-ref",
+      "kind": "source_reference",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-traversal","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-traversal","tier":"E1","type":"file","source_ref":"artifacts/../private/result.json","producer_event_seq":1,"observed_revision":1}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "signed-url-source-ref",
+      "kind": "source_reference",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-signed-url","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":2,"count":2,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-signed-url","tier":"E2","type":"runtime","source_ref":"https://store.example/result?X-Amz-Signature=abc","producer_event_seq":1,"observed_at":"2026-07-24T03:00:00Z"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "cross-run-reference",
+      "kind": "reference_resolution",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-time-evidence","manifest_version":1,"task_id":"TASK-time-evidence","run_id":"RUN-time-evidence","correlation_id":"CORR-time-evidence","run_mode":"REEXECUTE","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-time","artifact_version":1,"content_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"event_stream":{"stream_id":"STREAM-time-evidence","first_seq":7,"last_seq":8,"count":2,"content_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},"artifacts":[],"evidence":[{"evidence_id":"EVID-time","tier":"E2","type":"command","source_ref":"forgeops:command:manifest-fixture","producer_event_seq":8,"observed_at":"2026-07-24T02:30:00Z"}],"decision_refs":[{"decision_id":"DEC-time-criterion","decision_kind":"CRITERION","subject_id":"criterion-time","artifact_refs":[],"evidence_refs":["EVID-time"],"producer_event_seq":8}],"created_at":"2026-07-24T02:25:00Z","manifest_sha256":"22a552b27e3fdbc2bb23a9cd125d89ca0853e2182729d70ad3d810dccafccc4c"},
+      "resolution_context": {"EVID-time":{"task_id":"TASK-time-evidence","run_id":"RUN-other"}},
+      "expected": "MANIFEST_REFERENCE_CROSS_RUN",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "invalid-run-mode",
+      "kind": "run_mode",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-mode","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"UNKNOWN","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":1,"count":1,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"232892a8d7ab609078aa95c98ca7c2b531cfaeecb37488c8cb32fd7a9a9944fb"},
+      "resolution_context": {},
+      "expected": "MANIFEST_MODE_INVALID",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "sensitive-urn-token",
+      "kind": "source_reference",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-urn-token","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":1,"count":1,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-urn-token","tier":"E2","type":"runtime","source_ref":"forgeops:token:opaque-id","producer_event_seq":1,"observed_at":"2026-07-24T03:00:00Z"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "sensitive-urn-credential",
+      "kind": "source_reference",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-urn-credential","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":1,"count":1,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-urn-credential","tier":"E2","type":"runtime","source_ref":"forgeops:credential:opaque-id","producer_event_seq":1,"observed_at":"2026-07-24T03:00:00Z"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "sensitive-urn-tenant",
+      "kind": "source_reference",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-urn-tenant","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":1,"count":1,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-urn-tenant","tier":"E2","type":"runtime","source_ref":"forgeops:tenant:opaque-id","producer_event_seq":1,"observed_at":"2026-07-24T03:00:00Z"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+      "expected_storage_calls": 0
+    },
+    {
+      "id": "sensitive-urn-secret",
+      "kind": "source_reference",
+      "manifest": {"schema_id":"forgeops.run-manifest","schema_version":"1.0","manifest_id":"MAN-negative-urn-secret","manifest_version":1,"task_id":"TASK-negative","run_id":"RUN-negative","correlation_id":"CORR-negative","run_mode":"PRIMARY","status":"IN_PROGRESS","accepted_revision":1,"source_contract":{"artifact_id":"ART-task-contract-negative","artifact_version":1,"content_sha256":"1111111111111111111111111111111111111111111111111111111111111111"},"event_stream":{"stream_id":"STREAM-negative","first_seq":1,"last_seq":1,"count":1,"content_sha256":"2222222222222222222222222222222222222222222222222222222222222222"},"artifacts":[],"evidence":[{"evidence_id":"EVID-urn-secret","tier":"E2","type":"runtime","source_ref":"forgeops:secret:opaque-id","producer_event_seq":1,"observed_at":"2026-07-24T03:00:00Z"}],"decision_refs":[],"created_at":"2026-07-24T03:00:00Z","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+      "resolution_context": {},
+      "expected": "MANIFEST_SENSITIVE_CONTENT_FORBIDDEN",
+      "expected_storage_calls": 0
+    }
+  ]
+}

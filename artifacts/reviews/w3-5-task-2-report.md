@@ -1,0 +1,63 @@
+# W3-5 Task 2 Implementation Report
+
+## Scope
+
+Implemented only Task 2, "Add cross-contract identity, event-to-manifest, and terminal-state checks," from the approved W3-5 plan. This work does not register `AGENTS.md`, generate the registered VG-004 result artifact, update WBS/RTM status, perform Git mutation, or invoke network/process/external services.
+
+## Changed resources
+
+- `tools/interface_contract/verify.py`
+  - Adds `validate_cross_contract(api_case, event_records, manifest)` with the stable integration error `INTERFACE_CROSS_REFERENCE_INVALID`.
+  - Requires exact task/run/correlation identity across the API run projection, every durable event wrapper, every canonical event identity surface, and the manifest.
+  - Requires the API event and manifest references to name the exact fixture `stream_id` and `manifest_id` and to resolve in the exact same task/run reference context.
+  - Requires API run mode, status, and accepted revision to match the manifest.
+  - Resolves every event evidence reference exactly once in the manifest evidence catalog, rejects duplicate evidence identities, and checks every artifact/evidence/decision producer sequence against the inclusive manifest event range.
+  - Requires a terminal manifest to match the final Main-owned `STATE_ACCEPTED` event action and accepted revision.
+  - Connects the registered `get-run-valid`, `first-append`, and `primary-terminal` positives to the integrated conformance path.
+  - Adds `assert_public_safe_result(result)` with exact success/failure shapes, fixed hash/component/assertion fields, recursive forbidden-key checks, credential-material checks, absolute host-path rejection, and safe schema-hash metadata support.
+  - Preserves `INTERFACE_CROSS_REFERENCE_INVALID` and `INTERFACE_RESULT_UNSAFE` in closed failure results while mapping component/internal failures to `INTERFACE_RUNNER_CONTRACT_INVALID`.
+- `tests/interface_contract/test_verify.py`
+  - Adds six cross-contract tests for the registered positive bundle, identity mismatches, evidence resolution, exact API references, producer range, and terminal Main state matching.
+  - Adds five public-result tests for the approved closed result, all exact forbidden raw-data keys, credential/path values, safe schema hash names, and unknown result fields.
+- `fixtures/forgeops-api/data-control-suite.json`
+  - Aligns only `get-run-valid` with the existing primary event/manifest fixture identity and exact stream/manifest reference names.
+  - The dependent negative cases continue to materialize from this registered base case.
+- `fixtures/forgeops-event-contract/suite.json`
+  - Aligns the existing `first-append` Main event with the primary terminal manifest by expressing state acceptance as `canonical_event.code="STATE_ACCEPTED"` and terminal status as `canonical_event.action="SUCCEEDED"`.
+  - The approved phase enum remains unchanged; state acceptance is not encoded as a phase.
+
+## TDD evidence
+
+### RED 1: missing Task 2 interfaces
+
+Command:
+
+`python -m unittest tests.interface_contract.test_verify.CrossContractTests tests.interface_contract.test_verify.ResultSafetyTests -v`
+
+Observed result: exit code 1. All new cases errored because `validate_cross_contract` and `assert_public_safe_result` did not exist. This proved the tests exercised the missing Task 2 boundary rather than existing Task 1 behavior.
+
+### RED 2: trusted positives were not yet an integrated fixture
+
+After adding the minimal validators, the same command exited 1. The registered positive bundle failed with `INTERFACE_CROSS_REFERENCE_INVALID`: API `get-run-valid` used `TASK-API-001/RUN-API-001`, while the matching event and manifest used `TASK-event/RUN-first`; the final event also expressed `TASK_ACCEPTED/RECORD` while the manifest was terminal `SUCCEEDED`.
+
+The two registered positive records were minimally aligned to the existing primary manifest. No contract schema, phase enum, case catalog, or expected error category changed.
+
+### GREEN
+
+Command:
+
+`python -m unittest tests.interface_contract.test_verify.CrossContractTests tests.interface_contract.test_verify.ResultSafetyTests -v`
+
+Observed result: exit code 0; all 11 Task 2 tests passed.
+
+## Verification evidence
+
+- `python -m unittest tests.interface_contract.test_openapi_version tests.interface_contract.test_api_boundary tests.interface_contract.test_event_wrapper tests.interface_contract.test_run_manifest tests.interface_contract.test_verify -v`
+  - Exit code 0; all 90 interface-contract tests passed.
+  - The integrated runner still evaluates 16 API version, 28 API boundary, 26 event, and 34 manifest cases with zero negative effect-spy calls.
+- The focused tests confirm the public result retains only the approved root/component/case/hash/assertion fields and rejects every planned exact raw-data key, tested credential material, Windows/POSIX/UNC absolute paths, and unknown fields.
+- No registered VG-004 result artifact was generated by this task.
+
+## Deferred scope
+
+W3-5 Task 3 remains deferred: `AGENTS.md` command/profile registration, registered artifact generation, final hash inspection, WBS-006 through WBS-008 synchronization, and mapped RTM evidence updates are not part of this report. No Git add/commit/push/PR or external effect was performed.

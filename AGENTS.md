@@ -85,6 +85,11 @@ project_profile:
       cwd: "."
       evidence_tier: E2
       required: true
+    - id: interface-contract-fixture
+      command: python tools/interface_contract/verify.py --openapi contracts/forgeops-api/1.0/openapi.yaml --event-schema contracts/forgeops-event/1.0/schema.json --manifest-schema contracts/forgeops-run-manifest/1.0/schema.json --api-version-suite fixtures/forgeops-api/version-envelope-suite.json --api-boundary-suite fixtures/forgeops-api/data-control-suite.json --event-suite fixtures/forgeops-event-contract/suite.json --manifest-suite fixtures/forgeops-run-manifest/suite.json --result artifacts/verification/vg-004-interface-contract-result.json --command-id interface-contract-fixture
+      cwd: "."
+      evidence_tier: E2
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -119,6 +124,9 @@ project_profile:
         - id: forgeops-approval-policy
           command_ids:
             - approval-negative-fixture
+        - id: forgeops-interface-contract
+          command_ids:
+            - interface-contract-fixture
       validation_discovery:
         - pyproject.toml
         - uv.lock

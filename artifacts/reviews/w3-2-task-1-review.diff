@@ -1,0 +1,1892 @@
+# Review package: uncommitted W3-2 Task 1
+## Files changed
+contracts/forgeops-api/1.0/openapi.yaml
+tools/interface_contract/openapi_contract.py
+fixtures/forgeops-api/data-control-suite.json
+tests/interface_contract/test_api_boundary.py
+## Diff
+diff --git a/contracts/forgeops-api/1.0/openapi.yaml b/contracts/forgeops-api/1.0/openapi.yaml
+new file mode 100644
+index 0000000..232b412
+--- /dev/null
++++ b/contracts/forgeops-api/1.0/openapi.yaml
+@@ -0,0 +1,403 @@
++{
++  "openapi": "3.1.0",
++  "info": {
++    "title": "ForgeOps API",
++    "version": "1.0.0"
++  },
++  "paths": {
++    "/v1/tasks": {
++      "post": {
++        "operationId": "createTask",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"}
++        ],
++        "requestBody": {
++          "required": true,
++          "content": {
++            "application/json": {
++              "schema": {"$ref": "#/components/schemas/CreateTaskRequest"}
++            }
++          }
++        },
++        "responses": {
++          "201": {
++            "description": "Task accepted.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/CreateTaskResponse"}
++              }
++            }
++          },
++          "400": {
++            "description": "Request rejected.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    },
++    "/v1/tasks/{task_id}": {
++      "get": {
++        "operationId": "getTask",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"},
++          {
++            "name": "task_id",
++            "in": "path",
++            "required": true,
++            "schema": {"$ref": "#/components/schemas/Identifier"}
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "Task returned.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/TaskResponse"}
++              }
++            }
++          },
++          "404": {
++            "description": "Task not found.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    },
++    "/v1/runs/{run_id}": {
++      "get": {
++        "operationId": "getRun",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"},
++          {
++            "name": "run_id",
++            "in": "path",
++            "required": true,
++            "schema": {"$ref": "#/components/schemas/Identifier"}
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "Run returned.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/RunResponse"}
++              }
++            }
++          },
++          "404": {
++            "description": "Run not found.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    },
++    "/v1/runs/{run_id}/events": {
++      "get": {
++        "operationId": "listRunEvents",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"},
++          {
++            "name": "run_id",
++            "in": "path",
++            "required": true,
++            "schema": {"$ref": "#/components/schemas/Identifier"}
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "Run events returned.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/EventPageResponse"}
++              }
++            }
++          },
++          "404": {
++            "description": "Run not found.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    },
++    "/v1/runs/{run_id}/manifest": {
++      "get": {
++        "operationId": "getRunManifest",
++        "parameters": [
++          {"$ref": "#/components/parameters/RequestIdHeader"},
++          {
++            "name": "run_id",
++            "in": "path",
++            "required": true,
++            "schema": {"$ref": "#/components/schemas/Identifier"}
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "Run manifest returned.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ManifestResponse"}
++              }
++            }
++          },
++          "404": {
++            "description": "Run not found.",
++            "content": {
++              "application/json": {
++                "schema": {"$ref": "#/components/schemas/ErrorEnvelope"}
++              }
++            }
++          }
++        }
++      }
++    }
++  },
++  "components": {
++    "parameters": {
++      "RequestIdHeader": {
++        "name": "X-Request-ID",
++        "in": "header",
++        "required": true,
++        "schema": {
++          "type": "string",
++          "minLength": 1
++        }
++      }
++    },
++    "schemas": {
++      "Identifier": {
++        "type": "string",
++        "minLength": 1
++      },
++      "ApiVersion": {
++        "type": "string",
++        "const": "1.0"
++      },
++      "Status": {
++        "type": "string",
++        "enum": [
++          "PENDING",
++          "IN_PROGRESS",
++          "WAITING_FOR_HUMAN",
++          "BLOCKED",
++          "SUCCEEDED",
++          "FAILED",
++          "PARTIAL"
++        ]
++      },
++      "Error": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["code", "message"],
++        "properties": {
++          "code": {
++            "type": "string",
++            "enum": [
++              "API_VERSION_UNSUPPORTED",
++              "API_SCHEMA_INVALID",
++              "API_IDENTITY_MISMATCH",
++              "API_CONTROL_FIELD_FORBIDDEN",
++              "API_REFERENCE_INVALID",
++              "API_RESOURCE_NOT_FOUND"
++            ]
++          },
++          "message": {"type": "string"}
++        }
++      },
++      "ErrorEnvelope": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version", "request_id", "error"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++          "request_id": {"$ref": "#/components/schemas/Identifier"},
++          "error": {"$ref": "#/components/schemas/Error"}
++        }
++      },
++      "SuccessEnvelope": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"}
++        }
++      },
++      "CreateTaskRequest": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version", "request_id", "task_contract"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++          "request_id": {"$ref": "#/components/schemas/Identifier"},
++          "task_contract": {"$ref": "../../product-task-contract/1.0/schema.json"}
++        }
++      },
++      "CreateTaskData": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": [
++          "task_id",
++          "artifact_id",
++          "artifact_version",
++          "product_state",
++          "contract_sha256",
++          "links"
++        ],
++        "properties": {
++          "task_id": {"$ref": "#/components/schemas/Identifier"},
++          "artifact_id": {"$ref": "#/components/schemas/Identifier"},
++          "artifact_version": {"type": "integer", "minimum": 1},
++          "product_state": {"type": "string", "const": "CREATED"},
++          "contract_sha256": {
++            "type": "string",
++            "pattern": "^[0-9a-f]{64}$"
++          },
++          "links": {
++            "type": "object",
++            "additionalProperties": false,
++            "required": ["task", "run"],
++            "properties": {
++              "task": {"$ref": "#/components/schemas/Identifier"},
++              "run": {"$ref": "#/components/schemas/Identifier"}
++            }
++          }
++        }
++      },
++      "TaskData": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["status", "revision", "last_event_seq"],
++        "properties": {
++          "status": {"$ref": "#/components/schemas/Status"},
++          "revision": {"type": "integer", "minimum": 0},
++          "last_event_seq": {"type": "integer", "minimum": 0}
++        }
++      },
++      "RunData": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": [
++          "task_id",
++          "run_id",
++          "correlation_id",
++          "run_mode",
++          "status",
++          "accepted_revision",
++          "event_stream_ref",
++          "manifest_ref"
++        ],
++        "properties": {
++          "task_id": {"$ref": "#/components/schemas/Identifier"},
++          "run_id": {"$ref": "#/components/schemas/Identifier"},
++          "correlation_id": {"$ref": "#/components/schemas/Identifier"},
++          "run_mode": {
++            "type": "string",
++            "enum": ["PRIMARY", "AUDIT_REPLAY", "COUNTERFACTUAL", "REEXECUTE"]
++          },
++          "status": {"$ref": "#/components/schemas/Status"},
++          "accepted_revision": {"type": "integer", "minimum": 0},
++          "event_stream_ref": {"$ref": "#/components/schemas/Identifier"},
++          "manifest_ref": {"$ref": "#/components/schemas/Identifier"}
++        }
++      },
++      "EventPageData": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": [
++          "task_id",
++          "run_id",
++          "event_stream_ref",
++          "event_refs",
++          "next_page_ref"
++        ],
++        "properties": {
++          "task_id": {"$ref": "#/components/schemas/Identifier"},
++          "run_id": {"$ref": "#/components/schemas/Identifier"},
++          "event_stream_ref": {"$ref": "#/components/schemas/Identifier"},
++          "event_refs": {
++            "type": "array",
++            "maxItems": 100,
++            "items": {"$ref": "#/components/schemas/Identifier"}
++          },
++          "next_page_ref": {"type": ["string", "null"], "minLength": 1}
++        }
++      },
++      "ManifestData": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["task_id", "run_id", "manifest_ref"],
++        "properties": {
++          "task_id": {"$ref": "#/components/schemas/Identifier"},
++          "run_id": {"$ref": "#/components/schemas/Identifier"},
++          "manifest_ref": {"$ref": "#/components/schemas/Identifier"}
++        }
++      },
++      "CreateTaskResponse": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version", "request_id", "data"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++          "request_id": {"$ref": "#/components/schemas/Identifier"},
++          "data": {"$ref": "#/components/schemas/CreateTaskData"}
++        }
++      },
++      "TaskResponse": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version", "request_id", "data"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++          "request_id": {"$ref": "#/components/schemas/Identifier"},
++          "data": {"$ref": "#/components/schemas/TaskData"}
++        }
++      },
++      "RunResponse": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version", "request_id", "data"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++          "request_id": {"$ref": "#/components/schemas/Identifier"},
++          "data": {"$ref": "#/components/schemas/RunData"}
++        }
++      },
++      "EventPageResponse": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version", "request_id", "data"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++          "request_id": {"$ref": "#/components/schemas/Identifier"},
++          "data": {"$ref": "#/components/schemas/EventPageData"}
++        }
++      },
++      "ManifestResponse": {
++        "type": "object",
++        "additionalProperties": false,
++        "required": ["api_version", "request_id", "data"],
++        "properties": {
++          "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++          "request_id": {"$ref": "#/components/schemas/Identifier"},
++          "data": {"$ref": "#/components/schemas/ManifestData"}
++        }
++      }
++    }
++  }
++}
+diff --git a/tools/interface_contract/openapi_contract.py b/tools/interface_contract/openapi_contract.py
+new file mode 100644
+index 0000000..36aa775
+--- /dev/null
++++ b/tools/interface_contract/openapi_contract.py
+@@ -0,0 +1,794 @@
++"""Validation for the approved ForgeOps OpenAPI 3.1 document subset."""
++
++from __future__ import annotations
++
++import copy
++from dataclasses import dataclass
++from typing import Any
++
++from jsonschema import Draft202012Validator
++from jsonschema.exceptions import SchemaError
++
++from tools.interface_contract.common import ContractError, assert_exact_fields
++
++
++API_VERSION = "1.0"
++OPENAPI_VERSION = "3.1.0"
++DOCUMENT_VERSION = "1.0.0"
++API_ERROR_CODE_ENUM = (
++    "API_VERSION_UNSUPPORTED",
++    "API_SCHEMA_INVALID",
++    "API_IDENTITY_MISMATCH",
++    "API_CONTROL_FIELD_FORBIDDEN",
++    "API_REFERENCE_INVALID",
++    "API_RESOURCE_NOT_FOUND",
++)
++API_ERROR_CODES = frozenset(API_ERROR_CODE_ENUM)
++EXPECTED_OPERATIONS = {
++    ("post", "/v1/tasks"): "createTask",
++    ("get", "/v1/tasks/{task_id}"): "getTask",
++    ("get", "/v1/runs/{run_id}"): "getRun",
++    ("get", "/v1/runs/{run_id}/events"): "listRunEvents",
++    ("get", "/v1/runs/{run_id}/manifest"): "getRunManifest",
++}
++PATH_PARAMETER_NAMES = {
++    "/v1/tasks": (),
++    "/v1/tasks/{task_id}": ("task_id",),
++    "/v1/runs/{run_id}": ("run_id",),
++    "/v1/runs/{run_id}/events": ("run_id",),
++    "/v1/runs/{run_id}/manifest": ("run_id",),
++}
++VERSION_ENVELOPE_CASE_FIELDS = {
++    "id",
++    "kind",
++    "uri_major",
++    "request_header",
++    "body",
++    "response",
++    "expected",
++}
++VERSION_ENVELOPE_KINDS = frozenset(EXPECTED_OPERATIONS.values())
++ENDPOINT_BODY_FIELDS = {
++    "createTask": {"api_version", "request_id", "task_id"},
++    "getTask": {"api_version", "path_task_id", "task_id"},
++    "getRun": {"api_version", "path_run_id", "run_id"},
++    "listRunEvents": {"api_version", "path_run_id", "run_id"},
++    "getRunManifest": {"api_version", "path_run_id", "run_id"},
++}
++FORBIDDEN_CONTROL_FIELDS = frozenset(
++    {
++        "authority",
++        "capabilities",
++        "runtime_policy",
++        "accepted_state",
++        "approval_token",
++        "nonce",
++        "credentials",
++        "tools",
++        "commands",
++    }
++)
++PRODUCT_CONTROL_FIELDS = frozenset({"budget", "approval_policy"})
++SENSITIVE_RESPONSE_FIELDS = FORBIDDEN_CONTROL_FIELDS | frozenset(
++    {"credential", "private", "private_data", "private_payload", "secret", "secrets"}
++)
++PRODUCT_SCHEMA_REF = "../../product-task-contract/1.0/schema.json"
++RESPONSE_COMPONENTS = {
++    "createTask": "CreateTaskResponse",
++    "getTask": "TaskResponse",
++    "getRun": "RunResponse",
++    "listRunEvents": "EventPageResponse",
++    "getRunManifest": "ManifestResponse",
++}
++COMPONENT_SCHEMA_NAMES = {
++    "Identifier",
++    "ApiVersion",
++    "Status",
++    "Error",
++    "ErrorEnvelope",
++    "SuccessEnvelope",
++    "CreateTaskRequest",
++    "CreateTaskData",
++    "TaskData",
++    "RunData",
++    "EventPageData",
++    "ManifestData",
++    "CreateTaskResponse",
++    "TaskResponse",
++    "RunResponse",
++    "EventPageResponse",
++    "ManifestResponse",
++}
++
++
++def _schema_error() -> ContractError:
++    return ContractError("API_SCHEMA_INVALID")
++
++
++def _resolve_local_ref(document: dict[str, Any], reference: object) -> object:
++    if not isinstance(reference, str) or not reference.startswith("#/"):
++        raise ContractError("API_REFERENCE_INVALID")
++    target: object = document
++    for part in reference[2:].split("/"):
++        if not isinstance(target, dict):
++            raise ContractError("API_REFERENCE_INVALID")
++        key = part.replace("~1", "/").replace("~0", "~")
++        if key not in target:
++            raise ContractError("API_REFERENCE_INVALID")
++        target = target[key]
++    return target
++
++
++def _validate_schema(schema: object) -> None:
++    if not isinstance(schema, dict):
++        raise _schema_error()
++
++    if schema.get("type") == "object" and schema.get("additionalProperties") is not False:
++        raise _schema_error()
++
++    composition = [key for key in ("allOf", "anyOf", "oneOf") if key in schema]
++    if composition and schema.get("unevaluatedProperties") is not False:
++        raise _schema_error()
++
++    properties = schema.get("properties")
++    if properties is not None:
++        if not isinstance(properties, dict):
++            raise _schema_error()
++        for property_schema in properties.values():
++            _validate_schema(property_schema)
++
++    if "items" in schema:
++        _validate_schema(schema["items"])
++
++    for key in composition:
++        choices = schema[key]
++        if not isinstance(choices, list) or not choices:
++            raise _schema_error()
++        for choice in choices:
++            _validate_schema(choice)
++
++
++def _validate_request_id_parameter(parameter: object) -> None:
++    if not isinstance(parameter, dict):
++        raise _schema_error()
++    assert_exact_fields(parameter, {"name", "in", "required", "schema"}, set(), "API_SCHEMA_INVALID")
++    if (
++        parameter["name"] != "X-Request-ID"
++        or parameter["in"] != "header"
++        or parameter["required"] is not True
++        or not isinstance(parameter["schema"], dict)
++    ):
++        raise _schema_error()
++    _validate_schema(parameter["schema"])
++
++
++def _path_parameter(name: str) -> dict[str, object]:
++    return {
++        "name": name,
++        "in": "path",
++        "required": True,
++        "schema": {"$ref": "#/components/schemas/Identifier"},
++    }
++
++
++def _validate_json_content(content: object) -> None:
++    if not isinstance(content, dict) or set(content) != {"application/json"}:
++        raise _schema_error()
++    media = content["application/json"]
++    if not isinstance(media, dict):
++        raise _schema_error()
++    assert_exact_fields(media, {"schema"}, set(), "API_SCHEMA_INVALID")
++    _validate_schema(media["schema"])
++
++
++def _validate_operation(
++    operation: object, method: str, path: str
++) -> None:
++    expected_id = EXPECTED_OPERATIONS[(method, path)]
++    required = {"operationId", "parameters", "responses"}
++    if method == "post":
++        required.add("requestBody")
++    assert_exact_fields(operation, required, set(), "API_SCHEMA_INVALID")
++    if not isinstance(operation, dict) or operation["operationId"] != expected_id:
++        raise _schema_error()
++
++    parameters = operation["parameters"]
++    expected_parameters: list[object] = [
++        {"$ref": "#/components/parameters/RequestIdHeader"}
++    ]
++    expected_parameters.extend(_path_parameter(name) for name in PATH_PARAMETER_NAMES[path])
++    if not isinstance(parameters, list) or parameters != expected_parameters:
++        raise _schema_error()
++
++    if method == "post":
++        request_body = operation["requestBody"]
++        if not isinstance(request_body, dict):
++            raise _schema_error()
++        assert_exact_fields(request_body, {"required", "content"}, set(), "API_SCHEMA_INVALID")
++        if request_body["required"] is not True:
++            raise _schema_error()
++        _validate_json_content(request_body["content"])
++        request_schema = request_body["content"]["application/json"]["schema"]
++        if request_schema != {"$ref": "#/components/schemas/CreateTaskRequest"}:
++            raise _schema_error()
++
++    responses = operation["responses"]
++    if not isinstance(responses, dict) or not responses:
++        raise _schema_error()
++    success_status = "201" if method == "post" else "200"
++    if set(responses) != {success_status, "400" if method == "post" else "404"}:
++        raise _schema_error()
++    for status, response in responses.items():
++        if not isinstance(response, dict):
++            raise _schema_error()
++        assert_exact_fields(response, {"description", "content"}, set(), "API_SCHEMA_INVALID")
++        if not isinstance(response["description"], str):
++            raise _schema_error()
++        _validate_json_content(response["content"])
++        expected_component = (
++            RESPONSE_COMPONENTS[expected_id]
++            if status == success_status
++            else "ErrorEnvelope"
++        )
++        response_schema = response["content"]["application/json"]["schema"]
++        if response_schema != {"$ref": f"#/components/schemas/{expected_component}"}:
++            raise _schema_error()
++
++
++def _validate_component_schemas(schemas: object) -> None:
++    if not isinstance(schemas, dict) or set(schemas) != COMPONENT_SCHEMA_NAMES:
++        raise _schema_error()
++    for schema in schemas.values():
++        _validate_schema(schema)
++
++    if schemas["Identifier"] != {"type": "string", "minLength": 1}:
++        raise _schema_error()
++    if schemas["ApiVersion"] != {"type": "string", "const": API_VERSION}:
++        raise _schema_error()
++    if schemas["Status"] != {
++        "type": "string",
++        "enum": [
++            "PENDING",
++            "IN_PROGRESS",
++            "WAITING_FOR_HUMAN",
++            "BLOCKED",
++            "SUCCEEDED",
++            "FAILED",
++            "PARTIAL",
++        ],
++    }:
++        raise _schema_error()
++    if schemas["Error"] != {
++        "type": "object",
++        "additionalProperties": False,
++        "required": ["code", "message"],
++        "properties": {
++            "code": {"type": "string", "enum": list(API_ERROR_CODE_ENUM)},
++            "message": {"type": "string"},
++        },
++    }:
++        raise _schema_error()
++    if schemas["ErrorEnvelope"] != {
++        "type": "object",
++        "additionalProperties": False,
++        "required": ["api_version", "request_id", "error"],
++        "properties": {
++            "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++            "request_id": {"$ref": "#/components/schemas/Identifier"},
++            "error": {"$ref": "#/components/schemas/Error"},
++        },
++    }:
++        raise _schema_error()
++    if schemas["SuccessEnvelope"] != {
++        "type": "object",
++        "additionalProperties": False,
++        "required": ["api_version"],
++        "properties": {
++            "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++        },
++    }:
++        raise _schema_error()
++    if schemas["CreateTaskRequest"] != {
++        "type": "object",
++        "additionalProperties": False,
++        "required": ["api_version", "request_id", "task_contract"],
++        "properties": {
++            "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++            "request_id": {"$ref": "#/components/schemas/Identifier"},
++            "task_contract": {"$ref": PRODUCT_SCHEMA_REF},
++        },
++    }:
++        raise _schema_error()
++
++    expected_data_fields = {
++        "CreateTaskData": {
++            "task_id",
++            "artifact_id",
++            "artifact_version",
++            "product_state",
++            "contract_sha256",
++            "links",
++        },
++        "TaskData": {"status", "revision", "last_event_seq"},
++        "RunData": {
++            "task_id",
++            "run_id",
++            "correlation_id",
++            "run_mode",
++            "status",
++            "accepted_revision",
++            "event_stream_ref",
++            "manifest_ref",
++        },
++        "EventPageData": {
++            "task_id",
++            "run_id",
++            "event_stream_ref",
++            "event_refs",
++            "next_page_ref",
++        },
++        "ManifestData": {"task_id", "run_id", "manifest_ref"},
++    }
++    for name, fields in expected_data_fields.items():
++        schema = schemas[name]
++        if (
++            schema.get("type") != "object"
++            or schema.get("additionalProperties") is not False
++            or set(schema.get("required", [])) != fields
++            or set(schema.get("properties", {})) != fields
++        ):
++            raise _schema_error()
++
++    if schemas["CreateTaskData"]["properties"]["product_state"] != {
++        "type": "string",
++        "const": "CREATED",
++    }:
++        raise _schema_error()
++    if schemas["CreateTaskData"]["properties"]["links"] != {
++        "type": "object",
++        "additionalProperties": False,
++        "required": ["task", "run"],
++        "properties": {
++            "task": {"$ref": "#/components/schemas/Identifier"},
++            "run": {"$ref": "#/components/schemas/Identifier"},
++        },
++    }:
++        raise _schema_error()
++    if schemas["RunData"]["properties"]["run_mode"] != {
++        "type": "string",
++        "enum": ["PRIMARY", "AUDIT_REPLAY", "COUNTERFACTUAL", "REEXECUTE"],
++    }:
++        raise _schema_error()
++
++    for component_name in RESPONSE_COMPONENTS.values():
++        expected_data_name = {
++            "CreateTaskResponse": "CreateTaskData",
++            "TaskResponse": "TaskData",
++            "RunResponse": "RunData",
++            "EventPageResponse": "EventPageData",
++            "ManifestResponse": "ManifestData",
++        }[component_name]
++        if schemas[component_name] != {
++            "type": "object",
++            "additionalProperties": False,
++            "required": ["api_version", "request_id", "data"],
++            "properties": {
++                "api_version": {"$ref": "#/components/schemas/ApiVersion"},
++                "request_id": {"$ref": "#/components/schemas/Identifier"},
++                "data": {"$ref": f"#/components/schemas/{expected_data_name}"},
++            },
++        }:
++            raise _schema_error()
++
++
++def validate_openapi_document(document: dict[str, Any]) -> None:
++    """Validate the closed local OpenAPI surface for the first W3 interface task."""
++    assert_exact_fields(document, {"openapi", "info", "paths", "components"}, set(), "API_SCHEMA_INVALID")
++    if document["openapi"] != OPENAPI_VERSION:
++        raise ContractError("API_VERSION_UNSUPPORTED")
++
++    info = document["info"]
++    assert_exact_fields(info, {"title", "version"}, set(), "API_SCHEMA_INVALID")
++    if info["version"] != DOCUMENT_VERSION:
++        raise ContractError("API_VERSION_UNSUPPORTED")
++    if not isinstance(info["title"], str) or not info["title"]:
++        raise _schema_error()
++
++    paths = document["paths"]
++    if not isinstance(paths, dict) or set(paths) != {path for _, path in EXPECTED_OPERATIONS}:
++        raise _schema_error()
++    actual_operations: set[tuple[str, str]] = set()
++    for path, item in paths.items():
++        if not isinstance(item, dict):
++            raise _schema_error()
++        for method, operation in item.items():
++            identity = (method, path)
++            if identity not in EXPECTED_OPERATIONS or identity in actual_operations:
++                raise _schema_error()
++            actual_operations.add(identity)
++            _validate_operation(operation, method, path)
++    if actual_operations != set(EXPECTED_OPERATIONS):
++        raise _schema_error()
++
++    components = document["components"]
++    assert_exact_fields(components, {"parameters", "schemas"}, set(), "API_SCHEMA_INVALID")
++    parameters = components["parameters"]
++    if not isinstance(parameters, dict) or set(parameters) != {"RequestIdHeader"}:
++        raise _schema_error()
++    _validate_request_id_parameter(parameters["RequestIdHeader"])
++    _validate_component_schemas(components["schemas"])
++
++    def visit(value: object) -> None:
++        if isinstance(value, dict):
++            if "$ref" in value:
++                if set(value) != {"$ref"}:
++                    raise ContractError("API_REFERENCE_INVALID")
++                if value["$ref"] != PRODUCT_SCHEMA_REF:
++                    _resolve_local_ref(document, value["$ref"])
++            for nested in value.values():
++                visit(nested)
++        elif isinstance(value, list):
++            for nested in value:
++                visit(nested)
++
++    visit(document)
++
++
++def _is_ascii_identifier(value: object) -> bool:
++    return isinstance(value, str) and bool(value) and value.isascii()
++
++
++def _validate_common_envelope(case: dict[str, Any]) -> None:
++    body = case["body"]
++    response = case["response"]
++    if not isinstance(body, dict) or not isinstance(response, dict):
++        raise _schema_error()
++    if not isinstance(body.get("api_version"), str):
++        raise _schema_error()
++    if not {"api_version", "request_id"}.issubset(response):
++        raise _schema_error()
++    if not isinstance(response["api_version"], str) or not isinstance(response["request_id"], str):
++        raise _schema_error()
++    if response["api_version"] != API_VERSION:
++        raise ContractError("API_VERSION_UNSUPPORTED")
++
++
++def validate_request_id(case: dict[str, Any]) -> None:
++    """Validate request-ID presence, ASCII type, and exact envelope equality."""
++    header = case["request_header"]
++    body = case["body"]
++    response = case["response"]
++    identifiers = [header, response.get("request_id")]
++    if case["kind"] == "createTask":
++        identifiers.append(body.get("request_id"))
++    if not all(_is_ascii_identifier(value) for value in identifiers):
++        raise _schema_error()
++    if response["request_id"] != header:
++        raise ContractError("API_IDENTITY_MISMATCH")
++    if case["kind"] == "createTask" and body["request_id"] != header:
++        raise ContractError("API_IDENTITY_MISMATCH")
++
++
++def _scan_forbidden_control_fields(body: dict[str, Any]) -> None:
++    if any(field in body for field in FORBIDDEN_CONTROL_FIELDS):
++        raise ContractError("API_CONTROL_FIELD_FORBIDDEN")
++
++
++def validate_endpoint_shape(case: dict[str, Any]) -> None:
++    """Require the fixture-only simple inputs and a closed success/error envelope."""
++    body = case["body"]
++    expected_fields = ENDPOINT_BODY_FIELDS[case["kind"]]
++    assert_exact_fields(body, expected_fields, set(), "API_SCHEMA_INVALID")
++    for field in expected_fields - {"api_version"}:
++        if not _is_ascii_identifier(body[field]):
++            raise _schema_error()
++
++    response = case["response"]
++    has_data = "data" in response
++    has_error = "error" in response
++    if has_data == has_error:
++        raise _schema_error()
++    branch = "data" if has_data else "error"
++    assert_exact_fields(
++        response,
++        {"api_version", "request_id", branch},
++        set(),
++        "API_SCHEMA_INVALID",
++    )
++    if branch == "data":
++        if not isinstance(response["data"], dict):
++            raise _schema_error()
++        return
++
++    error = response["error"]
++    assert_exact_fields(error, {"code", "message"}, set(), "API_SCHEMA_INVALID")
++    if error["code"] not in API_ERROR_CODES or not isinstance(error["message"], str):
++        raise _schema_error()
++
++
++def _validate_path_body_identity(case: dict[str, Any]) -> None:
++    body = case["body"]
++    if case["kind"] == "getTask":
++        if body["path_task_id"] != body["task_id"]:
++            raise ContractError("API_IDENTITY_MISMATCH")
++    elif case["kind"] != "createTask" and body["path_run_id"] != body["run_id"]:
++        raise ContractError("API_IDENTITY_MISMATCH")
++
++
++def _validate_component_reference(case: dict[str, Any], document: dict[str, Any]) -> None:
++    for (method, path), operation_id in EXPECTED_OPERATIONS.items():
++        if operation_id != case["kind"]:
++            continue
++        operation = document["paths"][path][method]
++        for response in operation["responses"].values():
++            schema = response["content"]["application/json"]["schema"]
++            if not isinstance(schema, dict) or "$ref" not in schema:
++                raise ContractError("API_REFERENCE_INVALID")
++            _resolve_local_ref(document, schema["$ref"])
++        return
++    raise _schema_error()
++
++
++def evaluate_version_envelope(case: dict[str, Any], document: dict[str, Any]) -> str:
++    """Evaluate one version/envelope fixture with the approved stable ordering."""
++    validate_openapi_document(document)
++    assert_exact_fields(case, VERSION_ENVELOPE_CASE_FIELDS, set(), "API_SCHEMA_INVALID")
++    if not _is_ascii_identifier(case["id"]) or case["kind"] not in VERSION_ENVELOPE_KINDS:
++        raise _schema_error()
++    if not isinstance(case["uri_major"], str):
++        raise _schema_error()
++    if case["uri_major"] != "v1":
++        raise ContractError("API_VERSION_UNSUPPORTED")
++    body = case["body"]
++    if isinstance(body, dict) and "api_version" in body:
++        if not isinstance(body["api_version"], str):
++            raise _schema_error()
++        if body["api_version"] != API_VERSION:
++            raise ContractError("API_VERSION_UNSUPPORTED")
++
++    _validate_common_envelope(case)
++    _scan_forbidden_control_fields(body)
++    validate_endpoint_shape(case)
++    validate_request_id(case)
++    _validate_path_body_identity(case)
++    _validate_component_reference(case, document)
++    return "PASSED"
++
++
++@dataclass
++class EffectSpies:
++    """Effect counters that remain untouched by pure boundary validation."""
++
++    dispatcher_calls: int = 0
++    process_calls: int = 0
++    network_calls: int = 0
++    credential_calls: int = 0
++    store_calls: int = 0
++
++
++def _legacy_envelope_case(case: dict[str, Any]) -> dict[str, Any]:
++    """Project W3-2 inputs through the already-approved W3-1 evaluator."""
++    kind = case.get("kind")
++    body = case.get("body")
++    if isinstance(body, dict) and kind == "createTask":
++        contract = body.get("task_contract")
++        task_id = contract.get("task_id") if isinstance(contract, dict) else None
++        body = {
++            "api_version": body.get("api_version"),
++            "request_id": body.get("request_id"),
++            "task_id": task_id,
++        }
++    elif isinstance(body, dict) and kind in ENDPOINT_BODY_FIELDS:
++        body = {field: body.get(field) for field in ENDPOINT_BODY_FIELDS[kind]}
++
++    return {
++        "id": case.get("id"),
++        "kind": kind,
++        "uri_major": case.get("uri_major"),
++        "request_header": case.get("request_header"),
++        "body": body,
++        "response": case.get("response"),
++        "expected": case.get("expected"),
++    }
++
++
++def _validate_api_body(case: dict[str, Any]) -> None:
++    body = case["body"]
++    if case["kind"] == "createTask":
++        assert_exact_fields(
++            body,
++            {"api_version", "request_id", "task_contract"},
++            set(),
++            "API_SCHEMA_INVALID",
++        )
++        return
++
++    expected = ENDPOINT_BODY_FIELDS[case["kind"]]
++    assert_exact_fields(body, expected, set(), "API_SCHEMA_INVALID")
++    for field in expected - {"api_version"}:
++        if not _is_ascii_identifier(body[field]):
++            raise _schema_error()
++
++
++def _validate_product_contract(contract: object, product_schema: dict[str, Any]) -> None:
++    if not isinstance(product_schema, dict):
++        raise _schema_error()
++    try:
++        Draft202012Validator.check_schema(product_schema)
++        errors = list(Draft202012Validator(product_schema).iter_errors(contract))
++    except SchemaError as exc:
++        raise _schema_error() from exc
++    if errors:
++        raise _schema_error()
++
++
++def _validate_component_instance(
++    value: object, component_name: str, document: dict[str, Any]
++) -> None:
++    schema = {
++        "$schema": "https://json-schema.org/draft/2020-12/schema",
++        "$ref": f"#/components/schemas/{component_name}",
++        "components": copy.deepcopy(document["components"]),
++    }
++    try:
++        Draft202012Validator.check_schema(schema)
++        errors = list(Draft202012Validator(schema).iter_errors(value))
++    except SchemaError as exc:
++        raise _schema_error() from exc
++    if errors:
++        raise _schema_error()
++
++
++def _assert_non_grant(case: dict[str, Any]) -> None:
++    if "derived_control" not in case:
++        return
++    derived = case["derived_control"]
++    if not isinstance(derived, dict):
++        raise _schema_error()
++    control_fields = FORBIDDEN_CONTROL_FIELDS | PRODUCT_CONTROL_FIELDS | frozenset(
++        {"approval", "budget", "budgets", "control", "policy", "runtime_budget"}
++    )
++    if control_fields.intersection(derived):
++        raise ContractError("API_CONTROL_FIELD_FORBIDDEN")
++    if derived:
++        raise _schema_error()
++
++
++def _assert_public_response(response: object) -> None:
++    def visit(value: object) -> None:
++        if isinstance(value, dict):
++            if SENSITIVE_RESPONSE_FIELDS.intersection(value):
++                raise ContractError("API_CONTROL_FIELD_FORBIDDEN")
++            for nested in value.values():
++                visit(nested)
++        elif isinstance(value, list):
++            for nested in value:
++                visit(nested)
++
++    visit(response)
++
++
++def _validate_api_identity(case: dict[str, Any]) -> None:
++    response = case["response"]
++    if "data" not in response:
++        return
++    data = response["data"]
++    body = case["body"]
++    kind = case["kind"]
++    if kind == "createTask":
++        contract = body["task_contract"]
++        if any(
++            data[field] != contract[field]
++            for field in ("task_id", "artifact_id", "artifact_version")
++        ):
++            raise ContractError("API_IDENTITY_MISMATCH")
++    elif kind in {"getRun", "listRunEvents", "getRunManifest"}:
++        if data["run_id"] != body["run_id"]:
++            raise ContractError("API_IDENTITY_MISMATCH")
++
++
++def _validate_resolved_reference(
++    reference: object,
++    expected_kind: str,
++    task_id: str,
++    run_id: str,
++    context: object,
++) -> None:
++    if not isinstance(reference, str) or not isinstance(context, dict):
++        raise ContractError("API_REFERENCE_INVALID")
++    resolved = context.get(reference)
++    if not isinstance(resolved, dict):
++        raise ContractError("API_REFERENCE_INVALID")
++    if set(resolved) != {"kind", "task_id", "run_id"}:
++        raise ContractError("API_REFERENCE_INVALID")
++    if resolved != {
++        "kind": expected_kind,
++        "task_id": task_id,
++        "run_id": run_id,
++    }:
++        raise ContractError("API_REFERENCE_INVALID")
++
++
++def _validate_case_references(case: dict[str, Any]) -> None:
++    response = case["response"]
++    if "data" not in response or case["kind"] in {"createTask", "getTask"}:
++        return
++    data = response["data"]
++    context = case.get("reference_context")
++    task_id = data["task_id"]
++    run_id = data["run_id"]
++    if case["kind"] in {"getRun", "listRunEvents"}:
++        _validate_resolved_reference(
++            data["event_stream_ref"], "event_stream", task_id, run_id, context
++        )
++    if case["kind"] in {"getRun", "getRunManifest"}:
++        _validate_resolved_reference(
++            data["manifest_ref"], "manifest", task_id, run_id, context
++        )
++
++
++def validate_api_case(
++    case: dict[str, Any],
++    document: dict[str, Any],
++    product_schema: dict[str, Any],
++    spies: EffectSpies,
++) -> str:
++    """Validate one API data/control case without invoking any effect surface."""
++    if not isinstance(spies, EffectSpies):
++        raise _schema_error()
++
++    evaluate_version_envelope(_legacy_envelope_case(case), document)
++    body = case["body"]
++    _scan_forbidden_control_fields(body)
++    _validate_api_body(case)
++    if case["kind"] == "createTask":
++        _validate_product_contract(body["task_contract"], product_schema)
++    _assert_non_grant(case)
++    _assert_public_response(case["response"])
++
++    response_component = (
++        RESPONSE_COMPONENTS[case["kind"]]
++        if "data" in case["response"]
++        else "ErrorEnvelope"
++    )
++    _validate_component_instance(case["response"], response_component, document)
++    _validate_api_identity(case)
++    _validate_case_references(case)
++    return "PASSED"
++
++
++def run_version_envelope_suite(
++    document: dict[str, Any], suite: dict[str, Any]
++) -> list[dict[str, str]]:
++    """Run a closed fixture catalog and expose only public-safe result records."""
++    assert_exact_fields(suite, {"suite_id", "suite_version", "cases"}, set(), "API_SCHEMA_INVALID")
++    if suite["suite_id"] != "forgeops-api-version-envelope" or suite["suite_version"] != API_VERSION:
++        raise _schema_error()
++    cases = suite["cases"]
++    if not isinstance(cases, list):
++        raise _schema_error()
++
++    records: list[dict[str, str]] = []
++    for case in cases:
++        if not isinstance(case, dict):
++            raise _schema_error()
++        assert_exact_fields(case, VERSION_ENVELOPE_CASE_FIELDS, set(), "API_SCHEMA_INVALID")
++        if not _is_ascii_identifier(case["id"]) or case["kind"] not in VERSION_ENVELOPE_KINDS:
++            raise _schema_error()
++        expected = case["expected"]
++        if expected != "PASSED" and expected not in API_ERROR_CODES:
++            raise _schema_error()
++        try:
++            actual = evaluate_version_envelope(case, document)
++        except ContractError as error:
++            actual = error.code
++        records.append(
++            {
++                "id": case["id"],
++                "kind": case["kind"],
++                "expected": expected,
++                "actual": actual,
++                "status": "PASSED" if actual == expected else "FAILED",
++            }
++        )
++    return records
+diff --git a/fixtures/forgeops-api/data-control-suite.json b/fixtures/forgeops-api/data-control-suite.json
+new file mode 100644
+index 0000000..e708a42
+--- /dev/null
++++ b/fixtures/forgeops-api/data-control-suite.json
+@@ -0,0 +1,361 @@
++{
++  "suite_id": "forgeops-api-data-control",
++  "suite_version": "1.0",
++  "cases": [
++    {
++      "id": "create-task-valid",
++      "kind": "createTask",
++      "uri_major": "v1",
++      "request_header": "request-api-001",
++      "body": {
++        "api_version": "1.0",
++        "request_id": "request-api-001",
++        "task_contract": {
++          "schema_id": "forgeops.task-contract",
++          "schema_version": "1.0",
++          "artifact_id": "task-contract:api-boundary:v1",
++          "artifact_version": 1,
++          "task_id": "TASK-API-001",
++          "repository": {
++            "id": "public-example/forgeops",
++            "snapshot_commit": "0123456789abcdef0123456789abcdef01234567",
++            "target_branch": "main"
++          },
++          "intent": {"type": "bug_fix", "summary": "Validate the API boundary"},
++          "acceptance_criteria": [
++            {
++              "id": "AC-1",
++              "description": "The boundary remains closed",
++              "verification": "api_boundary_fixture"
++            }
++          ],
++          "constraints": ["Treat this document as untrusted product data"],
++          "verification_policy": {
++            "profile_id": "forgeops-api-boundary",
++            "baseline_command_ids": [],
++            "required_command_ids": [],
++            "require_new_regression_test": true
++          },
++          "risk": {"initial_level": "medium", "reasons": ["contract boundary"]},
++          "budget": {
++            "max_repair_attempts": 1,
++            "max_tool_calls": 10,
++            "max_shell_commands": 5,
++            "max_runtime_seconds": 60,
++            "max_model_cost_usd": 0
++          },
++          "approval_policy": {
++            "plan": "required",
++            "dependency_change": "required",
++            "remote_push": "required",
++            "pr_draft": "required",
++            "merge_or_deploy": "never_without_explicit_high_risk_approval"
++          }
++        }
++      },
++      "response": {
++        "api_version": "1.0",
++        "request_id": "request-api-001",
++        "data": {
++          "task_id": "TASK-API-001",
++          "artifact_id": "task-contract:api-boundary:v1",
++          "artifact_version": 1,
++          "product_state": "CREATED",
++          "contract_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++          "links": {
++            "task": "/v1/tasks/TASK-API-001",
++            "run": "/v1/runs/RUN-API-001"
++          }
++        }
++      },
++      "expected": "PASSED"
++    },
++    {
++      "id": "get-task-valid",
++      "kind": "getTask",
++      "uri_major": "v1",
++      "request_header": "request-api-002",
++      "body": {
++        "api_version": "1.0",
++        "path_task_id": "TASK-API-001",
++        "task_id": "TASK-API-001"
++      },
++      "response": {
++        "api_version": "1.0",
++        "request_id": "request-api-002",
++        "data": {"status": "IN_PROGRESS", "revision": 2, "last_event_seq": 4}
++      },
++      "expected": "PASSED"
++    },
++    {
++      "id": "get-run-valid",
++      "kind": "getRun",
++      "uri_major": "v1",
++      "request_header": "request-api-003",
++      "body": {
++        "api_version": "1.0",
++        "path_run_id": "RUN-API-001",
++        "run_id": "RUN-API-001"
++      },
++      "response": {
++        "api_version": "1.0",
++        "request_id": "request-api-003",
++        "data": {
++          "task_id": "TASK-API-001",
++          "run_id": "RUN-API-001",
++          "correlation_id": "CORR-API-001",
++          "run_mode": "PRIMARY",
++          "status": "IN_PROGRESS",
++          "accepted_revision": 2,
++          "event_stream_ref": "forgeops:event-stream:RUN-API-001",
++          "manifest_ref": "forgeops:manifest:RUN-API-001"
++        }
++      },
++      "reference_context": {
++        "forgeops:event-stream:RUN-API-001": {
++          "kind": "event_stream",
++          "task_id": "TASK-API-001",
++          "run_id": "RUN-API-001"
++        },
++        "forgeops:manifest:RUN-API-001": {
++          "kind": "manifest",
++          "task_id": "TASK-API-001",
++          "run_id": "RUN-API-001"
++        }
++      },
++      "expected": "PASSED"
++    },
++    {
++      "id": "list-run-events-valid",
++      "kind": "listRunEvents",
++      "uri_major": "v1",
++      "request_header": "request-api-004",
++      "body": {
++        "api_version": "1.0",
++        "path_run_id": "RUN-API-001",
++        "run_id": "RUN-API-001"
++      },
++      "response": {
++        "api_version": "1.0",
++        "request_id": "request-api-004",
++        "data": {
++          "task_id": "TASK-API-001",
++          "run_id": "RUN-API-001",
++          "event_stream_ref": "forgeops:event-stream:RUN-API-001",
++          "event_refs": ["EVENT-API-001", "EVENT-API-002"],
++          "next_page_ref": null
++        }
++      },
++      "reference_context": {
++        "forgeops:event-stream:RUN-API-001": {
++          "kind": "event_stream",
++          "task_id": "TASK-API-001",
++          "run_id": "RUN-API-001"
++        }
++      },
++      "expected": "PASSED"
++    },
++    {
++      "id": "get-run-manifest-valid",
++      "kind": "getRunManifest",
++      "uri_major": "v1",
++      "request_header": "request-api-005",
++      "body": {
++        "api_version": "1.0",
++        "path_run_id": "RUN-API-001",
++        "run_id": "RUN-API-001"
++      },
++      "response": {
++        "api_version": "1.0",
++        "request_id": "request-api-005",
++        "data": {
++          "task_id": "TASK-API-001",
++          "run_id": "RUN-API-001",
++          "manifest_ref": "forgeops:manifest:RUN-API-001"
++        }
++      },
++      "reference_context": {
++        "forgeops:manifest:RUN-API-001": {
++          "kind": "manifest",
++          "task_id": "TASK-API-001",
++          "run_id": "RUN-API-001"
++        }
++      },
++      "expected": "PASSED"
++    },
++    {
++      "id": "unsupported-body-version",
++      "base_id": "create-task-valid",
++      "mutation": "unsupported_body_version",
++      "expected": "API_VERSION_UNSUPPORTED",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "missing-request-header",
++      "base_id": "create-task-valid",
++      "mutation": "missing_request_header",
++      "expected": "API_SCHEMA_INVALID",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "product-contract-unknown-field",
++      "base_id": "create-task-valid",
++      "mutation": "product_contract_unknown",
++      "expected": "API_SCHEMA_INVALID",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "product-contract-missing-field",
++      "base_id": "create-task-valid",
++      "mutation": "product_contract_missing",
++      "expected": "API_SCHEMA_INVALID",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "product-contract-wrong-type",
++      "base_id": "create-task-valid",
++      "mutation": "product_contract_wrong_type",
++      "expected": "API_SCHEMA_INVALID",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "control-authority",
++      "base_id": "create-task-valid",
++      "mutation": "top_level_control",
++      "parameter": "authority",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "control-capabilities",
++      "base_id": "create-task-valid",
++      "mutation": "top_level_control",
++      "parameter": "capabilities",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "control-runtime-policy",
++      "base_id": "create-task-valid",
++      "mutation": "top_level_control",
++      "parameter": "runtime_policy",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "control-accepted-state",
++      "base_id": "create-task-valid",
++      "mutation": "top_level_control",
++      "parameter": "accepted_state",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "control-approval-token",
++      "base_id": "create-task-valid",
++      "mutation": "top_level_control",
++      "parameter": "approval_token",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "control-nonce",
++      "base_id": "create-task-valid",
++      "mutation": "top_level_control",
++      "parameter": "nonce",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "control-credentials",
++      "base_id": "create-task-valid",
++      "mutation": "top_level_control",
++      "parameter": "credentials",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "control-tools",
++      "base_id": "create-task-valid",
++      "mutation": "top_level_control",
++      "parameter": "tools",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "control-commands",
++      "base_id": "create-task-valid",
++      "mutation": "top_level_control",
++      "parameter": "commands",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "copied-product-budget",
++      "base_id": "create-task-valid",
++      "mutation": "copied_product_control",
++      "parameter": "budget",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "copied-product-approval-policy",
++      "base_id": "create-task-valid",
++      "mutation": "copied_product_control",
++      "parameter": "approval_policy",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "task-identity-mismatch",
++      "base_id": "get-task-valid",
++      "mutation": "task_identity_mismatch",
++      "expected": "API_IDENTITY_MISMATCH",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "run-identity-mismatch",
++      "base_id": "get-run-valid",
++      "mutation": "run_identity_mismatch",
++      "expected": "API_IDENTITY_MISMATCH",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "dangling-event-reference",
++      "base_id": "get-run-valid",
++      "mutation": "dangling_event_reference",
++      "expected": "API_REFERENCE_INVALID",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "dangling-manifest-reference",
++      "base_id": "get-run-valid",
++      "mutation": "dangling_manifest_reference",
++      "expected": "API_REFERENCE_INVALID",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "response-data-error-conflict",
++      "base_id": "create-task-valid",
++      "mutation": "response_data_error",
++      "expected": "API_SCHEMA_INVALID",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "raw-credential-response",
++      "base_id": "get-run-valid",
++      "mutation": "raw_response_field",
++      "parameter": "credentials",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    },
++    {
++      "id": "raw-private-response",
++      "base_id": "get-run-valid",
++      "mutation": "raw_response_field",
++      "parameter": "private_payload",
++      "expected": "API_CONTROL_FIELD_FORBIDDEN",
++      "expected_spy_calls": {"dispatcher_calls": 0, "process_calls": 0, "network_calls": 0, "credential_calls": 0, "store_calls": 0}
++    }
++  ]
++}
+diff --git a/tests/interface_contract/test_api_boundary.py b/tests/interface_contract/test_api_boundary.py
+new file mode 100644
+index 0000000..1f11b70
+--- /dev/null
++++ b/tests/interface_contract/test_api_boundary.py
+@@ -0,0 +1,303 @@
++from __future__ import annotations
++
++import copy
++import unittest
++from pathlib import Path
++
++from tools.interface_contract import openapi_contract
++from tools.interface_contract.common import ContractError, load_json
++
++
++ROOT = Path(__file__).resolve().parents[2]
++ZERO_SPY_CALLS = {
++    "dispatcher_calls": 0,
++    "process_calls": 0,
++    "network_calls": 0,
++    "credential_calls": 0,
++    "store_calls": 0,
++}
++EXPECTED_CASES = [
++    ("create-task-valid", "PASSED"),
++    ("get-task-valid", "PASSED"),
++    ("get-run-valid", "PASSED"),
++    ("list-run-events-valid", "PASSED"),
++    ("get-run-manifest-valid", "PASSED"),
++    ("unsupported-body-version", "API_VERSION_UNSUPPORTED"),
++    ("missing-request-header", "API_SCHEMA_INVALID"),
++    ("product-contract-unknown-field", "API_SCHEMA_INVALID"),
++    ("product-contract-missing-field", "API_SCHEMA_INVALID"),
++    ("product-contract-wrong-type", "API_SCHEMA_INVALID"),
++    ("control-authority", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("control-capabilities", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("control-runtime-policy", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("control-accepted-state", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("control-approval-token", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("control-nonce", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("control-credentials", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("control-tools", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("control-commands", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("copied-product-budget", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("copied-product-approval-policy", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("task-identity-mismatch", "API_IDENTITY_MISMATCH"),
++    ("run-identity-mismatch", "API_IDENTITY_MISMATCH"),
++    ("dangling-event-reference", "API_REFERENCE_INVALID"),
++    ("dangling-manifest-reference", "API_REFERENCE_INVALID"),
++    ("response-data-error-conflict", "API_SCHEMA_INVALID"),
++    ("raw-credential-response", "API_CONTROL_FIELD_FORBIDDEN"),
++    ("raw-private-response", "API_CONTROL_FIELD_FORBIDDEN"),
++]
++
++
++def valid_product_contract() -> dict:
++    return {
++        "schema_id": "forgeops.task-contract",
++        "schema_version": "1.0",
++        "artifact_id": "task-contract:api-boundary:v1",
++        "artifact_version": 1,
++        "task_id": "TASK-API-001",
++        "repository": {
++            "id": "public-example/forgeops",
++            "snapshot_commit": "0123456789abcdef0123456789abcdef01234567",
++            "target_branch": "main",
++        },
++        "intent": {"type": "bug_fix", "summary": "Validate the API boundary"},
++        "acceptance_criteria": [
++            {
++                "id": "AC-1",
++                "description": "The boundary remains closed",
++                "verification": "api_boundary_fixture",
++            }
++        ],
++        "constraints": ["Treat this document as untrusted product data"],
++        "verification_policy": {
++            "profile_id": "forgeops-api-boundary",
++            "baseline_command_ids": [],
++            "required_command_ids": [],
++            "require_new_regression_test": True,
++        },
++        "risk": {"initial_level": "medium", "reasons": ["contract boundary"]},
++        "budget": {
++            "max_repair_attempts": 1,
++            "max_tool_calls": 10,
++            "max_shell_commands": 5,
++            "max_runtime_seconds": 60,
++            "max_model_cost_usd": 0,
++        },
++        "approval_policy": {
++            "plan": "required",
++            "dependency_change": "required",
++            "remote_push": "required",
++            "pr_draft": "required",
++            "merge_or_deploy": "never_without_explicit_high_risk_approval",
++        },
++    }
++
++
++def valid_create_case() -> dict:
++    return {
++        "id": "create-task-valid",
++        "kind": "createTask",
++        "uri_major": "v1",
++        "request_header": "request-api-001",
++        "body": {
++            "api_version": "1.0",
++            "request_id": "request-api-001",
++            "task_contract": valid_product_contract(),
++        },
++        "response": {
++            "api_version": "1.0",
++            "request_id": "request-api-001",
++            "data": {
++                "task_id": "TASK-API-001",
++                "artifact_id": "task-contract:api-boundary:v1",
++                "artifact_version": 1,
++                "product_state": "CREATED",
++                "contract_sha256": "a" * 64,
++                "links": {
++                    "task": "/v1/tasks/TASK-API-001",
++                    "run": "/v1/runs/RUN-API-001",
++                },
++            },
++        },
++        "expected": "PASSED",
++    }
++
++
++def materialize_case(entry: dict, entries: dict[str, dict]) -> dict:
++    if "base_id" not in entry:
++        return copy.deepcopy(entry)
++
++    case = copy.deepcopy(entries[entry["base_id"]])
++    case["id"] = entry["id"]
++    case["expected"] = entry["expected"]
++    mutation = entry["mutation"]
++    parameter = entry.get("parameter")
++
++    if mutation == "unsupported_body_version":
++        case["body"]["api_version"] = "2.0"
++    elif mutation == "missing_request_header":
++        case["request_header"] = None
++    elif mutation == "product_contract_unknown":
++        case["body"]["task_contract"]["unknown"] = True
++    elif mutation == "product_contract_missing":
++        del case["body"]["task_contract"]["artifact_id"]
++    elif mutation == "product_contract_wrong_type":
++        case["body"]["task_contract"]["artifact_version"] = "1"
++    elif mutation == "top_level_control":
++        case["body"][parameter] = {}
++    elif mutation == "copied_product_control":
++        case["derived_control"] = {
++            parameter: copy.deepcopy(case["body"]["task_contract"][parameter])
++        }
++    elif mutation == "task_identity_mismatch":
++        case["body"]["path_task_id"] = "TASK-API-DIFFERENT"
++    elif mutation == "run_identity_mismatch":
++        case["body"]["path_run_id"] = "RUN-API-DIFFERENT"
++    elif mutation == "dangling_event_reference":
++        del case["reference_context"][
++            case["response"]["data"]["event_stream_ref"]
++        ]
++    elif mutation == "dangling_manifest_reference":
++        del case["reference_context"][case["response"]["data"]["manifest_ref"]]
++    elif mutation == "response_data_error":
++        case["response"]["error"] = {
++            "code": "API_SCHEMA_INVALID",
++            "message": "rejected",
++        }
++    elif mutation == "raw_response_field":
++        case["response"]["data"][parameter] = "raw-value"
++    else:
++        raise AssertionError(f"unknown fixture mutation: {mutation}")
++    return case
++
++
++class ApiBoundaryInitialTddTests(unittest.TestCase):
++    @classmethod
++    def setUpClass(cls):
++        cls.document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++        cls.product_schema = load_json(
++            ROOT / "contracts/product-task-contract/1.0/schema.json"
++        )
++
++    def validate(self, case: dict) -> str:
++        self.assertTrue(
++            hasattr(openapi_contract, "EffectSpies"),
++            "EffectSpies boundary interface is not implemented",
++        )
++        self.assertTrue(
++            hasattr(openapi_contract, "validate_api_case"),
++            "validate_api_case boundary interface is not implemented",
++        )
++        spies = openapi_contract.EffectSpies()
++        return openapi_contract.validate_api_case(
++            case, self.document, self.product_schema, spies
++        )
++
++    def test_create_task_accepts_only_product_contract_envelope(self):
++        self.assertEqual("PASSED", self.validate(valid_create_case()))
++
++    def test_forbidden_control_precedes_unknown_field(self):
++        case = copy.deepcopy(valid_create_case())
++        case["body"]["authority"] = {}
++        case["body"]["ordinary_unknown"] = True
++
++        with self.assertRaisesRegex(ContractError, "API_CONTROL_FIELD_FORBIDDEN"):
++            self.validate(case)
++
++    def test_product_contract_unknown_field_is_schema_error(self):
++        case = copy.deepcopy(valid_create_case())
++        case["body"]["task_contract"]["unknown"] = True
++
++        with self.assertRaisesRegex(ContractError, "API_SCHEMA_INVALID"):
++            self.validate(case)
++
++
++class ApiBoundaryCatalogTests(unittest.TestCase):
++    @classmethod
++    def setUpClass(cls):
++        cls.document = load_json(ROOT / "contracts/forgeops-api/1.0/openapi.yaml")
++        cls.product_schema = load_json(
++            ROOT / "contracts/product-task-contract/1.0/schema.json"
++        )
++        cls.suite = load_json(ROOT / "fixtures/forgeops-api/data-control-suite.json")
++        cls.entries = {entry["id"]: entry for entry in cls.suite["cases"]}
++
++    def test_suite_root_and_ordered_expected_catalog_are_exact(self):
++        self.assertEqual(
++            {"suite_id", "suite_version", "cases"}, set(self.suite)
++        )
++        self.assertEqual("forgeops-api-data-control", self.suite["suite_id"])
++        self.assertEqual("1.0", self.suite["suite_version"])
++        self.assertEqual(
++            EXPECTED_CASES,
++            [(entry["id"], entry["expected"]) for entry in self.suite["cases"]],
++        )
++
++    def test_openapi_components_are_closed_and_endpoint_specific(self):
++        openapi_contract.validate_openapi_document(self.document)
++        schemas = self.document["components"]["schemas"]
++        self.assertEqual(
++            {
++                "api_version",
++                "request_id",
++                "task_contract",
++            },
++            set(schemas["CreateTaskRequest"]["properties"]),
++        )
++        self.assertFalse(schemas["CreateTaskRequest"]["additionalProperties"])
++        self.assertEqual(
++            "../../product-task-contract/1.0/schema.json",
++            schemas["CreateTaskRequest"]["properties"]["task_contract"]["$ref"],
++        )
++        self.assertEqual(
++            ["PRIMARY", "AUDIT_REPLAY", "COUNTERFACTUAL", "REEXECUTE"],
++            schemas["RunData"]["properties"]["run_mode"]["enum"],
++        )
++        self.assertEqual(
++            {"status", "revision", "last_event_seq"},
++            set(schemas["TaskData"]["properties"]),
++        )
++
++    def test_full_catalog_matches_stable_categories_and_has_zero_negative_effects(self):
++        self.assertTrue(hasattr(openapi_contract, "EffectSpies"))
++        self.assertTrue(hasattr(openapi_contract, "validate_api_case"))
++
++        for entry in self.suite["cases"]:
++            case = materialize_case(entry, self.entries)
++            spies = openapi_contract.EffectSpies()
++            try:
++                actual = openapi_contract.validate_api_case(
++                    case, self.document, self.product_schema, spies
++                )
++            except ContractError as error:
++                actual = error.code
++
++            with self.subTest(case=entry["id"]):
++                self.assertEqual(entry["expected"], actual)
++                if entry["expected"] != "PASSED":
++                    self.assertEqual(ZERO_SPY_CALLS, vars(spies))
++                    self.assertEqual(ZERO_SPY_CALLS, entry["expected_spy_calls"])
++
++    def test_all_forbidden_control_literals_have_independent_cases(self):
++        parameters = {
++            entry["parameter"]
++            for entry in self.suite["cases"]
++            if entry.get("mutation") == "top_level_control"
++        }
++        self.assertEqual(
++            {
++                "authority",
++                "capabilities",
++                "runtime_policy",
++                "accepted_state",
++                "approval_token",
++                "nonce",
++                "credentials",
++                "tools",
++                "commands",
++            },
++            parameters,
++        )
++
++if __name__ == "__main__":
++    unittest.main()

@@ -2,7 +2,7 @@
 
 **문서 상태:** 초안
 
-**최종 검토일:** 2026-07-20
+**최종 검토일:** 2026-07-24
 
 **대상 독자:** 1인 개발자, 포트폴리오 검토자
 
@@ -10,7 +10,7 @@
 
 **문서 범위:** Harness Foundation과 제품 Phase 0~4의 VG-001~VG-024, baseline·회귀·복구·안전·평가·public-safe 증빙 gate
 
-**현재 상태:** Harness Foundation과 Product Task Contract bridge는 IMPLEMENTED; VG-002는 fresh E2 PASSED, 나머지 VG와 제품 runtime은 NOT_RUN·PLANNED
+**현재 상태:** Product Task Contract와 W2/W3 executable contract 산출물이 구현돼 있으며 current Result와 fresh evidence는 RTM이 소유한다. 아직 구현되지 않은 gate와 제품 runtime은 `NOT_RUN`·`PLANNED`다.
 
 **기준 출처:** [제품 요구사항](../product/prd.md), [시스템 아키텍처](../architecture/system-architecture.md), [위협 모델](../security/threat-model.md), [승인된 문서 체계 설계](../superpowers/specs/2026-07-14-forgeops-product-documentation-design.md)
 **관련 문서:** [11. 관련 문서](#11-관련-문서)
@@ -127,12 +127,14 @@ capability 때문에 실행할 수 없으면 명령을 추론하지 않고 `NOT_
 project profile의 exact record가 없으면 해당 VG는 `NOT_RUN`이며, 표의
 fail-closed 결과는 검증 실패 시 제품·release 판정이다.
 
+VG-004의 공식 실행 interface는 등록된 단일 E2 profile `forgeops-interface-contract`와 command `interface-contract-fixture`다. 이 통합 W3 runner는 이전 문서에 계획값으로 나뉘어 있던 `openapi-schema-fixture`, `event-manifest-fixture`, `control-field-injection-negative`를 대체하며, OpenAPI·data/control·event·manifest 검증과 cross-contract reference 판정을 한 결과로 남긴다.
+
 | ID | Target Phase | Scope | Method or trusted profile | Evidence floor | Pass condition | Fail-closed result | Related PRD / CTL |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | VG-001 | Foundation / Phase 0 | Harness conformance와 sample positive·negative fixture | `verification_profile_id=forgeops-foundation-conformance`; `command_id=protocol-conformance`, `sample-fixture` | E2 | positive fixture가 모두 통과하고 각 negative fixture가 지정된 stable error로 거부되며 adapter 교체 전후 canonical 의미가 보존됨 | `FAILED`; Foundation 주장을 제한하고 Phase 0 Exit 차단 | PRD-FR-005, PRD-NFR-001, PRD-NFR-009 / CTL-015, CTL-020 |
 | VG-002 | Phase 0 | Product Task Contract→TaskPacket bridge schema, data/control 분리와 non-grant 규칙 | `verification_profile_id=forgeops-contract-bridge`; `command_id=bridge-schema-fixture` | E2 | 원문·criterion·constraint·source identity가 lossless이고 Contract 또는 비신뢰 source의 authority·capability·approval·policy·budget·state·tool schema 주장이 canonical control을 만들거나 바꾸지 못함 | `FAILED`; normalization과 Phase 0 Exit 차단 | PRD-FR-001, PRD-NFR-002, PRD-NFR-009 / CTL-001, CTL-005 |
 | VG-003 | Phase 0 | 상태 전이, revision, Main event sequence, 제품 `CANCELLED` mapping, replay closed 계약과 evidence ordering | `verification_profile_id=forgeops-state-contract`; `command_id=state-transition-fixture`, `event-order-fixture`, `replay-contract-negative` | E2 | 유효 전이만 허용되고 stale revision·out-of-order seq가 거부되며 Main만 state/revision/seq를 확정하고 `CANCELLED`가 강제 canonical 변환되지 않는다. replay는 closed mode와 새 identity를 요구하고 과거 authority·approval·nonce·credential을 복사하지 않으며 `AUDIT_REPLAY`·`COUNTERFACTUAL` external effect를 계약에서 거부한다. | `FAILED`; state·replay acceptance와 Phase 0 Exit 차단 | PRD-FR-002, PRD-NFR-001, PRD-NFR-006 / CTL-008, CTL-015, CTL-020 |
-| VG-004 | Phase 0 | versioned OpenAPI, durable event wrapper, run manifest closed schema, data/control field 경계와 reference 해석 | `verification_profile_id=forgeops-product-schema`; `command_id=openapi-schema-fixture`, `event-manifest-fixture`, `control-field-injection-negative` | E2 | valid example은 통과하고 unknown·missing·wrong-type·dangling·duplicate reference와 비신뢰 request field의 policy·authority·budget·state·tool schema 승격은 stable error로 거부되며 identity·ordering·provenance가 해석됨 | `FAILED`; API/event/manifest baselining과 Phase 0 Exit 차단 | PRD-FR-003, PRD-FR-004, PRD-NFR-006 / CTL-001, CTL-015, CTL-020 |
+| VG-004 | Phase 0 | versioned OpenAPI, durable event wrapper, run manifest closed schema, data/control field 경계와 reference 해석 | `verification_profile_id=forgeops-interface-contract`; `command_id=interface-contract-fixture` | E2 | valid example은 통과하고 unknown·missing·wrong-type·dangling·duplicate reference와 비신뢰 request field의 policy·authority·budget·state·tool schema 승격은 stable error로 거부되며 identity·ordering·provenance가 해석됨 | `FAILED`; API/event/manifest baselining과 Phase 0 Exit 차단 | PRD-FR-003, PRD-FR-004, PRD-NFR-006 / CTL-001, CTL-015, CTL-020 |
 | VG-005 | Phase 0 | RESOURCE scope/list 조합, canonical path, root containment, named exact membership, protected/secret before-read admission과 user-change mutation negative case | `verification_profile_id=forgeops-authority-resource`; `command_id=resource-authority-negative`, `protected-read-negative` | E2 | valid PROJECT·NAMED case만 허용되고 absolute·parent·wildcard·prefix·symlink escape·UNKNOWN은 effect 전에 거부된다. protected resource·credential·private data는 exact target 인간 승인 전 첫 byte read가 차단되어 model context·log·evidence 유입이 0이고, user change 침해는 mutation 전에 거부된다. | `FAILED`와 security block; Phase 0 Exit 차단 | PRD-NFR-002, PRD-NFR-003 / CTL-002, CTL-005 |
 | VG-006 | Phase 0 | COMMAND id·command·cwd exact identity, NETWORK host[:port], normalization·redirect·SSRF negative case | `verification_profile_id=forgeops-authority-command-network`; `command_id=command-network-negative` | E2 | exact named identity만 허용되고 raw command, project-wide execute, case-fold·trim·default-port·redirect 상속과 금지 주소가 effect 전에 거부됨 | `FAILED`와 security block; Phase 0 Exit 차단 | PRD-NFR-002, PRD-NFR-003, PRD-NFR-009 / CTL-003, CTL-004, CTL-005, CTL-012 |
 | VG-007 | Phase 0 | destructive/external hard gate와 approval all-input binding, signature, tenant, expiry, effect hash, atomic nonce | `verification_profile_id=forgeops-approval-policy`; `command_id=approval-negative-fixture` | E2 | DENIED·UNKNOWN, target·diff·payload·revision 변경, deny·expired·wrong audience·nonce reuse가 effect 전에 거부되고 approval이 authority를 만들지 않음 | `FAILED`와 security block; Phase 0 및 외부 효과 release 차단 | PRD-FR-006, PRD-NFR-002, PRD-NFR-005, PRD-NFR-012 / CTL-005, CTL-006, CTL-007 |

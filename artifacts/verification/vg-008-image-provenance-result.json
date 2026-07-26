@@ -1,0 +1,32 @@
+{
+  "category": "SANDBOX_RUNTIME_UNAVAILABLE",
+  "command_id": "image-provenance-negative",
+  "counts": {
+    "cases_total": 0,
+    "failed": 0,
+    "not_run": 0,
+    "passed": 0
+  },
+  "e3_runtime_assertion": false,
+  "effect_counters": {
+    "network_calls": 0,
+    "provision_calls": 0,
+    "write_calls": 0
+  },
+  "input_hashes": {
+    "runtime_profile_sha256": "8a7df8d9fcc834bfaddbdd06301ed674c1a0dd7d1a63c7822f9d0d7f3527623e",
+    "schema_sha256": "39a8eba208b00a8189655ed026ddc41f26bab22eb86bd6d3eaa691d4a11e1a9f",
+    "suite_sha256": "edc40d8b7e4fc730be3fc416e4455d1028905bb2da54df63455b3d05e6a80754"
+  },
+  "residue_counters": {
+    "leases": 0,
+    "mounts": 0,
+    "processes": 0,
+    "transient_secrets": 0,
+    "workspaces": 0
+  },
+  "result_version": "1.0",
+  "runtime": "docker",
+  "status": "NOT_RUN",
+  "time": "2026-07-26T11:31:47Z"
+}

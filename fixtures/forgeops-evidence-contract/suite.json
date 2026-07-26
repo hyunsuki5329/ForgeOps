@@ -1,0 +1,172 @@
+{
+  "suite_id": "forgeops-evidence-contract-v1",
+  "suite_version": "1.0",
+  "validation_at": "2026-07-26T00:05:00Z",
+  "base_revision": 17,
+  "evidence_cases": [
+    {
+      "id": "positive-file-revision",
+      "kind": "positive",
+      "record": {"id": "EVID-001", "tier": "E2", "type": "file", "source_ref": "contracts/forgeops-evidence-contract/1.0/schema.json", "observation": "closed schema inspected", "evidence_refs": [], "observed_revision": 17},
+      "catalog_ids": ["EVID-001"],
+      "expected": "PASSED",
+      "expected_accept_calls": 1,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "positive-command-time",
+      "kind": "positive",
+      "record": {"id": "EVID-002", "tier": "E2", "type": "command", "source_ref": "python -m unittest tests.evidence_contract.test_verify", "observation": "registered fixture passed", "evidence_refs": ["EVID-001"], "observed_at": "2026-07-26T00:04:00Z"},
+      "catalog_ids": ["EVID-001", "EVID-002"],
+      "expected": "PASSED",
+      "expected_accept_calls": 1,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-type-case",
+      "kind": "negative",
+      "record": {"id": "EVID-003", "tier": "E2", "type": "TEST", "source_ref": "tests/evidence_contract/test_verify.py", "observation": "case variant", "evidence_refs": [], "observed_at": "2026-07-26T00:04:00Z"},
+      "catalog_ids": ["EVID-003"],
+      "expected": "EVIDENCE_TYPE_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-tier-case",
+      "kind": "negative",
+      "record": {"id": "EVID-004", "tier": "e2", "type": "test", "source_ref": "tests/evidence_contract/test_verify.py", "observation": "tier variant", "evidence_refs": [], "observed_at": "2026-07-26T00:04:00Z"},
+      "catalog_ids": ["EVID-004"],
+      "expected": "EVIDENCE_TIER_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-file-with-time",
+      "kind": "negative",
+      "record": {"id": "EVID-005", "tier": "E2", "type": "file", "source_ref": "contracts/forgeops-evidence-contract/1.0/schema.json", "observation": "wrong freshness mode", "evidence_refs": [], "observed_revision": 17, "observed_at": "2026-07-26T00:04:00Z"},
+      "catalog_ids": ["EVID-005"],
+      "expected": "EVIDENCE_FRESHNESS_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-command-with-revision",
+      "kind": "negative",
+      "record": {"id": "EVID-006", "tier": "E2", "type": "command", "source_ref": "python -m unittest tests.evidence_contract.test_verify", "observation": "wrong freshness mode", "evidence_refs": [], "observed_at": "2026-07-26T00:04:00Z", "observed_revision": 17},
+      "catalog_ids": ["EVID-006"],
+      "expected": "EVIDENCE_FRESHNESS_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-stale-time",
+      "kind": "negative",
+      "record": {"id": "EVID-007", "tier": "E2", "type": "test", "source_ref": "tests/evidence_contract/test_verify.py", "observation": "stale evidence", "evidence_refs": [], "observed_at": "2026-07-25T23:59:59Z"},
+      "catalog_ids": ["EVID-007"],
+      "expected": "EVIDENCE_FRESHNESS_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-future-time",
+      "kind": "negative",
+      "record": {"id": "EVID-008", "tier": "E2", "type": "runtime", "source_ref": "runtime-observer", "observation": "future evidence", "evidence_refs": [], "observed_at": "2026-07-26T00:05:01Z"},
+      "catalog_ids": ["EVID-008"],
+      "expected": "EVIDENCE_FRESHNESS_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-dangling-ref",
+      "kind": "negative",
+      "record": {"id": "EVID-009", "tier": "E2", "type": "command", "source_ref": "python -m unittest tests.evidence_contract.test_verify", "observation": "dangling reference", "evidence_refs": ["EVID-404"], "observed_at": "2026-07-26T00:04:00Z"},
+      "catalog_ids": ["EVID-009"],
+      "expected": "EVIDENCE_REFERENCE_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-duplicate-ref",
+      "kind": "negative",
+      "record": {"id": "EVID-010", "tier": "E2", "type": "command", "source_ref": "python -m unittest tests.evidence_contract.test_verify", "observation": "duplicate reference", "evidence_refs": ["EVID-001", "EVID-001"], "observed_at": "2026-07-26T00:04:00Z"},
+      "catalog_ids": ["EVID-001", "EVID-010"],
+      "expected": "EVIDENCE_REFERENCE_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    }
+  ],
+  "provenance_cases": [
+    {
+      "id": "positive-plugin-provenance",
+      "kind": "positive",
+      "record": {"provenance_id": "PROV-001", "producer_kind": "plugin", "task_id": "TASK-001", "run_id": "RUN-001", "source_ref": "plugins/example/finding.json", "source_sha256": "637ba4f365de653abe58805066f69b5fc08aac8fc0f825fdff01fa040b9818cb", "finding_refs": ["FIND-001"]},
+      "expected_context": {"task_id": "TASK-001", "run_id": "RUN-001"},
+      "expected": "PASSED",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 1
+    },
+    {
+      "id": "positive-static-provenance",
+      "kind": "positive",
+      "record": {"provenance_id": "PROV-002", "producer_kind": "static_analyzer", "task_id": "TASK-001", "run_id": "RUN-001", "source_ref": "tools/static/finding.sarif", "source_sha256": "37e999c8d1d4d78882ddf935624477e30def1e26045822bfca7f71ca00acdf9f", "finding_refs": ["FIND-002"]},
+      "expected_context": {"task_id": "TASK-001", "run_id": "RUN-001"},
+      "expected": "PASSED",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 1
+    },
+    {
+      "id": "negative-producer-kind",
+      "kind": "negative",
+      "record": {"provenance_id": "PROV-003", "producer_kind": "extension", "task_id": "TASK-001", "run_id": "RUN-001", "source_ref": "plugins/example/finding.json", "source_sha256": "637ba4f365de653abe58805066f69b5fc08aac8fc0f825fdff01fa040b9818cb", "finding_refs": ["FIND-003"]},
+      "expected_context": {"task_id": "TASK-001", "run_id": "RUN-001"},
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-task-mismatch",
+      "kind": "negative",
+      "record": {"provenance_id": "PROV-004", "producer_kind": "plugin", "task_id": "TASK-999", "run_id": "RUN-001", "source_ref": "plugins/example/finding.json", "source_sha256": "637ba4f365de653abe58805066f69b5fc08aac8fc0f825fdff01fa040b9818cb", "finding_refs": ["FIND-004"]},
+      "expected_context": {"task_id": "TASK-001", "run_id": "RUN-001"},
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-run-mismatch",
+      "kind": "negative",
+      "record": {"provenance_id": "PROV-005", "producer_kind": "plugin", "task_id": "TASK-001", "run_id": "RUN-999", "source_ref": "plugins/example/finding.json", "source_sha256": "637ba4f365de653abe58805066f69b5fc08aac8fc0f825fdff01fa040b9818cb", "finding_refs": ["FIND-005"]},
+      "expected_context": {"task_id": "TASK-001", "run_id": "RUN-001"},
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-source-hash",
+      "kind": "negative",
+      "record": {"provenance_id": "PROV-006", "producer_kind": "plugin", "task_id": "TASK-001", "run_id": "RUN-001", "source_ref": "plugins/example/finding.json", "source_sha256": "0000000000000000000000000000000000000000000000000000000000000000", "finding_refs": ["FIND-006"]},
+      "expected_context": {"task_id": "TASK-001", "run_id": "RUN-001"},
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-duplicate-finding-ref",
+      "kind": "negative",
+      "record": {"provenance_id": "PROV-007", "producer_kind": "static_analyzer", "task_id": "TASK-001", "run_id": "RUN-001", "source_ref": "tools/static/finding.sarif", "source_sha256": "37e999c8d1d4d78882ddf935624477e30def1e26045822bfca7f71ca00acdf9f", "finding_refs": ["FIND-007", "FIND-007"]},
+      "expected_context": {"task_id": "TASK-001", "run_id": "RUN-001"},
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    },
+    {
+      "id": "negative-authority-field",
+      "kind": "negative",
+      "record": {"provenance_id": "PROV-008", "producer_kind": "plugin", "task_id": "TASK-001", "run_id": "RUN-001", "source_ref": "plugins/example/finding.json", "source_sha256": "637ba4f365de653abe58805066f69b5fc08aac8fc0f825fdff01fa040b9818cb", "finding_refs": ["FIND-008"], "authority": "ALLOWED"},
+      "expected_context": {"task_id": "TASK-001", "run_id": "RUN-001"},
+      "expected": "EVIDENCE_SCHEMA_INVALID",
+      "expected_accept_calls": 0,
+      "expected_append_calls": 0
+    }
+  ]
+}

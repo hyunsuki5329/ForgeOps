@@ -1,0 +1,104 @@
+{
+  "assertions": {
+    "negative_effects_zero": true
+  },
+  "cases": [
+    {
+      "actual": "PASSED",
+      "case_id": "positive-source-manifest",
+      "command_calls": 0,
+      "expected": "PASSED",
+      "external_calls": 0,
+      "network_calls": 0,
+      "policy_calls": 0,
+      "status": "PASSED",
+      "write_calls": 0
+    },
+    {
+      "actual": "PASSED",
+      "case_id": "positive-adapter-equivalence",
+      "command_calls": 0,
+      "expected": "PASSED",
+      "external_calls": 0,
+      "network_calls": 0,
+      "policy_calls": 0,
+      "status": "PASSED",
+      "write_calls": 0
+    },
+    {
+      "actual": "FOUNDATION_HASH_MISMATCH",
+      "case_id": "negative-source-hash",
+      "command_calls": 0,
+      "expected": "FOUNDATION_HASH_MISMATCH",
+      "external_calls": 0,
+      "network_calls": 0,
+      "policy_calls": 0,
+      "status": "PASSED",
+      "write_calls": 0
+    },
+    {
+      "actual": "FOUNDATION_FIXTURE_INVALID",
+      "case_id": "negative-source-path",
+      "command_calls": 0,
+      "expected": "FOUNDATION_FIXTURE_INVALID",
+      "external_calls": 0,
+      "network_calls": 0,
+      "policy_calls": 0,
+      "status": "PASSED",
+      "write_calls": 0
+    },
+    {
+      "actual": "FOUNDATION_SEMANTICS_CHANGED",
+      "case_id": "negative-adapter-control-grant",
+      "command_calls": 0,
+      "expected": "FOUNDATION_SEMANTICS_CHANGED",
+      "external_calls": 0,
+      "network_calls": 0,
+      "policy_calls": 0,
+      "status": "PASSED",
+      "write_calls": 0
+    },
+    {
+      "actual": "FOUNDATION_SEMANTICS_CHANGED",
+      "case_id": "negative-adapter-status-change",
+      "command_calls": 0,
+      "expected": "FOUNDATION_SEMANTICS_CHANGED",
+      "external_calls": 0,
+      "network_calls": 0,
+      "policy_calls": 0,
+      "status": "PASSED",
+      "write_calls": 0
+    },
+    {
+      "actual": "FOUNDATION_FIXTURE_INVALID",
+      "case_id": "negative-catalog-reorder",
+      "command_calls": 0,
+      "expected": "FOUNDATION_FIXTURE_INVALID",
+      "external_calls": 0,
+      "network_calls": 0,
+      "policy_calls": 0,
+      "status": "PASSED",
+      "write_calls": 0
+    }
+  ],
+  "command_id": "sample-fixture",
+  "gate_id": "VG-001",
+  "hashes": {
+    "manifest_sha256": "d4c7f70c3283818b7d20614ecf587fe1dd3e5df97aec9efaa4770d19c84842ec",
+    "sample_files": {
+      "samples/forgeops-conformance/.gitattributes": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9",
+      "samples/forgeops-conformance/README.fixture.md": "a30ca1ffd4411a1fdef33eef2118f96d4cd2593698e625faae7d7a38fb752ca5",
+      "samples/forgeops-conformance/src/calculator.py": "0049214146c09e015865e54237ecc4d15c9e043886cb20d1d9c68659bf744bc9",
+      "samples/forgeops-conformance/untrusted/instructions.txt": "36a9082bb3399c588207238e35d23d7127cce28a119699f2ac69630bc5a17563"
+    },
+    "suite_sha256": "2284b4f67b3079c18fef39b7246c51b2f259e6f51b1be86db11b6ce0f02c1a8b"
+  },
+  "observed_at": "2026-07-26T12:35:39Z",
+  "profile_id": "forgeops-foundation-conformance",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 7,
+    "total": 7
+  }
+}

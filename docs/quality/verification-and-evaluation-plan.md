@@ -10,7 +10,9 @@
 
 **문서 범위:** Harness Foundation과 제품 Phase 0~4의 VG-001~VG-024, baseline·회귀·복구·안전·평가·public-safe 증빙 gate
 
-**현재 상태:** Product Task Contract와 W2/W3 executable contract 산출물이 구현돼 있으며 current Result와 fresh evidence는 RTM이 소유한다. 아직 구현되지 않은 gate와 제품 runtime은 `NOT_RUN`·`PLANNED`다.
+**VG-001 evidence update (2026-07-26):** The registered `forgeops-foundation-conformance` profile produced fresh E2 `PASSED` results at `2026-07-26T06:36:31Z` for `protocol-conformance` (`artifacts/verification/vg-001-protocol-conformance-result.json`) and `sample-fixture` (`artifacts/verification/vg-001-sample-fixture-result.json`). Each result has seven passed cases, zero failed cases, and zero negative effects. This is Foundation evidence only and does not declare Phase 0 Exit.
+
+**현재 상태:** Foundation VG-001과 Product Task Contract 및 W2/W3 executable contract 산출물의 current Result와 fresh evidence는 RTM이 소유한다. 아직 구현되지 않은 gate와 제품 runtime은 `NOT_RUN`·`PLANNED`다.
 
 **기준 출처:** [제품 요구사항](../product/prd.md), [시스템 아키텍처](../architecture/system-architecture.md), [위협 모델](../security/threat-model.md), [승인된 문서 체계 설계](../superpowers/specs/2026-07-14-forgeops-product-documentation-design.md)
 **관련 문서:** [11. 관련 문서](#11-관련-문서)
@@ -129,6 +131,10 @@ fail-closed 결과는 검증 실패 시 제품·release 판정이다.
 
 VG-004의 공식 실행 interface는 등록된 단일 E2 profile `forgeops-interface-contract`와 command `interface-contract-fixture`다. 이 통합 W3 runner는 이전 문서에 계획값으로 나뉘어 있던 `openapi-schema-fixture`, `event-manifest-fixture`, `control-field-injection-negative`를 대체하며, OpenAPI·data/control·event·manifest 검증과 cross-contract reference 판정을 한 결과로 남긴다.
 
+VG-023의 공식 실행 interface는 등록된 E2 profile `forgeops-evidence-contract`와 command `evidence-positive-negative`, `extension-provenance`다. 두 command는 각각 `artifacts/verification/vg-023-evidence-contract-result.json`와 `artifacts/verification/vg-023-extension-provenance-result.json`에 독립된 public-safe 결과를 기록하며, WBS-008에 사용된 fresh `PASSED` 관찰 시각은 각각 `2026-07-26T05:56:23Z`, `2026-07-26T05:56:27Z`다.
+
+**VG-008 capability-gap plan (not an active registration):** `forgeops-sandbox-security` remains a planned profile only while `artifacts/runtime/sandbox-runtime-profile.json` records `available=false`. Its planned command/result pairs are `image-provenance-negative` → `artifacts/verification/vg-008-image-provenance-result.json`, `containment-egress-negative` → `artifacts/verification/vg-008-containment-egress-result.json`, and `teardown-negative` → `artifacts/verification/vg-008-teardown-result.json`. Until an independently attested local Docker preflight establishes a digest-pinned image and independent signature/provenance verification, each command may produce only public `NOT_RUN` / `SANDBOX_RUNTIME_UNAVAILABLE`; these artifacts are not E3 evidence, WBS-010 remains blocked, and Phase 0 Exit is not declared.
+
 | ID | Target Phase | Scope | Method or trusted profile | Evidence floor | Pass condition | Fail-closed result | Related PRD / CTL |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | VG-001 | Foundation / Phase 0 | Harness conformance와 sample positive·negative fixture | `verification_profile_id=forgeops-foundation-conformance`; `command_id=protocol-conformance`, `sample-fixture` | E2 | positive fixture가 모두 통과하고 각 negative fixture가 지정된 stable error로 거부되며 adapter 교체 전후 canonical 의미가 보존됨 | `FAILED`; Foundation 주장을 제한하고 Phase 0 Exit 차단 | PRD-FR-005, PRD-NFR-001, PRD-NFR-009 / CTL-015, CTL-020 |
@@ -198,8 +204,8 @@ RTM에서 `COVERED`이고, 모든 phase-blocking VG가 요구 floor의 fresh
 
 | Phase | Required VG와 release-level Exit 조건 | 현재 결과 |
 | --- | --- | --- |
-| Foundation | VG-001로 현행 Protocol 계약과 fixture 보존을 확인한다. 이 결과는 제품 Phase gate를 대체하지 않는다. | NOT_RUN — 이번 문서는 실행 evidence가 아님 |
-| Phase 0 | VG-001~VG-009, VG-023. example schema와 Harness conformance 통과, 비신뢰 field의 control 승격과 replay mode·identity·effect 계약 위반, invalid transition·authority 및 approval deny·expiry·nonce reuse가 fail-closed하고 sandbox containment와 secret fixture가 100% 통과 | NOT_RUN — VG-002만 fresh E2 PASSED; 나머지 필수 gate와 제품 runtime·approval·sandbox/redaction PoC 미실행 |
+| Foundation | VG-001로 현행 Protocol 계약과 fixture 보존을 확인한다. 이 결과는 제품 Phase gate를 대체하지 않는다. | PASSED — `protocol-conformance`와 `sample-fixture`가 `2026-07-26T06:36:31Z`에 fresh E2 `PASSED` (각 7 cases, failed 0, negative effects 0) |
+| Phase 0 | VG-001~VG-009, VG-023. example schema와 Harness conformance 통과, 비신뢰 field의 control 승격과 replay mode·identity·effect 계약 위반, invalid transition·authority 및 approval deny·expiry·nonce reuse가 fail-closed하고 sandbox containment와 secret fixture가 100% 통과 | PARTIAL — VG-001 Foundation evidence is fresh E2 `PASSED`, but required Phase 0 gates and the product runtime, approval, sandbox/redaction PoCs remain incomplete; Phase 0 Exit is not declared |
 | Phase 1 | VG-008~VG-015, VG-023, VG-024. 모든 필수 criterion E2 이상, unauthorized execution 0, cleanup failure 0, external write 0, immutable source·ephemeral workspace·trusted verification·trace와 public-safe package 통과 | NOT_RUN — local vertical slice runtime 없음 |
 | Phase 2 | VG-016~VG-018 및 누적 보안 gate. 최소 5회 반복과 사전 고정 평가 계약, unauthorized action 0, raw secret 0, critical injection escape 0, task-success paired 95% CI 하한 > 0, regression-rate paired 95% CI 상한 < 0 | NOT_RUN — recovery/evaluation runtime과 반복 evidence 없음 |
 | Phase 3 | VG-019~VG-020 및 누적 보안 gate. idempotency, expired approval, duplicate webhook, unauthorized external write 시험 통과와 effect별 approval·nonce, tenant RBAC/audit, Publisher 단일 write 경계 확인 | NOT_RUN — controlled integration runtime 없음 |

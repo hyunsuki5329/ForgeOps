@@ -1,0 +1,103 @@
+{
+  "assertions": {
+    "negative_accept_calls": 0,
+    "negative_append_calls": 0,
+    "no_sensitive_content": true
+  },
+  "cases": [
+    {
+      "accept_calls": 1,
+      "actual": "PASSED",
+      "append_calls": 0,
+      "case_id": "positive-file-revision",
+      "expected": "PASSED",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 1,
+      "actual": "PASSED",
+      "append_calls": 0,
+      "case_id": "positive-command-time",
+      "expected": "PASSED",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_TYPE_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-type-case",
+      "expected": "EVIDENCE_TYPE_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_TIER_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-tier-case",
+      "expected": "EVIDENCE_TIER_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_FRESHNESS_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-file-with-time",
+      "expected": "EVIDENCE_FRESHNESS_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_FRESHNESS_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-command-with-revision",
+      "expected": "EVIDENCE_FRESHNESS_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_FRESHNESS_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-stale-time",
+      "expected": "EVIDENCE_FRESHNESS_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_FRESHNESS_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-future-time",
+      "expected": "EVIDENCE_FRESHNESS_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_REFERENCE_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-dangling-ref",
+      "expected": "EVIDENCE_REFERENCE_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_REFERENCE_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-duplicate-ref",
+      "expected": "EVIDENCE_REFERENCE_INVALID",
+      "status": "PASSED"
+    }
+  ],
+  "command_id": "evidence-positive-negative",
+  "gate_id": "VG-023",
+  "hashes": {
+    "schema_sha256": "d0e66f02be956c7ce404914070a60ae568a54aa7230c1e767472193d4044476b",
+    "suite_sha256": "9fe888a2ecff2d9015bb7df45e0e233c34e7792dea2af3d5b11ca1c3af02a81a"
+  },
+  "observed_at": "2026-07-26T12:35:38Z",
+  "profile_id": "forgeops-evidence-contract",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 10,
+    "total": 10
+  }
+}

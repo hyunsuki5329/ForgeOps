@@ -1,0 +1,12 @@
+{
+  "runtime": "docker",
+  "available": false,
+  "rootless": false,
+  "image_ref": "unavailable",
+  "image_digest": "unavailable",
+  "signature_verified": false,
+  "issuer": "unavailable",
+  "expected_issuer": "forgeops-test-issuer",
+  "provenance_ref": "unavailable",
+  "observed_at": "2026-07-26T00:00:00Z"
+}

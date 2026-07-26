@@ -1,0 +1,87 @@
+{
+  "assertions": {
+    "negative_accept_calls": 0,
+    "negative_append_calls": 0,
+    "no_sensitive_content": true
+  },
+  "cases": [
+    {
+      "accept_calls": 0,
+      "actual": "PASSED",
+      "append_calls": 1,
+      "case_id": "positive-plugin-provenance",
+      "expected": "PASSED",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "PASSED",
+      "append_calls": 1,
+      "case_id": "positive-static-provenance",
+      "expected": "PASSED",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_PROVENANCE_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-producer-kind",
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_PROVENANCE_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-task-mismatch",
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_PROVENANCE_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-run-mismatch",
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_PROVENANCE_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-source-hash",
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_PROVENANCE_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-duplicate-finding-ref",
+      "expected": "EVIDENCE_PROVENANCE_INVALID",
+      "status": "PASSED"
+    },
+    {
+      "accept_calls": 0,
+      "actual": "EVIDENCE_SCHEMA_INVALID",
+      "append_calls": 0,
+      "case_id": "negative-authority-field",
+      "expected": "EVIDENCE_SCHEMA_INVALID",
+      "status": "PASSED"
+    }
+  ],
+  "command_id": "extension-provenance",
+  "gate_id": "VG-023",
+  "hashes": {
+    "schema_sha256": "d0e66f02be956c7ce404914070a60ae568a54aa7230c1e767472193d4044476b",
+    "suite_sha256": "9fe888a2ecff2d9015bb7df45e0e233c34e7792dea2af3d5b11ca1c3af02a81a"
+  },
+  "observed_at": "2026-07-26T12:35:39Z",
+  "profile_id": "forgeops-evidence-contract",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 8,
+    "total": 8
+  }
+}

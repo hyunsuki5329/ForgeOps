@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:forgeops:sandbox-contract:1.0",
+  "title": "ForgeOps Sandbox Security Contract Fixture 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "suite_id",
+    "suite_version",
+    "image_cases",
+    "containment_cases",
+    "egress_cases",
+    "quota_cases",
+    "teardown_cases"
+  ],
+  "properties": {
+    "suite_id": {"const": "forgeops-sandbox-security-v1"},
+    "suite_version": {"const": "1.0"},
+    "image_cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/SandboxCase"}},
+    "containment_cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/SandboxCase"}},
+    "egress_cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/SandboxCase"}},
+    "quota_cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/SandboxCase"}},
+    "teardown_cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/SandboxCase"}}
+  },
+  "$defs": {
+    "RuntimeProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime",
+        "available",
+        "rootless",
+        "image_ref",
+        "image_digest",
+        "signature_verified",
+        "issuer",
+        "expected_issuer",
+        "provenance_ref",
+        "observed_at"
+      ],
+      "properties": {
+        "runtime": {"enum": ["docker"]},
+        "available": {"type": "boolean"},
+        "rootless": {"type": "boolean"},
+        "image_ref": {"type": "string"},
+        "image_digest": {"type": "string"},
+        "signature_verified": {"type": "boolean"},
+        "issuer": {"type": "string"},
+        "expected_issuer": {"type": "string", "minLength": 1},
+        "provenance_ref": {"type": "string"},
+        "observed_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}
+      }
+    },
+    "Residue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["processes", "mounts", "leases", "transient_secrets", "workspaces"],
+      "properties": {
+        "processes": {"type": "integer", "minimum": 0},
+        "mounts": {"type": "integer", "minimum": 0},
+        "leases": {"type": "integer", "minimum": 0},
+        "transient_secrets": {"type": "integer", "minimum": 0},
+        "workspaces": {"type": "integer", "minimum": 0}
+      }
+    },
+    "RuntimeObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "evidence_kind",
+        "observed_at",
+        "provision_calls",
+        "network_calls",
+        "write_calls",
+        "root_uid",
+        "rootfs_read_only",
+        "cap_drop_all",
+        "no_new_privileges",
+        "forbidden_mounts",
+        "forbidden_devices",
+        "direct_socket_calls",
+        "direct_dns_calls",
+        "proxy_calls",
+        "proxy_destination",
+        "connected_addresses",
+        "redirects",
+        "quota_exceeded",
+        "residue"
+      ],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1},
+        "evidence_kind": {"enum": ["test", "runtime"]},
+        "observed_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+        "provision_calls": {"type": "integer", "minimum": 0},
+        "network_calls": {"type": "integer", "minimum": 0},
+        "write_calls": {"type": "integer", "minimum": 0},
+        "root_uid": {"type": "integer", "minimum": 0},
+        "rootfs_read_only": {"type": "boolean"},
+        "cap_drop_all": {"type": "boolean"},
+        "no_new_privileges": {"type": "boolean"},
+        "forbidden_mounts": {"type": "integer", "minimum": 0},
+        "forbidden_devices": {"type": "integer", "minimum": 0},
+        "direct_socket_calls": {"type": "integer", "minimum": 0},
+        "direct_dns_calls": {"type": "integer", "minimum": 0},
+        "proxy_calls": {"type": "integer", "minimum": 0},
+        "proxy_destination": {"type": "string"},
+        "connected_addresses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "anyOf": [
+              {"type": "string", "format": "ipv4"},
+              {"type": "string", "format": "ipv6"}
+            ]
+          }
+        },
+        "redirects": {"type": "integer", "minimum": 0},
+        "quota_exceeded": {"type": "boolean"},
+        "residue": {"$ref": "#/$defs/Residue"}
+      }
+    },
+    "SandboxCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "case_kind",
+        "expected",
+        "expected_provision_calls",
+        "expected_network_calls",
+        "expected_write_calls"
+        ,"expected_proxy_destination"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["positive", "negative"]},
+        "case_kind": {"enum": ["image_provenance", "containment", "egress", "quota", "teardown"]},
+        "expected": {
+          "enum": [
+            "PASSED",
+            "SANDBOX_IMAGE_PROVENANCE_INVALID",
+            "SANDBOX_CONTAINMENT_VIOLATION",
+            "SANDBOX_EGRESS_VIOLATION",
+            "SANDBOX_QUOTA_VIOLATION",
+            "SANDBOX_TEARDOWN_INCOMPLETE"
+          ]
+        },
+        "result_status": {"enum": ["PASSED", "FAILED", "NOT_RUN"]},
+        "expected_provision_calls": {"type": "integer", "minimum": 0},
+        "expected_network_calls": {"type": "integer", "minimum": 0},
+        "expected_write_calls": {"type": "integer", "minimum": 0}
+        ,"expected_proxy_destination": {"type": "string"}
+        ,"runtime_profile": {"$ref": "#/$defs/RuntimeProfile"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"case_kind": {"const": "image_provenance"}}},
+          "then": {"required": ["runtime_profile"]},
+          "else": {"not": {"required": ["runtime_profile"]}}
+        }
+      ]
+    }
+  }
+}

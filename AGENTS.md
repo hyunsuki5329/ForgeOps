@@ -90,6 +90,26 @@ project_profile:
       cwd: "."
       evidence_tier: E2
       required: true
+    - id: evidence-positive-negative
+      command: python tools/evidence_contract/verify.py --schema contracts/forgeops-evidence-contract/1.0/schema.json --suite fixtures/forgeops-evidence-contract/suite.json --result artifacts/verification/vg-023-evidence-contract-result.json --command-id evidence-positive-negative
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: extension-provenance
+      command: python tools/evidence_contract/verify.py --schema contracts/forgeops-evidence-contract/1.0/schema.json --suite fixtures/forgeops-evidence-contract/suite.json --result artifacts/verification/vg-023-extension-provenance-result.json --command-id extension-provenance
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: protocol-conformance
+      command: python tools/foundation_conformance/verify.py --manifest fixtures/forgeops-foundation/source-manifest.json --suite fixtures/forgeops-foundation/suite.json --result artifacts/verification/vg-001-protocol-conformance-result.json --command-id protocol-conformance
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: sample-fixture
+      command: python tools/foundation_conformance/verify.py --manifest fixtures/forgeops-foundation/source-manifest.json --suite fixtures/forgeops-foundation/suite.json --result artifacts/verification/vg-001-sample-fixture-result.json --command-id sample-fixture
+      cwd: "."
+      evidence_tier: E2
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -127,6 +147,14 @@ project_profile:
         - id: forgeops-interface-contract
           command_ids:
             - interface-contract-fixture
+        - id: forgeops-evidence-contract
+          command_ids:
+            - evidence-positive-negative
+            - extension-provenance
+        - id: forgeops-foundation-conformance
+          command_ids:
+            - protocol-conformance
+            - sample-fixture
       validation_discovery:
         - pyproject.toml
         - uv.lock

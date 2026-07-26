@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:forgeops:evidence-contract:1.0",
+  "title": "ForgeOps Evidence Contract Fixture 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "suite_id",
+    "suite_version",
+    "validation_at",
+    "base_revision",
+    "evidence_cases",
+    "provenance_cases"
+  ],
+  "properties": {
+    "suite_id": {"const": "forgeops-evidence-contract-v1"},
+    "suite_version": {"const": "1.0"},
+    "validation_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "base_revision": {"type": "integer", "minimum": 0},
+    "evidence_cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/EvidenceCase"}},
+    "provenance_cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/ProvenanceCase"}}
+  },
+  "$defs": {
+    "EvidenceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "tier", "type", "source_ref", "observation", "evidence_refs"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "tier": {"enum": ["E0", "E1", "E2", "E3"]},
+        "type": {"enum": ["file", "diff", "command", "test", "render", "runtime", "approval"]},
+        "source_ref": {"type": "string", "minLength": 1},
+        "observation": {"type": "string", "minLength": 1},
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "observed_revision": {"type": "integer", "minimum": 0},
+        "observed_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"enum": ["file", "diff"]}}, "required": ["type"]},
+          "then": {"required": ["observed_revision"], "not": {"required": ["observed_at"]}},
+          "else": {"required": ["observed_at"], "not": {"required": ["observed_revision"]}}
+        }
+      ]
+    },
+    "ExtensionProvenanceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provenance_id",
+        "producer_kind",
+        "task_id",
+        "run_id",
+        "source_ref",
+        "source_sha256",
+        "finding_refs"
+      ],
+      "properties": {
+        "provenance_id": {"type": "string", "minLength": 1},
+        "producer_kind": {"enum": ["plugin", "static_analyzer"]},
+        "task_id": {"type": "string", "minLength": 1},
+        "run_id": {"type": "string", "minLength": 1},
+        "source_ref": {"type": "string", "minLength": 1},
+        "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "finding_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "EvidenceCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "record", "catalog_ids", "expected", "expected_accept_calls", "expected_append_calls"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["positive", "negative"]},
+        "record": {},
+        "catalog_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "expected": {"enum": ["PASSED", "EVIDENCE_SCHEMA_INVALID", "EVIDENCE_TYPE_INVALID", "EVIDENCE_TIER_INVALID", "EVIDENCE_REFERENCE_INVALID", "EVIDENCE_FRESHNESS_INVALID"]},
+        "expected_accept_calls": {"type": "integer", "minimum": 0},
+        "expected_append_calls": {"type": "integer", "minimum": 0}
+      }
+    },
+    "ProvenanceCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "record", "expected_context", "expected", "expected_accept_calls", "expected_append_calls"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["positive", "negative"]},
+        "record": {},
+        "expected_context": {"$ref": "#/$defs/ExpectedContext"},
+        "expected": {"enum": ["PASSED", "EVIDENCE_SCHEMA_INVALID", "EVIDENCE_PROVENANCE_INVALID"]},
+        "expected_accept_calls": {"type": "integer", "minimum": 0},
+        "expected_append_calls": {"type": "integer", "minimum": 0}
+      }
+    },
+    "ExpectedContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "run_id"],
+      "properties": {
+        "task_id": {"type": "string", "minLength": 1},
+        "run_id": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

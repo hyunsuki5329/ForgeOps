@@ -1,0 +1,115 @@
+{
+  "assertions": {
+    "negative_export_calls": 0,
+    "negative_publish_calls": 0,
+    "negative_raw_occurrences": 0,
+    "negative_store_calls": 0,
+    "no_sensitive_content": true
+  },
+  "cases": [
+    {
+      "actual": "PASSED",
+      "case_id": "positive-same-tenant-encrypted",
+      "expected": "PASSED",
+      "export_calls": 0,
+      "publish_calls": 0,
+      "raw_occurrences": 0,
+      "status": "PASSED",
+      "store_calls": 1
+    },
+    {
+      "actual": "PASSED",
+      "case_id": "positive-public-safe-artifact",
+      "expected": "PASSED",
+      "export_calls": 0,
+      "publish_calls": 0,
+      "raw_occurrences": 0,
+      "status": "PASSED",
+      "store_calls": 1
+    },
+    {
+      "actual": "ARTIFACT_TENANT_VIOLATION",
+      "case_id": "negative-cross-tenant",
+      "expected": "ARTIFACT_TENANT_VIOLATION",
+      "export_calls": 0,
+      "publish_calls": 0,
+      "raw_occurrences": 0,
+      "status": "PASSED",
+      "store_calls": 0
+    },
+    {
+      "actual": "ARTIFACT_REFERENCE_INVALID",
+      "case_id": "negative-absolute-source",
+      "expected": "ARTIFACT_REFERENCE_INVALID",
+      "export_calls": 0,
+      "publish_calls": 0,
+      "raw_occurrences": 0,
+      "status": "PASSED",
+      "store_calls": 0
+    },
+    {
+      "actual": "ARTIFACT_REFERENCE_INVALID",
+      "case_id": "negative-signed-url",
+      "expected": "ARTIFACT_REFERENCE_INVALID",
+      "export_calls": 0,
+      "publish_calls": 0,
+      "raw_occurrences": 0,
+      "status": "PASSED",
+      "store_calls": 0
+    },
+    {
+      "actual": "ARTIFACT_POLICY_INVALID",
+      "case_id": "negative-unencrypted-sensitive",
+      "expected": "ARTIFACT_POLICY_INVALID",
+      "export_calls": 0,
+      "publish_calls": 0,
+      "raw_occurrences": 0,
+      "status": "PASSED",
+      "store_calls": 0
+    },
+    {
+      "actual": "ARTIFACT_POLICY_INVALID",
+      "case_id": "negative-retention-mismatch",
+      "expected": "ARTIFACT_POLICY_INVALID",
+      "export_calls": 0,
+      "publish_calls": 0,
+      "raw_occurrences": 0,
+      "status": "PASSED",
+      "store_calls": 0
+    },
+    {
+      "actual": "ARTIFACT_POLICY_INVALID",
+      "case_id": "negative-tamper-ref",
+      "expected": "ARTIFACT_POLICY_INVALID",
+      "export_calls": 0,
+      "publish_calls": 0,
+      "raw_occurrences": 0,
+      "status": "PASSED",
+      "store_calls": 0
+    },
+    {
+      "actual": "ARTIFACT_POLICY_INVALID",
+      "case_id": "negative-unknown-field",
+      "expected": "ARTIFACT_POLICY_INVALID",
+      "export_calls": 0,
+      "publish_calls": 0,
+      "raw_occurrences": 0,
+      "status": "PASSED",
+      "store_calls": 0
+    }
+  ],
+  "command_id": "artifact-isolation-negative",
+  "gate_id": "VG-009",
+  "hashes": {
+    "schema_sha256": "5e186d7928abb0943d108ff45a7fe24d3b9ffa00fd457b6a0e145cb8a5ba182f",
+    "suite_sha256": "c9c685750aebc0ad369329bf1cdcde67430ca7e5bf336218cb04f4be1f5c0586"
+  },
+  "observed_at": "2026-07-30T08:14:21Z",
+  "profile_id": "forgeops-secret-artifact-security",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 9,
+    "total": 9
+  }
+}

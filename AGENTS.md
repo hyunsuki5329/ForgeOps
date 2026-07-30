@@ -110,6 +110,21 @@ project_profile:
       cwd: "."
       evidence_tier: E2
       required: true
+    - id: secret-surface-negative
+      command: python tools/secret_artifact_security/verify.py --schema contracts/forgeops-secret-artifact-contract/1.0/schema.json --suite fixtures/forgeops-secret-artifact-security/suite.json --result artifacts/verification/vg-009-secret-surface-result.json --command-id secret-surface-negative
+      cwd: "."
+      evidence_tier: E3
+      required: true
+    - id: artifact-isolation-negative
+      command: python tools/secret_artifact_security/verify.py --schema contracts/forgeops-secret-artifact-contract/1.0/schema.json --suite fixtures/forgeops-secret-artifact-security/suite.json --result artifacts/verification/vg-009-artifact-isolation-result.json --command-id artifact-isolation-negative
+      cwd: "."
+      evidence_tier: E3
+      required: true
+    - id: phase0-exit-gate
+      command: python tools/phase_exit/verify.py --schema contracts/forgeops-phase-exit-contract/1.0/schema.json --suite fixtures/forgeops-phase-exit/phase-0-suite.json --result artifacts/verification/phase-0-exit-result.json --report artifacts/reviews/phase-0-exit-report.md --command-id phase0-exit-gate
+      cwd: "."
+      evidence_tier: E3
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -155,6 +170,13 @@ project_profile:
           command_ids:
             - protocol-conformance
             - sample-fixture
+        - id: forgeops-secret-artifact-security
+          command_ids:
+            - secret-surface-negative
+            - artifact-isolation-negative
+        - id: forgeops-phase0-exit
+          command_ids:
+            - phase0-exit-gate
       validation_discovery:
         - pyproject.toml
         - uv.lock

@@ -6,7 +6,10 @@ import copy
 import base64
 import hashlib
 import json
+from argparse import Namespace
 from pathlib import Path
+import shutil
+import tempfile
 import unittest
 
 from jsonschema import Draft202012Validator
@@ -258,6 +261,17 @@ class RedactionTests(unittest.TestCase):
                     verify.validate_public_projection({"message": unsafe_value}, (TEST_MARKER,))
                 self.assertEqual(1, verify._raw_occurrences([{"message": unsafe_value}], (TEST_MARKER,)))
 
+    def test_base32_marker_is_redacted_rejected_and_counted_on_every_surface(self):
+        verify = load_evaluator()
+        base32_marker = base64.b32encode(TEST_MARKER.encode("utf-8")).decode("ascii")
+        for surface in verify.SURFACES:
+            with self.subTest(surface=surface):
+                projected = verify.redact_surface(surface, {"message": base32_marker}, (TEST_MARKER,))
+                self.assertEqual("[REDACTED]", projected["message"])
+                with self.assertRaisesRegex(verify.SecretArtifactError, "REDACTION_UNSUPPORTED"):
+                    verify.validate_public_projection({"message": base32_marker}, (TEST_MARKER,))
+                self.assertEqual(1, verify._raw_occurrences([{"message": base32_marker}], (TEST_MARKER,)))
+
     def test_forbidden_keys_credential_patterns_and_unredactable_values_are_denied_or_redacted(self):
         verify = load_evaluator()
         projected = verify.redact_surface(
@@ -297,6 +311,22 @@ class ArtifactAdmissionTests(unittest.TestCase):
             ({**valid_artifact(), "encryption_state": "PUBLIC_SAFE"}, "ARTIFACT_POLICY_INVALID"),
             ({**valid_artifact(), "checksum_sha256": "not-a-checksum"}, "ARTIFACT_POLICY_INVALID"),
             ({**valid_artifact(), "tamper_ref": "https://example.invalid/tamper"}, "ARTIFACT_POLICY_INVALID"),
+        )
+        for artifact, expected_code in cases:
+            with self.subTest(expected_code=expected_code):
+                spy = verify.SurfaceSpy()
+                with self.assertRaisesRegex(verify.SecretArtifactError, expected_code):
+                    verify.admit_artifact(artifact, "TENANT-A", spy)
+                self.assertEqual((0, 0, 0), (spy.store_calls, spy.export_calls, spy.publish_calls))
+
+    def test_artifact_admission_preserves_multi_invalid_priority_before_effects(self):
+        verify = load_evaluator()
+        cases = (
+            (dict(valid_artifact(tenant_id="TENANT-B"), source_ref="/invalid", tamper_ref="invalid", unexpected="denied"), "ARTIFACT_POLICY_INVALID"),
+            ({**valid_artifact(tenant_id="TENANT-B"), "source_ref": "/invalid", "encryption_state": "PUBLIC_SAFE", "checksum_sha256": "invalid"}, "ARTIFACT_TENANT_VIOLATION"),
+            ({**valid_artifact(), "source_ref": "/invalid", "encryption_state": "PUBLIC_SAFE", "checksum_sha256": "invalid"}, "ARTIFACT_REFERENCE_INVALID"),
+            ({**valid_artifact(), "encryption_state": "PUBLIC_SAFE", "checksum_sha256": "invalid", "tamper_ref": "invalid"}, "ARTIFACT_POLICY_INVALID"),
+            ({**valid_artifact(), "checksum_sha256": "invalid", "tamper_ref": "invalid"}, "ARTIFACT_POLICY_INVALID"),
         )
         for artifact, expected_code in cases:
             with self.subTest(expected_code=expected_code):
@@ -347,6 +377,100 @@ class CaseRunnerTests(unittest.TestCase):
         unsafe_suite["surface_cases"][0]["id"] = TEST_MARKER
         result = verify.run_cases("secret-surface-negative", unsafe_suite)[0]
         self.assertNotIn(TEST_MARKER, json.dumps(result))
+
+    def test_case_runner_sanitizes_base32_marker_from_public_case_id(self):
+        verify = load_evaluator()
+        base32_marker = base64.b32encode(TEST_MARKER.encode("utf-8")).decode("ascii")
+        suite = load_json(SUITE_PATH)
+        unsafe_suite = copy.deepcopy(suite)
+        unsafe_suite["surface_cases"][0]["id"] = base32_marker
+        unsafe_suite["surface_cases"][0]["input"] = {"message": base32_marker}
+        result = verify.run_cases("secret-surface-negative", unsafe_suite)[0]
+        self.assertNotIn(base32_marker, json.dumps(result))
+        self.assertEqual("PASSED", result["status"])
+        self.assertEqual(0, result["raw_occurrences"])
+
+
+class RegisteredRunnerTests(unittest.TestCase):
+    OBSERVED_AT = "2026-07-26T12:00:00Z"
+
+    def registered_namespace(self, **overrides: str) -> Namespace:
+        verify = load_evaluator()
+        values = {
+            "schema": verify.SCHEMA_REF,
+            "suite": verify.SUITE_REF,
+            "result": verify.TRUSTED_RESULTS["secret-surface-negative"],
+            "command_id": "secret-surface-negative",
+        }
+        values.update(overrides)
+        return Namespace(**values)
+
+    def test_wrong_result_for_command_is_denied(self):
+        verify = load_evaluator()
+        args = self.registered_namespace(
+            command_id="artifact-isolation-negative",
+            result="artifacts/verification/vg-009-secret-surface-result.json",
+        )
+        with self.assertRaisesRegex(verify.SecretArtifactError, "SECRET_ARTIFACT_RUNNER_CONTRACT_INVALID"):
+            verify.validate_registered_paths(args)
+
+    def test_registered_cli_rejects_abbreviated_flags(self):
+        verify = load_evaluator()
+        with self.assertRaisesRegex(verify.SecretArtifactError, "SECRET_ARTIFACT_RUNNER_CONTRACT_INVALID"):
+            verify.parse_args(["--sch", verify.SCHEMA_REF])
+
+    def test_public_result_contains_no_marker_or_hash_and_is_closed(self):
+        verify = load_evaluator()
+        result = verify.run_registered("secret-surface-negative", self.OBSERVED_AT)
+        encoded = json.dumps(result)
+        self.assertNotIn(verify.TEST_MARKER, encoded)
+        self.assertNotIn(hashlib.sha256(verify.TEST_MARKER.encode()).hexdigest(), encoded)
+        self.assertEqual(
+            {
+                "gate_id", "profile_id", "command_id", "status", "observed_at",
+                "hashes", "summary", "cases", "assertions",
+            },
+            set(result),
+        )
+        self.assertEqual("PASSED", result["status"])
+        self.assertEqual(
+            {"negative_store_calls", "negative_export_calls", "negative_publish_calls", "negative_raw_occurrences", "no_sensitive_content"},
+            set(result["assertions"]),
+        )
+
+    def test_valid_registered_execution_failure_replaces_only_its_registered_target(self):
+        verify = load_evaluator()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            schema_path = temporary_root / verify.SCHEMA_REF
+            suite_path = temporary_root / verify.SUITE_REF
+            result_path = temporary_root / verify.TRUSTED_RESULTS["secret-surface-negative"]
+            other_result_path = temporary_root / verify.TRUSTED_RESULTS["artifact-isolation-negative"]
+            schema_path.parent.mkdir(parents=True)
+            suite_path.parent.mkdir(parents=True)
+            result_path.parent.mkdir(parents=True)
+            shutil.copyfile(SCHEMA_PATH, schema_path)
+            suite = load_json(SUITE_PATH)
+            suite["surface_cases"][0]["unexpected"] = "denied"
+            suite_path.write_text(json.dumps(suite), encoding="utf-8")
+            other_result_path.write_text("sentinel", encoding="utf-8")
+
+            exit_code = verify.main(
+                [
+                    "--schema", verify.SCHEMA_REF,
+                    "--suite", verify.SUITE_REF,
+                    "--result", verify.TRUSTED_RESULTS["secret-surface-negative"],
+                    "--command-id", "secret-surface-negative",
+                ],
+                root=temporary_root,
+            )
+
+            result = load_json(result_path)
+            self.assertEqual(1, exit_code)
+            self.assertEqual("FAILED", result["status"])
+            self.assertEqual("SECRET_ARTIFACT_RUNNER_CONTRACT_INVALID", result["failure_code"])
+            self.assertNotIn("unexpected", json.dumps(result))
+            self.assertEqual("sentinel", other_result_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,170 @@
+{
+  "suite_id": "forgeops-phase-0-exit-v1",
+  "suite_version": "1.0",
+  "phase_id": "phase-0",
+  "freshness_seconds": 300,
+  "registrations": [
+    {
+      "gate_id": "VG-001",
+      "profile_id": "forgeops-foundation-conformance",
+      "command_id": "protocol-conformance",
+      "artifact_ref": "artifacts/verification/vg-001-protocol-conformance-result.json",
+      "required_tier": "E2",
+      "input_refs": ["fixtures/forgeops-foundation/source-manifest.json", "fixtures/forgeops-foundation/suite.json"],
+      "hash_fields": {"fixtures/forgeops-foundation/source-manifest.json": "hashes.manifest_sha256", "fixtures/forgeops-foundation/suite.json": "hashes.suite_sha256"}
+    },
+    {
+      "gate_id": "VG-001",
+      "profile_id": "forgeops-foundation-conformance",
+      "command_id": "sample-fixture",
+      "artifact_ref": "artifacts/verification/vg-001-sample-fixture-result.json",
+      "required_tier": "E2",
+      "input_refs": ["fixtures/forgeops-foundation/source-manifest.json", "fixtures/forgeops-foundation/suite.json"],
+      "hash_fields": {"fixtures/forgeops-foundation/source-manifest.json": "hashes.manifest_sha256", "fixtures/forgeops-foundation/suite.json": "hashes.suite_sha256"}
+    },
+    {
+      "gate_id": "VG-002",
+      "profile_id": "forgeops-contract-bridge",
+      "command_id": "bridge-schema-fixture",
+      "artifact_ref": "artifacts/verification/vg-002-contract-bridge-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/product-task-contract/1.0/schema.json", "fixtures/product-task-contract-bridge/suite.json"],
+      "hash_fields": {"contracts/product-task-contract/1.0/schema.json": "inputs.schema_sha256", "fixtures/product-task-contract-bridge/suite.json": "inputs.suite_sha256"}
+    },
+    {
+      "gate_id": "VG-003",
+      "profile_id": "forgeops-state-contract",
+      "command_id": "state-transition-fixture",
+      "artifact_ref": "artifacts/verification/vg-003-state-transition-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-state-contract/1.0/schema.json", "fixtures/forgeops-state-contract/state-suite.json"],
+      "hash_fields": {"contracts/forgeops-state-contract/1.0/schema.json": "schema_sha256", "fixtures/forgeops-state-contract/state-suite.json": "suite_sha256"}
+    },
+    {
+      "gate_id": "VG-003",
+      "profile_id": "forgeops-state-contract",
+      "command_id": "event-order-fixture",
+      "artifact_ref": "artifacts/verification/vg-003-event-order-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-state-contract/1.0/schema.json", "fixtures/forgeops-state-contract/state-suite.json"],
+      "hash_fields": {"contracts/forgeops-state-contract/1.0/schema.json": "schema_sha256", "fixtures/forgeops-state-contract/state-suite.json": "suite_sha256"}
+    },
+    {
+      "gate_id": "VG-003",
+      "profile_id": "forgeops-state-contract",
+      "command_id": "replay-contract-negative",
+      "artifact_ref": "artifacts/verification/vg-003-replay-contract-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-replay-contract/1.0/schema.json", "fixtures/forgeops-replay-contract/suite.json"],
+      "hash_fields": {"contracts/forgeops-replay-contract/1.0/schema.json": "schema_sha256", "fixtures/forgeops-replay-contract/suite.json": "suite_sha256"}
+    },
+    {
+      "gate_id": "VG-004",
+      "profile_id": "forgeops-interface-contract",
+      "command_id": "interface-contract-fixture",
+      "artifact_ref": "artifacts/verification/vg-004-interface-contract-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-api/1.0/openapi.yaml", "contracts/forgeops-event/1.0/schema.json", "contracts/forgeops-run-manifest/1.0/schema.json", "fixtures/forgeops-api/version-envelope-suite.json", "fixtures/forgeops-api/data-control-suite.json", "fixtures/forgeops-event-contract/suite.json", "fixtures/forgeops-run-manifest/suite.json"],
+      "hash_fields": {"contracts/forgeops-api/1.0/openapi.yaml": "hashes.openapi_sha256", "contracts/forgeops-event/1.0/schema.json": "hashes.event_schema_sha256", "contracts/forgeops-run-manifest/1.0/schema.json": "hashes.manifest_schema_sha256", "fixtures/forgeops-api/version-envelope-suite.json": "hashes.api_version_suite_sha256", "fixtures/forgeops-api/data-control-suite.json": "hashes.api_boundary_suite_sha256", "fixtures/forgeops-event-contract/suite.json": "hashes.event_suite_sha256", "fixtures/forgeops-run-manifest/suite.json": "hashes.manifest_suite_sha256"}
+    },
+    {
+      "gate_id": "VG-005",
+      "profile_id": "forgeops-authority-resource",
+      "command_id": "resource-authority-negative",
+      "artifact_ref": "artifacts/verification/vg-005-resource-authority-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-authority-policy/1.0/schema.json", "fixtures/forgeops-authority-resource/suite.json"],
+      "hash_fields": {"contracts/forgeops-authority-policy/1.0/schema.json": "schema_sha256", "fixtures/forgeops-authority-resource/suite.json": "suite_sha256"}
+    },
+    {
+      "gate_id": "VG-005",
+      "profile_id": "forgeops-authority-resource",
+      "command_id": "protected-read-negative",
+      "artifact_ref": "artifacts/verification/vg-005-protected-read-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-authority-policy/1.0/schema.json", "fixtures/forgeops-authority-resource/suite.json"],
+      "hash_fields": {"contracts/forgeops-authority-policy/1.0/schema.json": "schema_sha256", "fixtures/forgeops-authority-resource/suite.json": "suite_sha256"}
+    },
+    {
+      "gate_id": "VG-006",
+      "profile_id": "forgeops-authority-command-network",
+      "command_id": "command-network-negative",
+      "artifact_ref": "artifacts/verification/vg-006-command-network-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-authority-policy/1.0/schema.json", "fixtures/forgeops-authority-command-network/suite.json"],
+      "hash_fields": {"contracts/forgeops-authority-policy/1.0/schema.json": "schema_sha256", "fixtures/forgeops-authority-command-network/suite.json": "suite_sha256"}
+    },
+    {
+      "gate_id": "VG-007",
+      "profile_id": "forgeops-approval-policy",
+      "command_id": "approval-negative-fixture",
+      "artifact_ref": "artifacts/verification/vg-007-approval-policy-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-authority-policy/1.0/schema.json", "fixtures/forgeops-approval-policy/suite.json"],
+      "hash_fields": {"contracts/forgeops-authority-policy/1.0/schema.json": "schema_sha256", "fixtures/forgeops-approval-policy/suite.json": "suite_sha256"}
+    },
+    {
+      "gate_id": "VG-008",
+      "profile_id": "forgeops-sandbox-security",
+      "command_id": "image-provenance-negative",
+      "artifact_ref": "artifacts/verification/vg-008-image-provenance-result.json",
+      "required_tier": "E3",
+      "input_refs": ["contracts/forgeops-sandbox-contract/1.0/schema.json", "fixtures/forgeops-sandbox-security/suite.json", "artifacts/runtime/sandbox-runtime-profile.json"],
+      "hash_fields": {"contracts/forgeops-sandbox-contract/1.0/schema.json": "input_hashes.schema_sha256", "fixtures/forgeops-sandbox-security/suite.json": "input_hashes.suite_sha256", "artifacts/runtime/sandbox-runtime-profile.json": "input_hashes.runtime_profile_sha256"}
+    },
+    {
+      "gate_id": "VG-008",
+      "profile_id": "forgeops-sandbox-security",
+      "command_id": "containment-egress-negative",
+      "artifact_ref": "artifacts/verification/vg-008-containment-egress-result.json",
+      "required_tier": "E3",
+      "input_refs": ["contracts/forgeops-sandbox-contract/1.0/schema.json", "fixtures/forgeops-sandbox-security/suite.json", "artifacts/runtime/sandbox-runtime-profile.json"],
+      "hash_fields": {"contracts/forgeops-sandbox-contract/1.0/schema.json": "input_hashes.schema_sha256", "fixtures/forgeops-sandbox-security/suite.json": "input_hashes.suite_sha256", "artifacts/runtime/sandbox-runtime-profile.json": "input_hashes.runtime_profile_sha256"}
+    },
+    {
+      "gate_id": "VG-008",
+      "profile_id": "forgeops-sandbox-security",
+      "command_id": "teardown-negative",
+      "artifact_ref": "artifacts/verification/vg-008-teardown-result.json",
+      "required_tier": "E3",
+      "input_refs": ["contracts/forgeops-sandbox-contract/1.0/schema.json", "fixtures/forgeops-sandbox-security/suite.json", "artifacts/runtime/sandbox-runtime-profile.json"],
+      "hash_fields": {"contracts/forgeops-sandbox-contract/1.0/schema.json": "input_hashes.schema_sha256", "fixtures/forgeops-sandbox-security/suite.json": "input_hashes.suite_sha256", "artifacts/runtime/sandbox-runtime-profile.json": "input_hashes.runtime_profile_sha256"}
+    },
+    {
+      "gate_id": "VG-009",
+      "profile_id": "forgeops-secret-artifact-security",
+      "command_id": "secret-surface-negative",
+      "artifact_ref": "artifacts/verification/vg-009-secret-surface-result.json",
+      "required_tier": "E3",
+      "input_refs": ["contracts/forgeops-secret-artifact-contract/1.0/schema.json", "fixtures/forgeops-secret-artifact-security/suite.json"],
+      "hash_fields": {"contracts/forgeops-secret-artifact-contract/1.0/schema.json": "hashes.schema_sha256", "fixtures/forgeops-secret-artifact-security/suite.json": "hashes.suite_sha256"}
+    },
+    {
+      "gate_id": "VG-009",
+      "profile_id": "forgeops-secret-artifact-security",
+      "command_id": "artifact-isolation-negative",
+      "artifact_ref": "artifacts/verification/vg-009-artifact-isolation-result.json",
+      "required_tier": "E3",
+      "input_refs": ["contracts/forgeops-secret-artifact-contract/1.0/schema.json", "fixtures/forgeops-secret-artifact-security/suite.json"],
+      "hash_fields": {"contracts/forgeops-secret-artifact-contract/1.0/schema.json": "hashes.schema_sha256", "fixtures/forgeops-secret-artifact-security/suite.json": "hashes.suite_sha256"}
+    },
+    {
+      "gate_id": "VG-023",
+      "profile_id": "forgeops-evidence-contract",
+      "command_id": "evidence-positive-negative",
+      "artifact_ref": "artifacts/verification/vg-023-evidence-contract-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-evidence-contract/1.0/schema.json", "fixtures/forgeops-evidence-contract/suite.json"],
+      "hash_fields": {"contracts/forgeops-evidence-contract/1.0/schema.json": "hashes.schema_sha256", "fixtures/forgeops-evidence-contract/suite.json": "hashes.suite_sha256"}
+    },
+    {
+      "gate_id": "VG-023",
+      "profile_id": "forgeops-evidence-contract",
+      "command_id": "extension-provenance",
+      "artifact_ref": "artifacts/verification/vg-023-extension-provenance-result.json",
+      "required_tier": "E2",
+      "input_refs": ["contracts/forgeops-evidence-contract/1.0/schema.json", "fixtures/forgeops-evidence-contract/suite.json"],
+      "hash_fields": {"contracts/forgeops-evidence-contract/1.0/schema.json": "hashes.schema_sha256", "fixtures/forgeops-evidence-contract/suite.json": "hashes.suite_sha256"}
+    }
+  ]
+}

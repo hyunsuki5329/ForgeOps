@@ -772,7 +772,7 @@
     "manifest_suite_sha256": "2da1c307ad1d353bdc5073057edfeb778ecb0582da23f018d920c74759bcf7eb",
     "openapi_sha256": "05cef4530553750e021cd8c24c87d1099fa493f4354623ca57ceaa63953d2047"
   },
-  "observed_at": "2026-07-26T12:35:37Z",
+  "observed_at": "2026-07-30T08:14:05Z",
   "profile_id": "forgeops-interface-contract",
   "status": "PASSED"
 }

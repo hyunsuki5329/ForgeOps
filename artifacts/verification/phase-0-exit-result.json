@@ -1,0 +1,253 @@
+{
+  "assertions": {
+    "exact_coverage": true,
+    "freshness_valid": false,
+    "input_hashes_valid": true,
+    "public_safe": true,
+    "tiers_sufficient": true
+  },
+  "blockers": [
+    {
+      "command_id": "image-provenance-negative",
+      "gate_id": "VG-008",
+      "reason_code": "PHASE_EXIT_STATUS_NOT_RUN"
+    },
+    {
+      "command_id": "image-provenance-negative",
+      "gate_id": "VG-008",
+      "reason_code": "PHASE_EXIT_EVIDENCE_STALE"
+    },
+    {
+      "command_id": "containment-egress-negative",
+      "gate_id": "VG-008",
+      "reason_code": "PHASE_EXIT_STATUS_NOT_RUN"
+    },
+    {
+      "command_id": "containment-egress-negative",
+      "gate_id": "VG-008",
+      "reason_code": "PHASE_EXIT_EVIDENCE_STALE"
+    },
+    {
+      "command_id": "teardown-negative",
+      "gate_id": "VG-008",
+      "reason_code": "PHASE_EXIT_STATUS_NOT_RUN"
+    },
+    {
+      "command_id": "teardown-negative",
+      "gate_id": "VG-008",
+      "reason_code": "PHASE_EXIT_EVIDENCE_STALE"
+    }
+  ],
+  "gate_results": [
+    {
+      "artifact_ref": "artifacts/verification/vg-001-protocol-conformance-result.json",
+      "command_id": "protocol-conformance",
+      "gate_id": "VG-001",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:14:07Z",
+      "profile_id": "forgeops-foundation-conformance",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-001-sample-fixture-result.json",
+      "command_id": "sample-fixture",
+      "gate_id": "VG-001",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:14:07Z",
+      "profile_id": "forgeops-foundation-conformance",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-002-contract-bridge-result.json",
+      "command_id": "bridge-schema-fixture",
+      "gate_id": "VG-002",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:13:48Z",
+      "profile_id": "forgeops-contract-bridge",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-003-state-transition-result.json",
+      "command_id": "state-transition-fixture",
+      "gate_id": "VG-003",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:13:48Z",
+      "profile_id": "forgeops-state-contract",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-003-event-order-result.json",
+      "command_id": "event-order-fixture",
+      "gate_id": "VG-003",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:13:49Z",
+      "profile_id": "forgeops-state-contract",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-003-replay-contract-result.json",
+      "command_id": "replay-contract-negative",
+      "gate_id": "VG-003",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:13:51Z",
+      "profile_id": "forgeops-state-contract",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-004-interface-contract-result.json",
+      "command_id": "interface-contract-fixture",
+      "gate_id": "VG-004",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:14:05Z",
+      "profile_id": "forgeops-interface-contract",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-005-resource-authority-result.json",
+      "command_id": "resource-authority-negative",
+      "gate_id": "VG-005",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:13:53Z",
+      "profile_id": "forgeops-authority-resource",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-005-protected-read-result.json",
+      "command_id": "protected-read-negative",
+      "gate_id": "VG-005",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:13:54Z",
+      "profile_id": "forgeops-authority-resource",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-006-command-network-result.json",
+      "command_id": "command-network-negative",
+      "gate_id": "VG-006",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:14:00Z",
+      "profile_id": "forgeops-authority-command-network",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-007-approval-policy-result.json",
+      "command_id": "approval-negative-fixture",
+      "gate_id": "VG-007",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:14:04Z",
+      "profile_id": "forgeops-approval-policy",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-008-image-provenance-result.json",
+      "command_id": "image-provenance-negative",
+      "gate_id": "VG-008",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T07:18:20Z",
+      "profile_id": "forgeops-sandbox-security",
+      "public_safe": true,
+      "required_tier": "E3",
+      "status": "NOT_RUN"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-008-containment-egress-result.json",
+      "command_id": "containment-egress-negative",
+      "gate_id": "VG-008",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T07:18:21Z",
+      "profile_id": "forgeops-sandbox-security",
+      "public_safe": true,
+      "required_tier": "E3",
+      "status": "NOT_RUN"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-008-teardown-result.json",
+      "command_id": "teardown-negative",
+      "gate_id": "VG-008",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T07:18:22Z",
+      "profile_id": "forgeops-sandbox-security",
+      "public_safe": true,
+      "required_tier": "E3",
+      "status": "NOT_RUN"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-009-secret-surface-result.json",
+      "command_id": "secret-surface-negative",
+      "gate_id": "VG-009",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:14:20Z",
+      "profile_id": "forgeops-secret-artifact-security",
+      "public_safe": true,
+      "required_tier": "E3",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-009-artifact-isolation-result.json",
+      "command_id": "artifact-isolation-negative",
+      "gate_id": "VG-009",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:14:21Z",
+      "profile_id": "forgeops-secret-artifact-security",
+      "public_safe": true,
+      "required_tier": "E3",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-023-evidence-contract-result.json",
+      "command_id": "evidence-positive-negative",
+      "gate_id": "VG-023",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:14:06Z",
+      "profile_id": "forgeops-evidence-contract",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    },
+    {
+      "artifact_ref": "artifacts/verification/vg-023-extension-provenance-result.json",
+      "command_id": "extension-provenance",
+      "gate_id": "VG-023",
+      "input_hashes_valid": true,
+      "observed_at": "2026-07-30T08:14:07Z",
+      "profile_id": "forgeops-evidence-contract",
+      "public_safe": true,
+      "required_tier": "E2",
+      "status": "PASSED"
+    }
+  ],
+  "observed_at": "2026-07-30T08:14:21Z",
+  "phase_id": "phase-0",
+  "registry_sha256": "ac29486b35cd64840b6ec3f7f9ef171cbccf82c63f1941cd4ecaf9e51386926b",
+  "schema_version": "1.0",
+  "status": "NOT_READY",
+  "summary": {
+    "blocked": 3,
+    "failed": 0,
+    "not_run": 3,
+    "passed": 15,
+    "required": 18
+  }
+}

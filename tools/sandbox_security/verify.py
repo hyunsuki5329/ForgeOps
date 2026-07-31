@@ -468,13 +468,18 @@ def run_cli(
         project_root=project_root,
     )
     try:
+        schema_bytes = schema_path.read_bytes()
+        suite_bytes = suite_path.read_bytes()
         input_hashes = {
-            "schema_sha256": _input_sha256(schema_path),
-            "suite_sha256": _input_sha256(suite_path),
+            "schema_sha256": hashlib.sha256(schema_bytes).hexdigest(),
+            "suite_sha256": hashlib.sha256(suite_bytes).hexdigest(),
         }
     except OSError as error:
         raise SandboxError("SANDBOX_PUBLIC_RESULT_UNSAFE") from error
     try:
+        schema_value = json.loads(schema_bytes.decode("utf-8"))
+        suite_value = json.loads(suite_bytes.decode("utf-8"))
+        Draft202012Validator(schema_value).validate(suite_value)
         input_hashes["runtime_profile_sha256"] = _input_sha256(runtime_profile_path)
         validation_at = _public_timestamp()
         observer = _RUNTIME_MODULE.AttestedRuntimeObserver.from_imported_files(
@@ -485,7 +490,6 @@ def run_cli(
         )
         if not _HAS_ATTESTED_E3_CONSTRUCTION(observer):
             raise _RUNTIME_MODULE.RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
-        suite_value = json.loads(suite_path.read_text(encoding="utf-8"))
         selected_ids = {
             case["id"] for catalog in _COMMAND_CATALOGS[command_id] for case in suite_value[catalog]
         }
@@ -506,7 +510,7 @@ def run_cli(
             "residue_counters": dict(_PUBLIC_RESIDUE_COUNTERS),
         })
         return 0
-    except (OSError, UnicodeError, json.JSONDecodeError, _RUNTIME_MODULE.RuntimeUnavailable, SandboxError):
+    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError, ValidationError, _RUNTIME_MODULE.RuntimeUnavailable, SandboxError):
         pass
     _atomic_write_json(
         output,

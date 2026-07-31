@@ -1341,12 +1341,13 @@ class AttestedRuntimeObserverTests(unittest.TestCase):
             attestation_path, bundle_path, identity, root, runner,
             __import__("datetime").datetime(2026, 7, 30, 0, 4, tzinfo=__import__("datetime").timezone.utc),
         )
-        receipt = load_json(outputs["receipt"])
-        receipt["verification_kind"] = "runtime"
-        outputs["receipt"].write_text(json.dumps(receipt, sort_keys=True), encoding="utf-8")
+        runtime_root = root / "artifacts/runtime"
+        runtime_root.mkdir(parents=True, exist_ok=True)
+        (runtime_root / "e3-attestation.json").write_bytes(attestation_path.read_bytes())
+        (runtime_root / "e3-attestation.bundle.json").write_bytes(bundle_path.read_bytes())
         return outputs["profile"], outputs["observations"], outputs["receipt"]
 
-    def test_imported_runtime_evidence_constructs_only_from_the_runtime_receipt(self):
+    def test_injected_importer_receipt_cannot_construct_an_e3_observer(self):
         from tools.sandbox_security import runtime
 
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -1355,8 +1356,19 @@ class AttestedRuntimeObserverTests(unittest.TestCase):
                 profile, observations, receipt, self.validation_at
             )
 
-            self.assertTrue(runtime.has_attested_e3_construction(observer))
-            self.assertEqual("runtime", observer.observe({"id": "positive-rootless-readonly"})["evidence_kind"])
+            self.assertFalse(runtime.has_attested_e3_construction(observer))
+
+    def test_forged_runtime_receipt_and_direct_instance_never_construct_an_e3_observer(self):
+        from tools.sandbox_security import runtime
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            profile, observations, receipt = self._imported_files(Path(temporary_directory))
+            receipt_value = load_json(receipt)
+            receipt_value["verification_kind"] = "runtime"
+            receipt.write_text(json.dumps(receipt_value), encoding="utf-8")
+            observer = runtime.AttestedRuntimeObserver.from_imported_files(profile, observations, receipt, self.validation_at)
+            self.assertFalse(runtime.has_attested_e3_construction(observer))
+        self.assertFalse(runtime.has_attested_e3_construction(runtime.AttestedRuntimeObserver()))
 
     def test_imported_runtime_evidence_rejects_seal_tampering_before_observation(self):
         from tools.sandbox_security import runtime
@@ -1369,6 +1381,8 @@ class AttestedRuntimeObserverTests(unittest.TestCase):
             "nonzero_terminal_residue": lambda profile, observations, receipt: observations["terminal_residue"].__setitem__("mounts", 1),
             "stale": lambda profile, observations, receipt: profile.__setitem__("observed_at", "2026-07-29T23:58:59Z"),
             "future": lambda profile, observations, receipt: profile.__setitem__("observed_at", "2026-07-30T00:04:01Z"),
+            "receipt_extra": lambda profile, observations, receipt: receipt.__setitem__("extra", True),
+            "malformed_provenance": lambda profile, observations, receipt: profile.__setitem__("provenance_ref", "private/path"),
         }
         for name, mutate in mutations.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary_directory:
@@ -1446,7 +1460,7 @@ class SandboxCliTests(unittest.TestCase):
         self.assertFalse(public_result["e3_runtime_assertion"])
         self.assertNotIn("cases", public_result)
 
-    def test_fresh_imported_runtime_evidence_projects_the_closed_success_envelope(self):
+    def test_injected_imported_runtime_evidence_remains_closed_not_run(self):
         from tools.sandbox_security import verify
 
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -1472,12 +1486,36 @@ class SandboxCliTests(unittest.TestCase):
                 )
             public_result = load_json(result)
 
-        self.assertEqual(0, exit_code)
-        self.assertEqual("PASSED", public_result["status"])
-        self.assertTrue(public_result["e3_runtime_assertion"])
-        self.assertEqual(14, public_result["counts"]["cases_total"])
+        self.assertEqual(2, exit_code)
+        self.assertEqual("NOT_RUN", public_result["status"])
+        self.assertFalse(public_result["e3_runtime_assertion"])
         self.assertNotIn("cases", public_result)
         self.assertNotIn("identity", public_result)
+
+    def test_malformed_exact_literal_suite_writes_safe_not_run(self):
+        from tools.sandbox_security import verify
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            schema = root / "contracts/forgeops-sandbox-contract/1.0/schema.json"
+            suite = root / "fixtures/forgeops-sandbox-security/suite.json"
+            schema.parent.mkdir(parents=True)
+            suite.parent.mkdir(parents=True)
+            schema.write_text(SCHEMA_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            suite.write_text("{}", encoding="utf-8")
+            result = root / "artifacts/verification/vg-008-image-provenance-result.json"
+            exit_code = verify.run_cli(
+                schema="contracts/forgeops-sandbox-contract/1.0/schema.json",
+                suite="fixtures/forgeops-sandbox-security/suite.json",
+                runtime_profile="artifacts/runtime/sandbox-runtime-profile.json",
+                runtime="docker",
+                result="artifacts/verification/vg-008-image-provenance-result.json",
+                command_id="image-provenance-negative",
+                project_root=root,
+            )
+            public_result = load_json(result)
+        self.assertEqual(2, exit_code)
+        self.assertEqual("NOT_RUN", public_result["status"])
 
     def test_public_not_run_result_excludes_private_input_content(self):
         from tools.sandbox_security import verify

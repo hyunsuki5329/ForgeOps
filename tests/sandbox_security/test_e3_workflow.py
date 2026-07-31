@@ -18,16 +18,26 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/vg-008-e3.yml"
 VALIDATION_AT = datetime(2026, 7, 30, tzinfo=timezone.utc)
-E3_EXACT_BYTE_INPUTS = (
-    "contracts/forgeops-sandbox-contract/1.0/schema.json",
-    "fixtures/forgeops-sandbox-security/suite.json",
+PHASE0_SUITE = ROOT / "fixtures/forgeops-phase-exit/phase-0-suite.json"
+E3_HELPER_INPUTS = {
     "tools/sandbox_security/e3_helper.py",
     "tools/sandbox_security/e3_probe.py",
-)
+}
 
 
 class E3WorkflowPolicyTests(unittest.TestCase):
-    def test_exact_e3_byte_inputs_are_lf_without_a_repository_wide_policy(self):
+    def test_exact_phase0_byte_inputs_are_lf_without_a_repository_wide_policy(self):
+        suite = json.loads(PHASE0_SUITE.read_text(encoding="utf-8"))
+        exact_byte_inputs = tuple(
+            sorted(
+                E3_HELPER_INPUTS
+                | {
+                    input_ref
+                    for registration in suite["registrations"]
+                    for input_ref in registration["input_refs"]
+                }
+            )
+        )
         attributes_path = ROOT / ".gitattributes"
         active_lines = [
             line.strip()
@@ -35,12 +45,12 @@ class E3WorkflowPolicyTests(unittest.TestCase):
             if line.strip() and not line.lstrip().startswith("#")
         ]
         self.assertEqual(
-            [f"{path} text eol=lf" for path in E3_EXACT_BYTE_INPUTS],
+            [f"{path} text eol=lf" for path in exact_byte_inputs],
             active_lines,
         )
 
         completed = subprocess.run(
-            ["git", "check-attr", "text", "eol", "--", *E3_EXACT_BYTE_INPUTS],
+            ["git", "check-attr", "text", "eol", "--", *exact_byte_inputs],
             cwd=ROOT,
             check=True,
             capture_output=True,
@@ -49,7 +59,7 @@ class E3WorkflowPolicyTests(unittest.TestCase):
         self.assertEqual(
             [
                 f"{path}: {attribute}: {value}"
-                for path in E3_EXACT_BYTE_INPUTS
+                for path in exact_byte_inputs
                 for attribute, value in (("text", "set"), ("eol", "lf"))
             ],
             completed.stdout.splitlines(),

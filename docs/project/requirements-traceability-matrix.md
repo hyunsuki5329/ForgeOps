@@ -2,7 +2,7 @@
 
 **문서 상태:** 초안
 
-**최종 검토일:** 2026-07-24
+**최종 검토일:** 2026-07-31
 
 **대상 독자:** 1인 개발자, 포트폴리오 검토자
 
@@ -10,7 +10,7 @@
 
 **문서 범위:** PRD 37개, ARC 14개, THR 12개, CTL 20개, RSK 14개, WBS 35개, VG 24개의 planned linkage와 초기 검증 상태
 
-**현재 상태:** 37개 요구사항의 planned linkage는 `COVERED`; PRD-FR-001~PRD-FR-005 및 PRD-NFR-001/009의 7개는 fresh mapped E2 evidence로 `PASSED`, 나머지 30개는 `NOT_RUN`
+**현재 상태:** 37개 요구사항의 planned linkage는 `COVERED`; PRD-FR-001~PRD-FR-005, PRD-FR-007 및 PRD-NFR-001/009의 8개는 fresh mapped evidence로 `PASSED`, 나머지 29개는 `NOT_RUN`. Phase 0 aggregation은 18/18 `PASSED`, blockers 0, `READY`다.
 
 **기준 출처:** [제품 요구사항](../product/prd.md), [시스템 아키텍처](../architecture/system-architecture.md), [위협 모델](../security/threat-model.md), [검증 및 평가 계획](../quality/verification-and-evaluation-plan.md), [WBS](wbs.md), [위험 등록부](risk-register.md), [ForgeOps 제품 기초 문서 실행 계획](../superpowers/plans/2026-07-14-forgeops-product-documentation.md)
 
@@ -28,7 +28,7 @@
 
 ## 2. 상태와 evidence 표현
 
-요구사항의 검증 Result는 `PASSED`, `FAILED`, `NOT_RUN`만 사용한다. PRD-FR-001~PRD-FR-005는 `IMPLEMENTED`이고 trusted mapped VG 실행 결과를 가진다. PRD-NFR-001과 PRD-NFR-009는 이후 mapped WBS가 남아 있어 `SPECIFIED`를 유지하지만 현재 mapped VG evidence는 `PASSED`다. 따라서 7개 요구사항은 `PASSED`이고 나머지 30개 요구사항은 `SPECIFIED` 또는 `PLANNED` 상태에서 `NOT_RUN`이다.
+요구사항의 검증 Result는 `PASSED`, `FAILED`, `NOT_RUN`만 사용한다. PRD-FR-001~PRD-FR-005와 PRD-FR-007은 `IMPLEMENTED`이고 trusted mapped VG 실행 결과를 가진다. PRD-NFR-001과 PRD-NFR-009는 이후 mapped WBS가 남아 있어 `SPECIFIED`를 유지하지만 현재 mapped VG evidence는 `PASSED`다. 따라서 8개 요구사항은 `PASSED`이고 나머지 29개 요구사항은 `SPECIFIED` 또는 `PLANNED` 상태에서 `NOT_RUN`이다. PRD-NFR-002와 PRD-NFR-003은 VG-008 E3 evidence를 기록하지만 이후 mapped WBS/VG가 남아 있어 전체 cross-phase Result는 `NOT_RUN`을 유지한다.
 
 | Maturity | 초기 표현 | 다음 갱신 조건 |
 | --- | --- | --- |
@@ -50,9 +50,9 @@ Raw shell text, 문서의 예시 명령, 계획된 `verification_profile_id` 또
 | PRD-FR-004 | Phase 0 / 필수 | IMPLEMENTED | ARC-011 | THR-008, THR-010 | CTL-014, CTL-015, CTL-020 | RSK-003, RSK-012 | WBS-007, WBS-008 | VG-004, VG-023 | E2 | PASSED | E2 | artifacts/verification/vg-004-interface-contract-result.json; artifacts/verification/vg-023-evidence-contract-result.json; artifacts/verification/vg-023-extension-provenance-result.json | observed_at=artifact-observed_at; artifact-observed_at; artifact-observed_at | COVERED | durable event와 run manifest reference fixture, closed evidence/provenance E2 PASSED |
 | PRD-FR-005 | Phase 0 / 필수 | IMPLEMENTED | ARC-008 | THR-011 | CTL-016 | RSK-007 | WBS-009 | VG-001 | E2 | PASSED | E2 | artifacts/verification/vg-001-protocol-conformance-result.json; artifacts/verification/vg-001-sample-fixture-result.json | observed_at=artifact-observed_at; artifact-observed_at | COVERED | registered VG-001 protocol and sample fixture E2 PASSED |
 | PRD-FR-006 | Phase 0 / 필수 | SPECIFIED | ARC-003, ARC-013 | THR-006 | CTL-006, CTL-007 | RSK-005, RSK-009 | WBS-005 | VG-007 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | VG-007 policy fixture E2 PASSED; approval UX는 Phase 0 범위에서 구현하지 않아 요구사항 전체 Result는 NOT_RUN 유지 |
-| PRD-FR-007 | Phase 0 / 필수 | PLANNED | ARC-007, ARC-011 | THR-004, THR-005, THR-007 | CTL-009, CTL-010, CTL-011, CTL-012, CTL-013 | RSK-004, RSK-006 | WBS-010, WBS-011, WBS-012 | VG-008, VG-009 | E3 | NOT_RUN | E3 | artifacts/verification/vg-009-secret-surface-result.json; artifacts/verification/vg-009-artifact-isolation-result.json | observed_at=artifact-observed_at; artifact-observed_at | COVERED | VG-009 secret-surface and artifact-isolation E3 evidence PASSED; VG-008 remains `NOT_RUN` because independently attested Docker preflight and signature/provenance verification are unavailable, so WBS-010 and dependent WBS-012 are `WBS_BLOCKED`; the requirement remains incomplete |
+| PRD-FR-007 | Phase 0 / 필수 | IMPLEMENTED | ARC-007, ARC-011 | THR-004, THR-005, THR-007 | CTL-009, CTL-010, CTL-011, CTL-012, CTL-013 | RSK-004, RSK-006 | WBS-010, WBS-011, WBS-012 | VG-008, VG-009 | E3 | PASSED | E3 | artifacts/verification/vg-008-image-provenance-result.json; artifacts/verification/vg-008-containment-egress-result.json; artifacts/verification/vg-008-teardown-result.json; artifacts/verification/vg-009-secret-surface-result.json; artifacts/verification/vg-009-artifact-isolation-result.json | observed_at=2026-07-31T08:23:10Z; 2026-07-31T08:23:10Z; 2026-07-31T08:23:10Z; 2026-07-30T08:14:20Z; 2026-07-30T08:14:21Z | COVERED | VG-008 isolated Linux attested runtime and VG-009 secret/artifact isolation E3 evidence PASSED; WBS-010~WBS-012 and Phase 0 complete |
 
-Current Phase 0 aggregation is `NOT_READY`: [phase-0-exit-result.json](../../artifacts/verification/phase-0-exit-result.json) records 15 `PASSED`, 3 VG-008 `NOT_RUN`, and no failed commands. The blockers are `image-provenance-negative`, `containment-egress-negative`, and `teardown-negative`; therefore WBS-012 is `WBS_BLOCKED` by WBS-010/VG-008 and Phase 0 Exit is not declared.
+Current Phase 0 aggregation is `READY`: [phase-0-exit-result.json](../../artifacts/verification/phase-0-exit-result.json) records 18/18 `PASSED`, zero failed or `NOT_RUN` commands, and blockers 0. The VG-008 E3 artifact came from [GitHub Actions run 30616031436](https://github.com/hyunsuki5329/ForgeOps/actions/runs/30616031436) at source SHA `86ab041c6be77f16c7f21be3ced7a579456926a5`, was verified with Cosign v3.0.6, and was imported with its manifest and receipt. This declares Phase 0 only; Phase 1 and later runtime/release work remains incomplete.
 | PRD-FR-008 | Phase 1 / 필수 | PLANNED | ARC-005, ARC-007 | THR-002, THR-011 | CTL-002, CTL-016 | RSK-007 | WBS-013, WBS-014 | VG-010 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-FR-009 | Phase 1 / 필수 | PLANNED | ARC-005 | THR-001 | CTL-001 | RSK-005 | WBS-015 | VG-011 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-FR-010 | Phase 1 / 필수 | PLANNED | ARC-003, ARC-004, ARC-009 | THR-010 | CTL-005, CTL-015 | RSK-003 | WBS-016, WBS-017, WBS-018, WBS-019 | VG-012 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
@@ -72,8 +72,8 @@ Current Phase 0 aggregation is `NOT_READY`: [phase-0-exit-result.json](../../art
 | PRD-FR-024 | Phase 4 / 권장 | PLANNED | ARC-005, ARC-008, ARC-014 | THR-001, THR-011 | CTL-001, CTL-016 | RSK-010 | WBS-035 | VG-023 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-FR-025 | Phase 4 / 권장 | PLANNED | ARC-008, ARC-011, ARC-013 | THR-006, THR-009, THR-010 | CTL-007, CTL-008, CTL-015, CTL-019 | RSK-003, RSK-008, RSK-009 | WBS-035 | VG-017, VG-018, VG-022 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-NFR-001 | 전 단계 / 필수 | SPECIFIED | ARC-008, ARC-011 | THR-010, THR-011 | CTL-015, CTL-016 | RSK-007 | WBS-001, WBS-009, WBS-021, WBS-027 | VG-001, VG-023 | E2 | PASSED | E2 | artifacts/verification/vg-001-protocol-conformance-result.json; artifacts/verification/vg-001-sample-fixture-result.json; artifacts/verification/vg-023-evidence-contract-result.json; artifacts/verification/vg-023-extension-provenance-result.json | observed_at=artifact-observed_at; artifact-observed_at; artifact-observed_at; artifact-observed_at | COVERED | VG-001 and VG-023 mapped E2 evidence PASSED; later mapped WBS remains planned |
-| PRD-NFR-002 | 전 단계 / 필수 | SPECIFIED | ARC-006, ARC-007, ARC-010 | THR-002, THR-003, THR-004, THR-006 | CTL-002, CTL-003, CTL-004, CTL-005, CTL-006, CTL-007, CTL-012 | RSK-005 | WBS-002, WBS-005, WBS-010, WBS-026 | VG-002, VG-005, VG-006, VG-007, VG-008 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | VG-002·VG-005·VG-006·VG-007 E2 범위 PASSED; required E3와 VG-008 sandbox gate 미실행 |
-| PRD-NFR-003 | Phase 0~4 / 필수 | PLANNED | ARC-007 | THR-005 | CTL-009, CTL-010, CTL-011 | RSK-004 | WBS-010, WBS-013, WBS-024, WBS-028 | VG-008, VG-010, VG-014 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
+| PRD-NFR-002 | 전 단계 / 필수 | SPECIFIED | ARC-006, ARC-007, ARC-010 | THR-002, THR-003, THR-004, THR-006 | CTL-002, CTL-003, CTL-004, CTL-005, CTL-006, CTL-007, CTL-012 | RSK-005 | WBS-002, WBS-005, WBS-010, WBS-026 | VG-002, VG-005, VG-006, VG-007, VG-008 | E3 | NOT_RUN | E3 | artifacts/verification/vg-008-image-provenance-result.json; artifacts/verification/vg-008-containment-egress-result.json; artifacts/verification/vg-008-teardown-result.json | observed_at=2026-07-31T08:23:10Z; 2026-07-31T08:23:10Z; 2026-07-31T08:23:10Z | COVERED | VG-002·VG-005·VG-006·VG-007 E2 범위와 VG-008 E3 sandbox 범위 PASSED; WBS-026 및 후속 mapped VG가 남아 있어 full cross-phase Result는 `NOT_RUN` 유지 |
+| PRD-NFR-003 | Phase 0~4 / 필수 | PLANNED | ARC-007 | THR-005 | CTL-009, CTL-010, CTL-011 | RSK-004 | WBS-010, WBS-013, WBS-024, WBS-028 | VG-008, VG-010, VG-014 | E3 | NOT_RUN | E3 | artifacts/verification/vg-008-image-provenance-result.json; artifacts/verification/vg-008-containment-egress-result.json; artifacts/verification/vg-008-teardown-result.json | observed_at=2026-07-31T08:23:10Z; 2026-07-31T08:23:10Z; 2026-07-31T08:23:10Z | COVERED | Phase 0 VG-008 E3 sandbox containment·egress·teardown evidence PASSED; WBS-013·WBS-024·WBS-028과 VG-010·VG-014가 남아 있어 full cross-phase Result는 `NOT_RUN` 유지 |
 | PRD-NFR-004 | 전 단계 / 필수 | SPECIFIED | ARC-006, ARC-011 | THR-007, THR-008 | CTL-013, CTL-014 | RSK-006 | WBS-011, WBS-028, WBS-031 | VG-009, VG-024 | E3 | NOT_RUN | E3 | artifacts/verification/vg-009-secret-surface-result.json; artifacts/verification/vg-009-artifact-isolation-result.json | observed_at=artifact-observed_at; artifact-observed_at | COVERED | VG-009 redaction and artifact-isolation E3 evidence PASSED; VG-024 remains unexecuted, so the full cross-phase requirement Result remains `NOT_RUN` |
 | PRD-NFR-005 | Phase 1~4 / 필수 | PLANNED | ARC-003, ARC-011, ARC-013 | THR-009, THR-012 | CTL-008, CTL-011, CTL-017, CTL-019 | RSK-003, RSK-009 | WBS-024, WBS-030, WBS-034 | VG-014, VG-015, VG-019 | E3 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | VG-003 replay와 VG-007 atomic nonce E2 범위 PASSED; mapped VG-014·VG-015·VG-019 E3 미실행 |
 | PRD-NFR-006 | Phase 0~4 / 필수 | SPECIFIED | ARC-011, ARC-012 | THR-008, THR-010 | CTL-014, CTL-015, CTL-020 | RSK-012 | WBS-003, WBS-007, WBS-008, WBS-025, WBS-031 | VG-004, VG-015 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | WBS-003 bridge review와 VG-004 E2 PASSED; VG-015 미실행으로 요구사항 전체 Result는 NOT_RUN 유지 |
@@ -96,13 +96,13 @@ Current Phase 0 aggregation is `NOT_READY`: [phase-0-exit-result.json](../../art
 | WBS | `docs/project/wbs.md` | 35 | 35 | COVERED — validator PASS |
 | RSK | `docs/project/risk-register.md` | 14 | 14 | COVERED — validator PASS |
 
-37개 요구사항 행은 모두 `COVERED`로 계획돼 있다. 이 상태는 ID linkage의 완전성만 나타낸다. Fresh success coverage는 PRD-FR-001~PRD-FR-005와 PRD-NFR-001/009의 7/37이며, VG-001, VG-002, VG-003, VG-004, VG-023의 mapped evidence를 따른다. 나머지 30개는 `NOT_RUN`이다.
+37개 요구사항 행은 모두 `COVERED`로 계획돼 있다. 이 상태는 ID linkage의 완전성만 나타낸다. Fresh success coverage는 PRD-FR-001~PRD-FR-005, PRD-FR-007과 PRD-NFR-001/009의 8/37이며, VG-001, VG-002, VG-003, VG-004, VG-008, VG-009, VG-023의 mapped evidence를 따른다. 나머지 29개는 `NOT_RUN`이다.
 
 ## 5. Orphan 검사 결과
 
 Task 7 exact cross-document validator가 `RTM_VALIDATE=PASS`로 통과했다. 확인된 definition count는 PRD 37, ARC 14, THR 12, CTL 20, VG 24, WBS 35, RSK 14이고, 37개 requirement row에서 모든 definition ID가 적어도 한 번 exact 참조된다.
 
-**Orphan count: 0.** 이 수치는 planned cross-document linkage의 orphan이 없다는 뜻이다. PRD-FR-001~PRD-FR-005와 PRD-NFR-001/009의 mapped evidence는 fresh E2 `PASSED`이며 나머지 30개 Result는 계속 `NOT_RUN`이다. 이 결과로 제품 runtime이나 Phase 0 Exit를 주장하지 않는다.
+**Orphan count: 0.** 이 수치는 planned cross-document linkage의 orphan이 없다는 뜻이다. PRD-FR-001~PRD-FR-005, PRD-FR-007과 PRD-NFR-001/009의 mapped evidence는 required floor에서 fresh `PASSED`이며 나머지 29개 Result는 계속 `NOT_RUN`이다. Phase 0은 `READY`지만 Phase 1 이후 제품 runtime, 배포 또는 broader release 완료를 주장하지 않는다.
 
 ## 6. 갱신 규칙
 

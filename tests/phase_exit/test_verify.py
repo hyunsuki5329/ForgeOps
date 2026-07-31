@@ -247,14 +247,17 @@ class AggregationTests(unittest.TestCase):
         self.assertFalse(errors, [error.message for error in errors])
 
     def test_vg008_not_run_envelope_uses_registered_time_hash_and_runtime_tier_shape(self):
-        suite = load_suite()
+        root, suite = temporary_complete_bundle(self)
         registration = next(item for item in suite["registrations"] if item["command_id"] == "teardown-negative")
-        artifact = json.loads((ROOT / registration["artifact_ref"]).read_text(encoding="utf-8"))
+        mutate_command_artifact(root, suite, "teardown-negative", status="NOT_RUN")
+        artifact = json.loads((root / registration["artifact_ref"]).read_text(encoding="utf-8"))
 
-        gate_result, blockers = verify.inspect_registration(ROOT, registration, artifact["time"])
+        gate_result, blockers = verify.inspect_registration(root, registration, artifact["time"])
 
         self.assertEqual("NOT_RUN", gate_result["status"])
         self.assertEqual(artifact["time"], gate_result["observed_at"])
+        self.assertTrue(gate_result["input_hashes_valid"])
+        self.assertEqual("E3", gate_result["required_tier"])
         self.assertEqual(["PHASE_EXIT_STATUS_NOT_RUN"], [item["reason_code"] for item in blockers])
 
     def test_complete_fresh_public_bundle_is_ready(self):

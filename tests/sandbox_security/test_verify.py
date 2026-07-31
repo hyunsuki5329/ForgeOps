@@ -1458,6 +1458,65 @@ class AttestedRuntimeObserverTests(unittest.TestCase):
 class SandboxCliTests(unittest.TestCase):
     """Public-only VG-008 CLI behavior; these tests never invoke Docker."""
 
+    def test_consumer_evaluates_all_helper_produced_observations_with_zero_effect_denials(self):
+        expected_effects = {
+            "image-provenance-negative": {"provision_calls": 1, "network_calls": 0, "write_calls": 0},
+            "containment-egress-negative": {"provision_calls": 9, "network_calls": 7, "write_calls": 1},
+            "teardown-negative": {"provision_calls": 5, "network_calls": 0, "write_calls": 5},
+        }
+        completed = subprocess.run(
+            [sys.executable, "-m", "tests.sandbox_security.e3_consumer_process_fixture"],
+            cwd=ROOT, shell=False, check=False, capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr + completed.stdout)
+        summary = json.loads(completed.stdout)
+        self.assertTrue(summary.pop("preprovision_zero_effects"))
+        for command_id, result in summary.items():
+            total = result["expected_total"]
+            self.assertEqual(
+                {"cases_total": total, "passed": total, "failed": 0, "not_run": 0},
+                result["counts"],
+            )
+            self.assertEqual(expected_effects[command_id], result["effect_counters"])
+
+    def test_consumer_rejects_preprovision_mode_or_effect_tampering(self):
+        from tools.sandbox_security import e3_consumer, verify
+
+        suite = load_json(SUITE_PATH)
+        case = next(item for item in suite["containment_cases"] if item["id"] == "negative-root-user")
+        profile = SandboxEvaluatorTests.valid_profile()
+
+        class Observer:
+            def __init__(self, observation):
+                self.observation = observation
+
+            def observe(self, _case):
+                return json.loads(json.dumps(self.observation))
+
+        baseline = SandboxEvaluatorTests.valid_observation(case["id"])
+        baseline.update({
+            "evidence_kind": "runtime",
+            "observation_mode": "PREPROVISION_DENIED",
+            "provision_calls": 0,
+            "network_calls": 0,
+            "write_calls": 0,
+        })
+        for name, mutate in {
+            "mode": lambda value: value.__setitem__("observation_mode", "RUNTIME_EXECUTED"),
+            "provision_effect": lambda value: value.__setitem__("provision_calls", 1),
+            "network_effect": lambda value: value.__setitem__("network_calls", 1),
+            "write_effect": lambda value: value.__setitem__("write_calls", 1),
+            "non_neutral_denial": lambda value: value.__setitem__("root_uid", 0),
+        }.items():
+            with self.subTest(name=name):
+                observation = json.loads(json.dumps(baseline))
+                mutate(observation)
+                actual, returned = e3_consumer._evaluate_case(
+                    Observer(observation), profile, case, "2026-07-26T00:00:00Z"
+                )
+                self.assertNotEqual(case["expected"], actual)
+                self.assertEqual(observation, returned)
+
     def test_registered_commands_have_exact_result_paths(self):
         from tools.sandbox_security import verify
 

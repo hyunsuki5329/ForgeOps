@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import weakref
 from typing import Callable, Mapping, Protocol
 

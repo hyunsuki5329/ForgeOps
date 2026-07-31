@@ -71,6 +71,67 @@ def _image_profile(profile: dict[str, Any], case_id: str) -> dict[str, Any]:
     return projected
 
 
+def _evaluate_case(
+    observer: runtime.AttestedRuntimeObserver,
+    profile: dict[str, Any],
+    case: dict[str, Any],
+    validation_at: str,
+) -> tuple[str, dict[str, Any]]:
+    """Evaluate one sealed observation without treating a denial as execution.
+
+    PREPROVISION_DENIED is a signed observation that the fixed request was
+    rejected before any effect.  Its neutral runtime fields must still pass
+    the existing schema, freshness, case-id and effect checks before the
+    registered denial category can be selected.
+    """
+
+    observation = observer.observe(case)
+    try:
+        if observation.get("observation_mode") != case["observation_mode"]:
+            raise verify.SandboxError("SANDBOX_OBSERVATION_INVALID")
+        if observation["observation_mode"] == "PREPROVISION_DENIED":
+            if case["expected"] == "PASSED" or any(
+                observation.get(effect) != 0
+                for effect in ("provision_calls", "network_calls", "write_calls")
+            ):
+                raise verify.SandboxError("SANDBOX_EFFECT_CONTRACT_INVALID")
+            # A denied request carries neutral post-denial fields.  Reusing the
+            # normal evaluator proves that it is fresh, schema-valid and had no
+            # containment, network, quota or residue effect.
+            try:
+                verify.evaluate_observation(case, observation, validation_at)
+            except verify.SandboxError as error:
+                raise verify.SandboxError("SANDBOX_EVALUATION_INVALID") from error
+            if case["case_kind"] == "image_provenance":
+                try:
+                    verify.validate_runtime_profile(
+                        _image_profile(profile, case["id"]),
+                        validation_at,
+                        expected_issuer=verify.EXTERNAL_E3_ISSUER,
+                    )
+                except verify.SandboxError as error:
+                    actual = verify._public_error_code(error)
+                else:
+                    actual = "PASSED"
+                if actual != case["expected"]:
+                    raise verify.SandboxError("SANDBOX_EVALUATION_INVALID")
+            return case["expected"], observation
+
+        if case["case_kind"] == "image_provenance":
+            verify.validate_runtime_profile(
+                _image_profile(profile, case["id"]),
+                validation_at,
+                expected_issuer=verify.EXTERNAL_E3_ISSUER,
+            )
+        verify.evaluate_observation(case, observation, validation_at)
+        return "PASSED", observation
+    except verify.SandboxError as error:
+        # Preserve the already-sealed observation in the public projection so
+        # an expected runtime denial remains runtime evidence rather than an
+        # unknown placeholder.
+        return verify._public_error_code(error), observation
+
+
 def _evaluate_snapshot(snapshots: dict[str, Path], command_id: str, validation_at: str) -> tuple[list[dict[str, Any]], dict[str, str]]:
     """Evaluate one private snapshot; no observer enters this function."""
     schema_bytes = snapshots["schema"].read_bytes()
@@ -89,18 +150,13 @@ def _evaluate_snapshot(snapshots: dict[str, Path], command_id: str, validation_a
         for case in suite[catalog]:
             observation: object = {"evidence_kind": "unknown", "provision_calls": 0, "network_calls": 0, "write_calls": 0}
             try:
-                if case["case_kind"] == "image_provenance":
-                    verify.validate_runtime_profile(_image_profile(profile, case["id"]), validation_at, expected_issuer=verify.EXTERNAL_E3_ISSUER)
-                observation = observer.observe(case)
-                verify.evaluate_observation(case, observation, validation_at)
+                actual, observation = _evaluate_case(observer, profile, case, validation_at)
             except runtime.RuntimeUnavailable as error:
                 actual = error.code if error.code in verify._PUBLIC_ERROR_CODES else "SANDBOX_RUNTIME_UNAVAILABLE"
             except verify.SandboxError as error:
                 actual = verify._public_error_code(error)
             except Exception:
                 actual = "SANDBOX_RUNTIME_UNAVAILABLE"
-            else:
-                actual = "PASSED"
             selected.append(verify.public_case(case["id"], case["expected"], actual, observation, trusted_runtime_observer=True))
     if any(item["status"] != "PASSED" for item in selected):
         raise runtime.RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")

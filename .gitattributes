@@ -1,0 +1,4 @@
+contracts/forgeops-sandbox-contract/1.0/schema.json text eol=lf
+fixtures/forgeops-sandbox-security/suite.json text eol=lf
+tools/sandbox_security/e3_helper.py text eol=lf
+tools/sandbox_security/e3_probe.py text eol=lf

@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -20,6 +21,110 @@ VALIDATION_AT = datetime(2026, 7, 30, tzinfo=timezone.utc)
 
 
 class E3WorkflowPolicyTests(unittest.TestCase):
+    def test_primary_key_parser_ignores_subkeys_and_rejects_an_appended_primary(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        install = text.split("- name: Install rootless Docker prerequisites", 1)[1].split(
+            "- name: Configure rootless Docker", 1
+        )[0]
+        match = re.search(
+            r'docker_primary_fingerprints="\$\(.*?awk -F: \'(.*?)\'\s*\)"',
+            install,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(match)
+        awk_program = match.group(1)
+        self.assertEqual(
+            [
+                '$1 == "pub" { awaiting_primary_fpr = 1; next }',
+                '$1 == "sub" { awaiting_primary_fpr = 0; next }',
+                'awaiting_primary_fpr && $1 == "fpr" { print $10; awaiting_primary_fpr = 0 }',
+            ],
+            [line.strip() for line in awk_program.splitlines() if line.strip()],
+        )
+
+        pinned = "9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
+        subkey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        attacker = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        valid_listing = (
+            "pub:-:4096:1:8D81803C0EBFCD88:0:0:::::::\n"
+            f"fpr:::::::::{pinned}:\n"
+            "uid:-::::0::Docker Release (CE deb):\n"
+            "sub:-:4096:1:7EA0A9C3F273FCD8:0:0:::::::\n"
+            f"fpr:::::::::{subkey}:\n"
+        )
+        appended_primary = valid_listing + (
+            "pub:-:4096:1:BBBBBBBBBBBBBBBB:0:0:::::::\n"
+            f"fpr:::::::::{attacker}:\n"
+        )
+
+        def primary_fingerprints(listing: str) -> tuple[int, list[str]]:
+            primary_count = 0
+            awaiting_primary_fpr = False
+            fingerprints: list[str] = []
+            for line in listing.splitlines():
+                fields = line.split(":")
+                if fields[0] == "pub":
+                    primary_count += 1
+                    awaiting_primary_fpr = True
+                elif fields[0] == "sub":
+                    awaiting_primary_fpr = False
+                elif awaiting_primary_fpr and fields[0] == "fpr":
+                    fingerprints.append(fields[9])
+                    awaiting_primary_fpr = False
+            return primary_count, fingerprints
+
+        self.assertEqual((1, [pinned]), primary_fingerprints(valid_listing))
+        self.assertEqual((2, [pinned, attacker]), primary_fingerprints(appended_primary))
+        self.assertIn('test "$docker_primary_pub_count" = "1" || prerequisite_fail "E3_ROOTLESS_KEY_FINGERPRINT_MISMATCH" 48', install)
+        self.assertIn('test "$docker_primary_fingerprint_count" = "1" || prerequisite_fail "E3_ROOTLESS_KEY_FINGERPRINT_MISMATCH" 48', install)
+        self.assertIn('test "$docker_primary_fingerprints" = "9DC858229FC7DD38854AE2D88D81803C0EBFCD88" || prerequisite_fail "E3_ROOTLESS_KEY_FINGERPRINT_MISMATCH" 48', install)
+
+    def test_rootless_prerequisite_bootstraps_only_the_fingerprint_pinned_docker_repository(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        install = text.split("- name: Install rootless Docker prerequisites", 1)[1].split(
+            "- name: Configure rootless Docker", 1
+        )[0]
+        repository_template = (
+            "Types: deb\\n"
+            "URIs: https://download.docker.com/linux/ubuntu\\n"
+            "Suites: %s\\n"
+            "Components: stable\\n"
+            "Architectures: %s\\n"
+            "Signed-By: /etc/apt/keyrings/docker.asc\\n"
+        )
+        repository_write = f"printf '{repository_template}' \"$VERSION_CODENAME\" \"$architecture\""
+
+        self.assertIn("https://download.docker.com/linux/ubuntu/gpg", install)
+        self.assertIn("--proto '=https'", install)
+        self.assertIn("--proto-redir '=https'", install)
+        self.assertIn("--tlsv1.2", install)
+        self.assertIn("--output \"$docker_key_temp\"", install)
+        self.assertIn("9DC858229FC7DD38854AE2D88D81803C0EBFCD88", install)
+        self.assertIn("gpg --batch --show-keys --with-colons --with-fingerprint", install)
+        self.assertIn("sudo install -m 0755 -d /etc/apt/keyrings", install)
+        self.assertIn('sudo install -m 0644 "$docker_key_temp" /etc/apt/keyrings/docker.asc', install)
+        self.assertIn(repository_write, install)
+        self.assertIn('sudo install -m 0644 "$docker_repository_temp" /etc/apt/sources.list.d/docker.sources', install)
+        self.assertNotIn("/etc/apt/sources.list.d/docker.list", install)
+        self.assertIn('test "${ID:-}" = "ubuntu"', install)
+        self.assertIn('test "${VERSION_ID:-}" = "24.04"', install)
+        self.assertIn('test "${VERSION_CODENAME:-}" = "noble"', install)
+        self.assertIn('test "$architecture" = "amd64"', install)
+        self.assertLess(install.index(repository_write), install.index("sudo apt-get update"))
+        self.assertLess(install.index("sudo apt-get update"), install.index("apt-cache madison docker-ce-rootless-extras"))
+        expected_failures = {
+            "E3_ROOTLESS_KEY_DOWNLOAD_FAILED": 47,
+            "E3_ROOTLESS_KEY_FINGERPRINT_MISMATCH": 48,
+            "E3_ROOTLESS_KEYRING_INSTALL_FAILED": 49,
+            "E3_ROOTLESS_REPOSITORY_CONFIG_INVALID": 50,
+            "E3_ROOTLESS_REPOSITORY_UPDATE_FAILED": 51,
+        }
+        for reason, code in expected_failures.items():
+            with self.subTest(reason=reason):
+                self.assertIn(f'prerequisite_fail "{reason}" {code}', install)
+        for forbidden in ("| sh", "| bash", "get.docker.com", "apt-key", "trusted=yes", "add-apt-repository", "--privileged"):
+            self.assertNotIn(forbidden, install)
+
     def test_verify_job_installs_version_matched_rootless_prerequisites_before_configuration(self):
         text = WORKFLOW.read_text(encoding="utf-8")
         install = text.split("- name: Install rootless Docker prerequisites", 1)[1].split(
@@ -60,7 +165,7 @@ class E3WorkflowPolicyTests(unittest.TestCase):
         for reason, code in expected_failures.items():
             with self.subTest(reason=reason):
                 self.assertIn(f'prerequisite_fail "{reason}" {code}', install)
-        for forbidden in ("curl |", "curl -", "get.docker.com", "--privileged"):
+        for forbidden in ("curl |", "| sh", "| bash", "get.docker.com", "--privileged"):
             self.assertNotIn(forbidden, install)
 
     def test_workflow_is_manual_two_job_and_fail_closed_before_effects(self):

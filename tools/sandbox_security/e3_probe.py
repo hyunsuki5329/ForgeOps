@@ -10,6 +10,11 @@ import tempfile
 
 _MODES = frozenset({"containment", "egress-client", "egress-proxy", "quota", "teardown-canary"})
 _TIMEOUT = 1.0
+_EGRESS_FIELDS = (
+    "root_uid", "rootfs_read_only", "cap_drop_all", "no_new_privileges", "forbidden_mounts",
+    "forbidden_devices", "direct_socket_calls", "direct_dns_calls", "proxy_calls",
+    "proxy_destination", "connected_addresses", "redirects", "quota_exceeded",
+)
 
 
 def _status() -> dict[str, str]:
@@ -57,7 +62,8 @@ def _attempt_connection(host: str, port: int) -> bool:
 
 
 def _egress_client() -> dict[str, object]:
-    base = _containment()
+    containment = _containment()
+    base = {field: containment[field] for field in _EGRESS_FIELDS}
     try: socket.getaddrinfo("example.invalid", 443, type=socket.SOCK_STREAM); dns_attempted = 1
     except OSError: dns_attempted = 1
     socket_attempts = [

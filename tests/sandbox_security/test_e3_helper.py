@@ -271,6 +271,41 @@ class FixedE3HelperTests(unittest.TestCase):
             set(json.loads(output.getvalue())),
         )
 
+    def test_egress_client_emits_only_helper_closed_fields_in_order(self):
+        from tools.sandbox_security import e3_probe
+
+        class Connection:
+            def __init__(self) -> None:
+                self.request = b""
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args: object) -> None:
+                return None
+
+            def sendall(self, value: bytes) -> None:
+                self.request = value
+
+            def recv(self, _size: int) -> bytes:
+                return b"HTTP/1.1 302 Found\r\n\r\n" if b"/redirect" in self.request else b"HTTP/1.1 200 OK\r\n\r\n"
+
+        expected_ids = (
+            "positive-exact-proxy-destination", "negative-direct-dns", "negative-direct-socket",
+            "negative-loopback", "negative-private-address", "negative-metadata-address", "negative-redirect",
+        )
+        expected_fields = {
+            "root_uid", "rootfs_read_only", "cap_drop_all", "no_new_privileges", "forbidden_mounts",
+            "forbidden_devices", "direct_socket_calls", "direct_dns_calls", "proxy_calls",
+            "proxy_destination", "connected_addresses", "redirects", "quota_exceeded",
+        }
+        with mock.patch.object(e3_probe.os, "getuid", return_value=1000, create=True), mock.patch.object(e3_probe.socket, "getaddrinfo", return_value=[]), mock.patch.object(e3_probe.socket, "create_connection", side_effect=lambda *_args, **_kwargs: Connection()):
+            scenarios = e3_probe._egress_client()["egress_scenarios"]
+
+        self.assertEqual(expected_ids, tuple(scenarios))
+        for scenario in scenarios.values():
+            self.assertEqual(expected_fields, set(scenario))
+
     def test_fixed_command_graph_is_shell_free_bounded_and_has_no_escape_flags(self):
         from tools.sandbox_security.e3_helper import fixed_command_graph
 

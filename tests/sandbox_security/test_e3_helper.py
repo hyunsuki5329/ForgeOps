@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import io
 import inspect
+import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -134,6 +136,23 @@ class RecordingRunner:
 
 
 class FixedE3HelperTests(unittest.TestCase):
+    def test_direct_path_cli_bootstraps_project_package_and_fails_closed_for_incomplete_identity(self):
+        environment = os.environ.copy()
+        for name in tuple(environment):
+            if name.startswith("GITHUB_") or name.startswith("FORGEOPS_E3_") or name == "PYTHONPATH":
+                environment.pop(name)
+        completed = subprocess.run(
+            [sys.executable, "tools/sandbox_security/e3_helper.py"],
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(2, completed.returncode)
+        self.assertNotIn("ModuleNotFoundError", completed.stderr)
+
     def test_cli_uses_only_protected_github_identity_and_fixed_repository_paths(self):
         from tools.sandbox_security import e3_helper
 

@@ -20,6 +20,30 @@ SUITE = ROOT / "fixtures/forgeops-sandbox-security/suite.json"
 IMAGE = "ghcr.io/example/forgeops-e3@sha256:" + "c" * 64
 
 
+class E3ImageRecipeTests(unittest.TestCase):
+    def test_workspace_is_owned_by_the_unprivileged_probe_before_the_entrypoint(self):
+        recipe = (ROOT / "tools/sandbox_security/e3_image/Dockerfile").read_text(encoding="utf-8")
+        instructions = [line.strip() for line in recipe.splitlines() if line.strip()]
+
+        workspace_setups = [
+            index
+            for index, instruction in enumerate(instructions)
+            if instruction.startswith("RUN ")
+            and "mkdir -p /workspace" in instruction
+            and "chown 1000:1000 /workspace" in instruction
+        ]
+        self.assertEqual(1, len(workspace_setups))
+        workspace_setup = workspace_setups[0]
+        unprivileged_user = instructions.index("USER 1000:1000")
+        entrypoint = instructions.index('ENTRYPOINT ["python3", "/opt/forgeops/e3_probe.py"]')
+
+        self.assertLess(workspace_setup, unprivileged_user)
+        self.assertLess(unprivileged_user, entrypoint)
+        self.assertNotIn("USER root", instructions)
+        self.assertNotIn("--privileged", recipe)
+        self.assertNotIn("--device", recipe)
+
+
 class RootlessSetupTests(unittest.TestCase):
     def test_subid_mapping_requires_exact_user_and_positive_numeric_range(self):
         script = (ROOT / "tools/sandbox_security/setup_rootless.sh").read_text(encoding="utf-8")

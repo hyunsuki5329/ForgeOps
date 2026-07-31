@@ -34,11 +34,14 @@ E3_HELPER_INPUTS = {
 
 
 class E3WorkflowPolicyTests(unittest.TestCase):
-    def test_exact_phase0_byte_inputs_are_lf_without_a_repository_wide_policy(self):
+    def test_exact_phase0_inputs_and_e3_artifacts_are_lf_without_a_repository_wide_policy(self):
+        from tools.sandbox_security.e3_artifact import E3_ARTIFACT_FILES
+
         suite = json.loads(PHASE0_SUITE.read_text(encoding="utf-8"))
         exact_byte_inputs = tuple(
             sorted(
                 E3_HELPER_INPUTS
+                | set(E3_ARTIFACT_FILES)
                 | {
                     input_ref
                     for registration in suite["registrations"]

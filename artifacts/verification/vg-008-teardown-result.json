@@ -1,22 +1,22 @@
 {
-  "category": "SANDBOX_RUNTIME_UNAVAILABLE",
+  "category": "PASSED",
   "command_id": "teardown-negative",
   "counts": {
-    "cases_total": 0,
+    "cases_total": 5,
     "failed": 0,
     "not_run": 0,
-    "passed": 0
+    "passed": 5
   },
-  "e3_runtime_assertion": false,
+  "e3_runtime_assertion": true,
   "effect_counters": {
     "network_calls": 0,
-    "provision_calls": 0,
-    "write_calls": 0
+    "provision_calls": 5,
+    "write_calls": 5
   },
   "input_hashes": {
-    "runtime_profile_sha256": "8a7df8d9fcc834bfaddbdd06301ed674c1a0dd7d1a63c7822f9d0d7f3527623e",
-    "schema_sha256": "39a8eba208b00a8189655ed026ddc41f26bab22eb86bd6d3eaa691d4a11e1a9f",
-    "suite_sha256": "edc40d8b7e4fc730be3fc416e4455d1028905bb2da54df63455b3d05e6a80754"
+    "runtime_profile_sha256": "441e29ba41d593e0fc190d96d2b5a6c85d42b7a8c3f6f4199acb527524ca5638",
+    "schema_sha256": "18609692846039503c3a62ace09b378066b1b1db1b540203fee92996d5137631",
+    "suite_sha256": "565653c17ad59ffbedb3e0472b3250c2422df626b99ee0d560ea94b9557d0913"
   },
   "residue_counters": {
     "leases": 0,
@@ -27,6 +27,6 @@
   },
   "result_version": "1.0",
   "runtime": "docker",
-  "status": "NOT_RUN",
-  "time": "2026-07-30T07:18:22Z"
+  "status": "PASSED",
+  "time": "2026-07-31T08:55:44Z"
 }

@@ -1,12 +1,1 @@
-{
-  "runtime": "docker",
-  "available": false,
-  "rootless": false,
-  "image_ref": "unavailable",
-  "image_digest": "unavailable",
-  "signature_verified": false,
-  "issuer": "unavailable",
-  "expected_issuer": "forgeops-test-issuer",
-  "provenance_ref": "unavailable",
-  "observed_at": "2026-07-26T00:00:00Z"
-}
+{"available":true,"expected_issuer":"https://token.actions.githubusercontent.com","image_digest":"sha256:285bc42c6a50a46fc074e1807886e70462010a841e6589cbc0734c40f5b53e44","image_ref":"ghcr.io/hyunsuki5329/forgeops-e3@sha256:285bc42c6a50a46fc074e1807886e70462010a841e6589cbc0734c40f5b53e44","issuer":"https://token.actions.githubusercontent.com","observed_at":"2026-07-31T08:55:30Z","provenance_ref":"sha256:a5356807fff2532615972d252945dc77a8fa7b7b791b51571ed71ebb89c7b923","rootless":true,"runtime":"docker","signature_verified":true}

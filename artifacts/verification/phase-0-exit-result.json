@@ -1,50 +1,19 @@
 {
   "assertions": {
     "exact_coverage": true,
-    "freshness_valid": false,
+    "freshness_valid": true,
     "input_hashes_valid": true,
     "public_safe": true,
     "tiers_sufficient": true
   },
-  "blockers": [
-    {
-      "command_id": "image-provenance-negative",
-      "gate_id": "VG-008",
-      "reason_code": "PHASE_EXIT_STATUS_NOT_RUN"
-    },
-    {
-      "command_id": "image-provenance-negative",
-      "gate_id": "VG-008",
-      "reason_code": "PHASE_EXIT_EVIDENCE_STALE"
-    },
-    {
-      "command_id": "containment-egress-negative",
-      "gate_id": "VG-008",
-      "reason_code": "PHASE_EXIT_STATUS_NOT_RUN"
-    },
-    {
-      "command_id": "containment-egress-negative",
-      "gate_id": "VG-008",
-      "reason_code": "PHASE_EXIT_EVIDENCE_STALE"
-    },
-    {
-      "command_id": "teardown-negative",
-      "gate_id": "VG-008",
-      "reason_code": "PHASE_EXIT_STATUS_NOT_RUN"
-    },
-    {
-      "command_id": "teardown-negative",
-      "gate_id": "VG-008",
-      "reason_code": "PHASE_EXIT_EVIDENCE_STALE"
-    }
-  ],
+  "blockers": [],
   "gate_results": [
     {
       "artifact_ref": "artifacts/verification/vg-001-protocol-conformance-result.json",
       "command_id": "protocol-conformance",
       "gate_id": "VG-001",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:14:07Z",
+      "observed_at": "2026-07-31T08:55:32Z",
       "profile_id": "forgeops-foundation-conformance",
       "public_safe": true,
       "required_tier": "E2",
@@ -55,7 +24,7 @@
       "command_id": "sample-fixture",
       "gate_id": "VG-001",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:14:07Z",
+      "observed_at": "2026-07-31T08:55:32Z",
       "profile_id": "forgeops-foundation-conformance",
       "public_safe": true,
       "required_tier": "E2",
@@ -66,7 +35,7 @@
       "command_id": "bridge-schema-fixture",
       "gate_id": "VG-002",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:13:48Z",
+      "observed_at": "2026-07-31T08:55:32Z",
       "profile_id": "forgeops-contract-bridge",
       "public_safe": true,
       "required_tier": "E2",
@@ -77,7 +46,7 @@
       "command_id": "state-transition-fixture",
       "gate_id": "VG-003",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:13:48Z",
+      "observed_at": "2026-07-31T08:55:33Z",
       "profile_id": "forgeops-state-contract",
       "public_safe": true,
       "required_tier": "E2",
@@ -88,7 +57,7 @@
       "command_id": "event-order-fixture",
       "gate_id": "VG-003",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:13:49Z",
+      "observed_at": "2026-07-31T08:55:33Z",
       "profile_id": "forgeops-state-contract",
       "public_safe": true,
       "required_tier": "E2",
@@ -99,7 +68,7 @@
       "command_id": "replay-contract-negative",
       "gate_id": "VG-003",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:13:51Z",
+      "observed_at": "2026-07-31T08:55:33Z",
       "profile_id": "forgeops-state-contract",
       "public_safe": true,
       "required_tier": "E2",
@@ -110,7 +79,7 @@
       "command_id": "interface-contract-fixture",
       "gate_id": "VG-004",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:14:05Z",
+      "observed_at": "2026-07-31T08:55:34Z",
       "profile_id": "forgeops-interface-contract",
       "public_safe": true,
       "required_tier": "E2",
@@ -121,7 +90,7 @@
       "command_id": "resource-authority-negative",
       "gate_id": "VG-005",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:13:53Z",
+      "observed_at": "2026-07-31T08:55:36Z",
       "profile_id": "forgeops-authority-resource",
       "public_safe": true,
       "required_tier": "E2",
@@ -132,7 +101,7 @@
       "command_id": "protected-read-negative",
       "gate_id": "VG-005",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:13:54Z",
+      "observed_at": "2026-07-31T08:55:36Z",
       "profile_id": "forgeops-authority-resource",
       "public_safe": true,
       "required_tier": "E2",
@@ -143,7 +112,7 @@
       "command_id": "command-network-negative",
       "gate_id": "VG-006",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:14:00Z",
+      "observed_at": "2026-07-31T08:55:40Z",
       "profile_id": "forgeops-authority-command-network",
       "public_safe": true,
       "required_tier": "E2",
@@ -154,7 +123,7 @@
       "command_id": "approval-negative-fixture",
       "gate_id": "VG-007",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:14:04Z",
+      "observed_at": "2026-07-31T08:55:43Z",
       "profile_id": "forgeops-approval-policy",
       "public_safe": true,
       "required_tier": "E2",
@@ -165,40 +134,40 @@
       "command_id": "image-provenance-negative",
       "gate_id": "VG-008",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T07:18:20Z",
+      "observed_at": "2026-07-31T08:55:43Z",
       "profile_id": "forgeops-sandbox-security",
       "public_safe": true,
       "required_tier": "E3",
-      "status": "NOT_RUN"
+      "status": "PASSED"
     },
     {
       "artifact_ref": "artifacts/verification/vg-008-containment-egress-result.json",
       "command_id": "containment-egress-negative",
       "gate_id": "VG-008",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T07:18:21Z",
+      "observed_at": "2026-07-31T08:55:43Z",
       "profile_id": "forgeops-sandbox-security",
       "public_safe": true,
       "required_tier": "E3",
-      "status": "NOT_RUN"
+      "status": "PASSED"
     },
     {
       "artifact_ref": "artifacts/verification/vg-008-teardown-result.json",
       "command_id": "teardown-negative",
       "gate_id": "VG-008",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T07:18:22Z",
+      "observed_at": "2026-07-31T08:55:44Z",
       "profile_id": "forgeops-sandbox-security",
       "public_safe": true,
       "required_tier": "E3",
-      "status": "NOT_RUN"
+      "status": "PASSED"
     },
     {
       "artifact_ref": "artifacts/verification/vg-009-secret-surface-result.json",
       "command_id": "secret-surface-negative",
       "gate_id": "VG-009",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:14:20Z",
+      "observed_at": "2026-07-31T08:55:44Z",
       "profile_id": "forgeops-secret-artifact-security",
       "public_safe": true,
       "required_tier": "E3",
@@ -209,7 +178,7 @@
       "command_id": "artifact-isolation-negative",
       "gate_id": "VG-009",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:14:21Z",
+      "observed_at": "2026-07-31T08:55:44Z",
       "profile_id": "forgeops-secret-artifact-security",
       "public_safe": true,
       "required_tier": "E3",
@@ -220,7 +189,7 @@
       "command_id": "evidence-positive-negative",
       "gate_id": "VG-023",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:14:06Z",
+      "observed_at": "2026-07-31T08:55:45Z",
       "profile_id": "forgeops-evidence-contract",
       "public_safe": true,
       "required_tier": "E2",
@@ -231,23 +200,23 @@
       "command_id": "extension-provenance",
       "gate_id": "VG-023",
       "input_hashes_valid": true,
-      "observed_at": "2026-07-30T08:14:07Z",
+      "observed_at": "2026-07-31T08:55:45Z",
       "profile_id": "forgeops-evidence-contract",
       "public_safe": true,
       "required_tier": "E2",
       "status": "PASSED"
     }
   ],
-  "observed_at": "2026-07-30T08:14:21Z",
+  "observed_at": "2026-07-31T08:55:45Z",
   "phase_id": "phase-0",
   "registry_sha256": "ac29486b35cd64840b6ec3f7f9ef171cbccf82c63f1941cd4ecaf9e51386926b",
   "schema_version": "1.0",
-  "status": "NOT_READY",
+  "status": "READY",
   "summary": {
-    "blocked": 3,
+    "blocked": 0,
     "failed": 0,
-    "not_run": 3,
-    "passed": 15,
+    "not_run": 0,
+    "passed": 18,
     "required": 18
   }
 }

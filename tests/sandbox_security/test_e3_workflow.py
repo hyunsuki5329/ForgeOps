@@ -20,6 +20,49 @@ VALIDATION_AT = datetime(2026, 7, 30, tzinfo=timezone.utc)
 
 
 class E3WorkflowPolicyTests(unittest.TestCase):
+    def test_verify_job_installs_version_matched_rootless_prerequisites_before_configuration(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        install = text.split("- name: Install rootless Docker prerequisites", 1)[1].split(
+            "- name: Configure rootless Docker", 1
+        )[0]
+
+        self.assertLess(
+            text.index("- name: Install rootless Docker prerequisites"),
+            text.index("- name: Configure rootless Docker"),
+        )
+        self.assertIn("sudo apt-get update", install)
+        self.assertIn("dpkg-query --show --showformat='${Version}' docker-ce-cli", install)
+        self.assertIn("apt-cache policy uidmap", install)
+        self.assertIn("apt-cache madison docker-ce-rootless-extras", install)
+        self.assertIn(
+            "uidmap_version=\"$(apt-cache policy uidmap | awk '/Candidate:/ { print $2; exit }')\" || prerequisite_fail \"E3_ROOTLESS_UIDMAP_VERSION_UNAVAILABLE\" 41",
+            install,
+        )
+        self.assertIn(
+            "rootless_version=\"$(apt-cache madison docker-ce-rootless-extras | awk -v expected=\"$docker_version\" '$3 == expected { print $3; exit }')\" || prerequisite_fail \"E3_ROOTLESS_EXTRAS_VERSION_MISMATCH\" 42",
+            install,
+        )
+        self.assertIn('"uidmap=$uidmap_version"', install)
+        self.assertIn('"docker-ce-rootless-extras=$docker_version"', install)
+        self.assertIn("--no-install-recommends", install)
+        self.assertIn('sudo systemctl start "user@$runner_uid.service"', install)
+        self.assertIn('test -S "$XDG_RUNTIME_DIR/bus"', install)
+        self.assertIn('echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"', install)
+        expected_failures = {
+            "E3_ROOTLESS_DOCKER_CLI_VERSION_UNAVAILABLE": 40,
+            "E3_ROOTLESS_UIDMAP_VERSION_UNAVAILABLE": 41,
+            "E3_ROOTLESS_EXTRAS_VERSION_MISMATCH": 42,
+            "E3_ROOTLESS_PACKAGE_INSTALL_FAILED": 43,
+            "E3_ROOTLESS_USER_SESSION_FAILED": 44,
+            "E3_ROOTLESS_RUNTIME_DIR_INVALID": 45,
+            "E3_ROOTLESS_USER_BUS_MISSING": 46,
+        }
+        for reason, code in expected_failures.items():
+            with self.subTest(reason=reason):
+                self.assertIn(f'prerequisite_fail "{reason}" {code}', install)
+        for forbidden in ("curl |", "curl -", "get.docker.com", "--privileged"):
+            self.assertNotIn(forbidden, install)
+
     def test_workflow_is_manual_two_job_and_fail_closed_before_effects(self):
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("on:\n  workflow_dispatch:", text)
@@ -27,7 +70,8 @@ class E3WorkflowPolicyTests(unittest.TestCase):
             self.assertNotIn(forbidden, text)
         self.assertEqual(["build-sign", "verify-e3"], [line[2:-1] for line in text.splitlines() if line.startswith("  ") and not line.startswith("    ") and line.endswith(":") and line.strip() not in {"workflow_dispatch:", "permissions:", "concurrency:", "jobs:"}])
         self.assertIn("needs: build-sign", text)
-        self.assertEqual(2, text.count("runs-on: ubuntu-latest"))
+        self.assertEqual(2, text.count("runs-on: ubuntu-24.04"))
+        self.assertNotIn("runs-on: ubuntu-latest", text)
         self.assertEqual(2, text.count("github.ref_protected == true"))
         self.assertEqual(2, text.count("github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"))
         self.assertIn("permissions: {}", text)

@@ -19,6 +19,40 @@ IMAGE = "ghcr.io/example/forgeops-e3@sha256:" + "c" * 64
 
 
 class RootlessSetupTests(unittest.TestCase):
+    def test_subid_mapping_requires_exact_user_and_positive_numeric_range(self):
+        script = (ROOT / "tools/sandbox_security/setup_rootless.sh").read_text(encoding="utf-8")
+        self.assertIn("has_subid_mapping()", script)
+        self.assertIn("$1 == user", script)
+        self.assertIn("$2 ~ /^[0-9]+$/", script)
+        self.assertIn("$3 ~ /^[0-9]+$/", script)
+        self.assertIn("$2 > 0 && $3 > 0", script)
+        self.assertIn('has_subid_mapping /etc/subuid || fail "E3_ROOTLESS_SUBUID_MISSING" 24', script)
+        self.assertIn('has_subid_mapping /etc/subgid || fail "E3_ROOTLESS_SUBGID_MISSING" 25', script)
+        self.assertNotIn('grep -qF "${runner_user}:"', script)
+
+    def test_setup_names_each_prerequisite_and_runtime_failure_with_a_stable_code(self):
+        script = (ROOT / "tools/sandbox_security/setup_rootless.sh").read_text(encoding="utf-8")
+        expected = {
+            "E3_ROOTLESS_MUST_BE_UNPRIVILEGED": 20,
+            "E3_ROOTLESS_SETUP_TOOL_MISSING": 21,
+            "E3_ROOTLESS_NEWUIDMAP_MISSING": 22,
+            "E3_ROOTLESS_NEWGIDMAP_MISSING": 23,
+            "E3_ROOTLESS_SUBUID_MISSING": 24,
+            "E3_ROOTLESS_SUBGID_MISSING": 25,
+            "E3_ROOTLESS_CGROUP_V2_REQUIRED": 26,
+            "E3_ROOTLESS_CONTROLLER_MISSING": 27,
+            "E3_ROOTLESS_RUNTIME_DIR_INVALID": 28,
+            "E3_ROOTLESS_USER_BUS_MISSING": 29,
+            "E3_ROOTLESS_INSTALL_FAILED": 30,
+            "E3_ROOTLESS_SERVICE_FAILED": 31,
+            "E3_ROOTLESS_SOCKET_MISSING": 32,
+            "E3_ROOTLESS_SECURITY_OPTION_MISSING": 33,
+            "E3_ROOTLESS_CGROUP_DRIVER_INVALID": 34,
+        }
+        for reason, code in expected.items():
+            with self.subTest(reason=reason):
+                self.assertIn(f'fail "{reason}" {code}', script)
+
     def test_controller_check_is_order_independent_and_rejects_each_missing_controller(self):
         script = (ROOT / "tools/sandbox_security/setup_rootless.sh").read_text(encoding="utf-8")
         self.assertIn("for controller in memory pids cpu", script)

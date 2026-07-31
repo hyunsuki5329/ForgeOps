@@ -136,8 +136,13 @@ class SignedE3AttestationTests(unittest.TestCase):
             )
             profile = json.loads(outputs["profile"].read_text(encoding="utf-8"))
             receipt = json.loads(outputs["receipt"].read_text(encoding="utf-8"))
+            observations = json.loads(outputs["observations"].read_text(encoding="utf-8"))
             self.assertEqual("test", receipt["verification_kind"])
             self.assertEqual(hashlib.sha256(outputs["profile"].read_bytes()).hexdigest(), receipt["runtime_profile_sha256"])
+            self.assertEqual(
+                {"processes": 0, "mounts": 0, "leases": 0, "transient_secrets": 0, "workspaces": 0},
+                observations["terminal_residue"],
+            )
             self.assertEqual(self.identity.image_ref, profile["image_ref"])
 
     def test_direct_verification_uses_the_complete_fixed_cosign_argv(self):

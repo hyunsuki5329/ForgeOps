@@ -5,7 +5,9 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 import json
+from pathlib import Path
 import re
 import subprocess
 import weakref
@@ -140,7 +142,9 @@ _DIGEST_IMAGE = re.compile(r"^[^@\s]+@sha256:[0-9a-f]{64}$")
 _REGISTERED_PROBE_KINDS = frozenset(
     {"image_provenance", "containment", "egress", "quota", "teardown"}
 )
-_TRUSTED_ISSUER = "forgeops-test-issuer"
+LOCAL_TEST_ISSUER = "forgeops-test-issuer"
+EXTERNAL_E3_ISSUER = "https://token.actions.githubusercontent.com"
+_TRUSTED_ISSUER = LOCAL_TEST_ISSUER
 _VERSION_COMMAND = ["docker", "version", "--format", "{{json .Server}}"]
 _MIN_TIMEOUT_SECONDS = 1
 _MAX_TIMEOUT_SECONDS = 30
@@ -888,3 +892,172 @@ def _install_verified_e3_boundary() -> tuple[Callable[[object], bool], Callable[
 
 
 has_e3_construction, observe_e3 = _install_verified_e3_boundary()
+
+
+_ATTESTED_SEALS: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+_ATTESTED_TIMESTAMP = "%Y-%m-%dT%H:%M:%SZ"
+_ATTESTED_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+_ATTESTED_HEX = re.compile(r"^[0-9a-f]{64}$")
+_ATTESTED_CATALOGS = ("image_cases", "containment_cases", "egress_cases", "quota_cases", "teardown_cases")
+
+
+def _attested_hash(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _attested_time(value: object) -> datetime:
+    if type(value) is not str:
+        raise ValueError
+    return datetime.strptime(value, _ATTESTED_TIMESTAMP).replace(tzinfo=timezone.utc)
+
+
+def _attested_case_ids() -> tuple[str, ...]:
+    try:
+        suite = json.loads(
+            (Path(__file__).resolve().parents[2] / "fixtures/forgeops-sandbox-security/suite.json").read_text(encoding="utf-8")
+        )
+        return tuple(case["id"] for catalog in _ATTESTED_CATALOGS for case in suite[catalog])
+    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as error:
+        raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE") from error
+
+
+class AttestedRuntimeObserver(TrustedRuntimeObserver):
+    """Read only fresh, importer-sealed E3 observations from fixed public files."""
+
+    @classmethod
+    def from_imported_files(
+        cls,
+        profile_path: Path,
+        observations_path: Path,
+        receipt_path: Path,
+        validation_at: str,
+    ) -> "AttestedRuntimeObserver":
+        try:
+            profile_bytes = Path(profile_path).read_bytes()
+            observations_bytes = Path(observations_path).read_bytes()
+            receipt_bytes = Path(receipt_path).read_bytes()
+            profile = json.loads(profile_bytes.decode("utf-8"))
+            observation_document = json.loads(observations_bytes.decode("utf-8"))
+            receipt = json.loads(receipt_bytes.decode("utf-8"))
+        except (OSError, TypeError, UnicodeError, json.JSONDecodeError) as error:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE") from error
+        if type(cls) is not type or cls is not AttestedRuntimeObserver:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        if not _validate_attested_import(profile, observation_document, receipt, profile_bytes, observations_bytes, validation_at):
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        observer = cls()
+        observer._profile = copy.deepcopy(profile)
+        observer._observations = {item["case_id"]: copy.deepcopy(item) for item in observation_document["observations"]}
+        observer._validation_at = validation_at
+        _ATTESTED_SEALS[observer] = (
+            _canonical_attested(observer._profile),
+            _canonical_attested(observer._observations),
+            validation_at,
+        )
+        return observer
+
+    def observe(self, case: dict) -> dict:
+        if not has_attested_e3_construction(self) or type(case) is not dict or type(case.get("id")) is not str:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        try:
+            return copy.deepcopy(self._observations[case["id"]])
+        except KeyError as error:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE") from error
+
+    def runtime_profile(self) -> dict:
+        if not has_attested_e3_construction(self):
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        return copy.deepcopy(self._profile)
+
+
+def _canonical_attested(value: object) -> bytes:
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode("utf-8")
+
+
+def _validate_attested_import(
+    profile: object,
+    observation_document: object,
+    receipt: object,
+    profile_bytes: bytes,
+    observations_bytes: bytes,
+    validation_at: str,
+) -> bool:
+    """Validate every imported public field before any observer exists."""
+    try:
+        if type(profile) is not dict or type(observation_document) is not dict or type(receipt) is not dict:
+            return False
+        profile_keys = {
+            "runtime", "available", "rootless", "image_ref", "image_digest", "signature_verified",
+            "issuer", "expected_issuer", "provenance_ref", "observed_at",
+        }
+        if set(profile) != profile_keys or set(observation_document) != {"observations_version", "observed_at", "observations", "terminal_residue"}:
+            return False
+        if receipt.get("verification_kind") != "runtime" or receipt.get("issuer") != EXTERNAL_E3_ISSUER:
+            return False
+        if receipt.get("runtime_profile_sha256") != _attested_hash(profile_bytes):
+            return False
+        if receipt.get("runtime_observations_sha256") != _attested_hash(observations_bytes):
+            return False
+        if not all(type(receipt.get(key)) is str and _ATTESTED_HEX.fullmatch(receipt[key]) for key in ("runtime_profile_sha256", "runtime_observations_sha256")):
+            return False
+        if (
+            profile["runtime"] != "docker" or profile["available"] is not True or profile["rootless"] is not True
+            or profile["signature_verified"] is not True or profile["issuer"] != EXTERNAL_E3_ISSUER
+            or profile["expected_issuer"] != EXTERNAL_E3_ISSUER or type(profile["image_ref"]) is not str
+            or type(profile["image_digest"]) is not str or _ATTESTED_DIGEST.fullmatch(profile["image_digest"]) is None
+            or profile["image_ref"].rsplit("@", 1)[-1] != profile["image_digest"]
+            or receipt.get("image_ref") != profile["image_ref"] or receipt.get("image_digest") != profile["image_digest"]
+        ):
+            return False
+        expected_ids = _attested_case_ids()
+        observations = observation_document["observations"]
+        terminal_residue = observation_document["terminal_residue"]
+        if (
+            type(terminal_residue) is not dict
+            or set(terminal_residue) != {"processes", "mounts", "leases", "transient_secrets", "workspaces"}
+            or any(type(value) is not int or value != 0 for value in terminal_residue.values())
+        ):
+            return False
+        if type(observations) is not list or len(observations) != 23:
+            return False
+        if tuple(item.get("case_id") if type(item) is dict else None for item in observations) != expected_ids:
+            return False
+        if len({item["case_id"] for item in observations}) != 23:
+            return False
+        trusted_at = _attested_time(validation_at)
+        timestamps = (profile["observed_at"], observation_document["observed_at"], receipt.get("observed_at"), *(item.get("observed_at") for item in observations if type(item) is dict))
+        for timestamp in timestamps:
+            age = (trusted_at - _attested_time(timestamp)).total_seconds()
+            if not 0 <= age <= 300:
+                return False
+        for observation in observations:
+            if type(observation) is not dict or observation.get("evidence_kind") != "runtime":
+                return False
+            if set(observation.get("residue", {})) != {"processes", "mounts", "leases", "transient_secrets", "workspaces"}:
+                return False
+            if any(type(value) is not int or value < 0 for value in observation["residue"].values()):
+                return False
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return False
+    return True
+
+
+_ATTESTED_CLASS_SNAPSHOT = dict(vars(AttestedRuntimeObserver))
+
+
+def has_attested_e3_construction(observer: object) -> bool:
+    """Verify the immutable imported-E3 construction and mutation-free surface."""
+    try:
+        seal = _ATTESTED_SEALS.get(observer)
+        values = vars(observer)
+        return (
+            type(observer) is AttestedRuntimeObserver
+            and dict(vars(AttestedRuntimeObserver)) == _ATTESTED_CLASS_SNAPSHOT
+            and set(values) == {"_profile", "_observations", "_validation_at"}
+            and type(seal) is tuple and len(seal) == 3
+            and _canonical_attested(values["_profile"]) == seal[0]
+            and _canonical_attested(values["_observations"]) == seal[1]
+            and values["_validation_at"] == seal[2]
+        )
+    except (AttributeError, TypeError, ValueError):
+        return False

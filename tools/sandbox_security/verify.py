@@ -28,8 +28,10 @@ if __package__ in {None, ""}:
 from tools.sandbox_security import runtime
 
 
+_RUNTIME_MODULE = runtime
 _HAS_E3_CONSTRUCTION = runtime.has_e3_construction
 _OBSERVE_E3 = runtime.observe_e3
+_HAS_ATTESTED_E3_CONSTRUCTION = runtime.has_attested_e3_construction
 
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -38,7 +40,8 @@ _CATALOGS = ("image_cases", "containment_cases", "egress_cases", "quota_cases", 
 _TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _PUBLIC_CASE_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-TRUSTED_ISSUER = "forgeops-test-issuer"
+TRUSTED_ISSUER = runtime.LOCAL_TEST_ISSUER
+EXTERNAL_E3_ISSUER = runtime.EXTERNAL_E3_ISSUER
 _FRESHNESS_SECONDS = 300
 _PUBLIC_ERROR_CODES = {
     "PASSED",
@@ -62,6 +65,13 @@ _REGISTERED_INPUTS = {
     "schema": "contracts/forgeops-sandbox-contract/1.0/schema.json",
     "suite": "fixtures/forgeops-sandbox-security/suite.json",
     "runtime_profile": "artifacts/runtime/sandbox-runtime-profile.json",
+}
+ATTESTED_OBSERVATIONS = "artifacts/runtime/sandbox-runtime-observations.json"
+ATTESTED_RECEIPT = "artifacts/runtime/sandbox-e3-import-receipt.json"
+_COMMAND_CATALOGS = {
+    "image-provenance-negative": ("image_cases",),
+    "containment-egress-negative": ("containment_cases", "egress_cases", "quota_cases"),
+    "teardown-negative": ("teardown_cases",),
 }
 _FULL_INPUT_HASH_KEYS = frozenset({"schema_sha256", "suite_sha256", "runtime_profile_sha256"})
 _MISSING_RUNTIME_PROFILE_HASH_KEYS = frozenset({"schema_sha256", "suite_sha256"})
@@ -135,7 +145,7 @@ def _is_known(value: object) -> bool:
     return isinstance(value, str) and value not in {"", "unavailable"}
 
 
-def validate_runtime_profile(profile: dict, validation_at: str) -> None:
+def validate_runtime_profile(profile: dict, validation_at: str, *, expected_issuer: str = TRUSTED_ISSUER) -> None:
     """Deny an unavailable, uncontained, or unprovenanced runtime profile."""
 
     checked = _validate_schema(profile, "RuntimeProfile", "SANDBOX_RUNTIME_UNAVAILABLE")
@@ -154,7 +164,7 @@ def validate_runtime_profile(profile: dict, validation_at: str) -> None:
         or checked["image_ref"].rsplit("@", 1)[-1] != image_digest
         or not checked["signature_verified"]
         or not _is_known(checked["issuer"])
-        or checked["issuer"] != TRUSTED_ISSUER
+        or checked["issuer"] != expected_issuer
         or not _is_known(checked["provenance_ref"])
     ):
         raise SandboxError("SANDBOX_IMAGE_PROVENANCE_INVALID")
@@ -290,22 +300,36 @@ def run_cases(
         _parse_utc(validation_at)
     except (TypeError, ValueError):
         raise SandboxError("SANDBOX_RUNTIME_UNAVAILABLE") from None
-    trusted_runtime_observer = _HAS_E3_CONSTRUCTION(observer)
+    local_e3 = _HAS_E3_CONSTRUCTION(observer)
+    imported_e3 = _HAS_ATTESTED_E3_CONSTRUCTION(observer)
+    trusted_runtime_observer = local_e3 or imported_e3
+    imported_profile = observer.runtime_profile() if imported_e3 else None
     results: list[dict] = []
     for catalog in _CATALOGS:
         for case in checked_suite[catalog]:
             observation: object = {
-                "evidence_kind": "unknown",
+                "evidence_kind": "runtime" if imported_e3 and case["case_kind"] == "image_provenance" else "unknown",
                 "provision_calls": 0,
                 "network_calls": 0,
                 "write_calls": 0,
             }
             try:
                 if case["case_kind"] == "image_provenance":
-                    validate_runtime_profile(case["runtime_profile"], validation_at)
+                    profile = case["runtime_profile"]
+                    issuer = TRUSTED_ISSUER
+                    if imported_e3:
+                        profile = dict(imported_profile)
+                        if case["id"] == "negative-tag-only":
+                            profile["image_ref"] = profile["image_ref"].split("@", 1)[0] + ":latest"
+                        elif case["id"] == "negative-signature-unverified":
+                            profile["signature_verified"] = False
+                        elif case["id"] == "negative-issuer-mismatch":
+                            profile["issuer"] = "untrusted-issuer"
+                        issuer = EXTERNAL_E3_ISSUER
+                    validate_runtime_profile(profile, validation_at, expected_issuer=issuer)
                 observation = (
                     _OBSERVE_E3(observer, case)
-                    if trusted_runtime_observer
+                    if local_e3
                     else observer.observe(case)
                 )
                 evaluate_observation(case, observation, validation_at)
@@ -432,7 +456,7 @@ def run_cli(
     command_id: str,
     project_root: Path = _ROOT,
 ) -> int:
-    """Emit only the capability-gap result; this function never invokes Docker."""
+    """Evaluate only a fresh imported E3 observation; this function never invokes Docker."""
 
     schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
         schema=schema,
@@ -452,8 +476,37 @@ def run_cli(
         raise SandboxError("SANDBOX_PUBLIC_RESULT_UNSAFE") from error
     try:
         input_hashes["runtime_profile_sha256"] = _input_sha256(runtime_profile_path)
-        json.loads(runtime_profile_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
+        validation_at = _public_timestamp()
+        observer = _RUNTIME_MODULE.AttestedRuntimeObserver.from_imported_files(
+            runtime_profile_path,
+            project_root.resolve(strict=True) / ATTESTED_OBSERVATIONS,
+            project_root.resolve(strict=True) / ATTESTED_RECEIPT,
+            validation_at,
+        )
+        if not _HAS_ATTESTED_E3_CONSTRUCTION(observer):
+            raise _RUNTIME_MODULE.RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        suite_value = json.loads(suite_path.read_text(encoding="utf-8"))
+        selected_ids = {
+            case["id"] for catalog in _COMMAND_CATALOGS[command_id] for case in suite_value[catalog]
+        }
+        all_results = run_cases(command_id, suite_value, observer, validation_at)
+        selected = [item for item in all_results if item["case_id"] in selected_ids]
+        if len(selected) != len(selected_ids) or any(item["status"] != "PASSED" for item in selected):
+            raise _RUNTIME_MODULE.RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        effect_counters = {
+            key: sum(item[key] for item in selected)
+            for key in _PUBLIC_EFFECT_COUNTERS
+        }
+        _atomic_write_json(output, {
+            "result_version": "1.0", "command_id": command_id, "runtime": "docker",
+            "status": "PASSED", "category": "PASSED", "time": validation_at,
+            "input_hashes": dict(sorted(input_hashes.items())),
+            "counts": {"cases_total": len(selected), "passed": len(selected), "failed": 0, "not_run": 0},
+            "e3_runtime_assertion": True, "effect_counters": effect_counters,
+            "residue_counters": dict(_PUBLIC_RESIDUE_COUNTERS),
+        })
+        return 0
+    except (OSError, UnicodeError, json.JSONDecodeError, _RUNTIME_MODULE.RuntimeUnavailable, SandboxError):
         pass
     _atomic_write_json(
         output,

@@ -234,7 +234,12 @@ def import_signed_attestation(attestation_path: Path, bundle_path: Path, expecte
             "receipt": output_root / "artifacts/runtime/sandbox-e3-import-receipt.json",
         }
         profile = _public_profile(attestation)
-        observations = {"observations_version": "1.0", "observed_at": attestation["observed_at"], "observations": attestation["observations"]}
+        observations = {
+            "observations_version": "1.0",
+            "observed_at": attestation["observed_at"],
+            "observations": attestation["observations"],
+            "terminal_residue": attestation["terminal_residue"],
+        }
         _atomic_write(outputs["profile"], profile)
         _atomic_write(outputs["observations"], observations)
         receipt = {

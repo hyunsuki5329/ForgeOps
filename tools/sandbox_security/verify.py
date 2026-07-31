@@ -480,12 +480,14 @@ def run_cli(
 def _install_cli_main():
     """Keep exec capability and consumer path out of the public callable surface."""
     execv = os.execv
+    interpreter = str(Path(sys.executable).resolve(strict=True))
+    project_root = _ROOT.resolve(strict=True)
     consumer_path = Path(__file__).with_name("e3_consumer.py").resolve()
 
-    def consumer_argv(project_root: Path, command_id: str) -> list[str]:
+    def consumer_argv(command_id: str) -> list[str]:
         return [
-            sys.executable, "-I", str(consumer_path), "--project-root",
-            str(Path(project_root).resolve(strict=True)), "--command-id", command_id,
+            interpreter, "-I", str(consumer_path), "--project-root",
+            str(project_root), "--command-id", command_id,
         ]
 
     def cli_main(argv: list[str] | None = None) -> int:
@@ -502,9 +504,9 @@ def _install_cli_main():
             schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
                 schema=arguments.schema, suite=arguments.suite, runtime_profile=arguments.runtime_profile,
                 runtime=arguments.runtime, result=arguments.result, command_id=arguments.command_id,
-                project_root=_ROOT,
+                project_root=project_root,
             )
-            execv(sys.executable, consumer_argv(_ROOT, arguments.command_id))
+            execv(interpreter, consumer_argv(arguments.command_id))
         except SandboxError as error:
             parser.error(error.code)
         except OSError:

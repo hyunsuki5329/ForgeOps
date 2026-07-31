@@ -1597,32 +1597,25 @@ class SandboxCliTests(unittest.TestCase):
         self.assertNotIn("identity", public_result)
 
     def test_returning_fake_execv_overwrites_an_exact_looking_success_with_not_run(self):
-        """If exec unexpectedly returns, even reviewer-forged success is overwritten before exit."""
+        """Rebinding global root/interpreter cannot alter the captured exec authority or fallback."""
         from tools.sandbox_security import verify
 
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            root = Path(temporary_directory)
-            schema = root / "contracts/forgeops-sandbox-contract/1.0/schema.json"
-            suite = root / "fixtures/forgeops-sandbox-security/suite.json"
-            schema.parent.mkdir(parents=True)
-            suite.parent.mkdir(parents=True)
-            schema.write_bytes(SCHEMA_PATH.read_bytes())
-            suite.write_bytes(SUITE_PATH.read_bytes())
-            result = root / "artifacts/verification/vg-008-image-provenance-result.json"
-            result.parent.mkdir(parents=True)
-            result.write_text(json.dumps({"status": "PASSED", "identity": "stale"}), encoding="utf-8")
-            execv_cell = next(cell for cell in verify.main.__closure__ if cell.cell_contents is os.execv)
-            original_execv = execv_cell.cell_contents
-            exec_calls = []
-            try:
-                def fake_execv(_executable, arguments):
-                    exec_calls.append((_executable, arguments))
-                    fake_result = Path(arguments[4]) / "artifacts/verification/vg-008-image-provenance-result.json"
-                    fake_result.parent.mkdir(parents=True, exist_ok=True)
-                    fake_result.write_text(json.dumps({"status": "PASSED", "e3_runtime_assertion": True, "identity": "reviewer-forged"}), encoding="utf-8")
+        root = ROOT.resolve()
+        result = root / "artifacts/verification/vg-008-image-provenance-result.json"
+        original_result = result.read_bytes()
+        original_executable = sys.executable
+        execv_cell = next(cell for cell in verify.main.__closure__ if cell.cell_contents is os.execv)
+        original_execv = execv_cell.cell_contents
+        exec_calls = []
+        try:
+            def fake_execv(_executable, arguments):
+                exec_calls.append((_executable, arguments))
+                fake_result = Path(arguments[4]) / "artifacts/verification/vg-008-image-provenance-result.json"
+                fake_result.parent.mkdir(parents=True, exist_ok=True)
+                fake_result.write_text(json.dumps({"status": "PASSED", "e3_runtime_assertion": True, "identity": "reviewer-forged"}), encoding="utf-8")
 
-                execv_cell.cell_contents = fake_execv
-                with mock.patch.object(verify, "_ROOT", root):
+            execv_cell.cell_contents = fake_execv
+            with tempfile.TemporaryDirectory() as attacker_root, mock.patch.object(verify, "_ROOT", Path(attacker_root)), mock.patch.object(verify.sys, "executable", r"C:\\attacker\\python.exe"):
                     exit_code = verify.main([
                         "--schema", "contracts/forgeops-sandbox-contract/1.0/schema.json",
                         "--suite", "fixtures/forgeops-sandbox-security/suite.json",
@@ -1630,9 +1623,10 @@ class SandboxCliTests(unittest.TestCase):
                         "--runtime", "docker", "--result", "artifacts/verification/vg-008-image-provenance-result.json",
                         "--command-id", "image-provenance-negative",
                     ])
-            finally:
-                execv_cell.cell_contents = original_execv
             public_result = load_json(result)
+        finally:
+            execv_cell.cell_contents = original_execv
+            result.write_bytes(original_result)
 
         self.assertEqual(2, exit_code)
         self.assertEqual("NOT_RUN", public_result["status"])
@@ -1640,10 +1634,10 @@ class SandboxCliTests(unittest.TestCase):
         self.assertNotIn("identity", public_result)
         self.assertEqual(
             [(
-                sys.executable,
+                original_executable,
                 [
-                    sys.executable, "-I", str((ROOT / "tools/sandbox_security/e3_consumer.py").resolve()),
-                    "--project-root", str(root.resolve()), "--command-id", "image-provenance-negative",
+                    original_executable, "-I", str((root / "tools/sandbox_security/e3_consumer.py").resolve()),
+                    "--project-root", str(root), "--command-id", "image-provenance-negative",
                 ],
             )],
             exec_calls,

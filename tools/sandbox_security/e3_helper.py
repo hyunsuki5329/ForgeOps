@@ -40,6 +40,10 @@ _DANGEROUS_NEGATIVES = frozenset({
     "negative-host-device", "negative-quota-escape",
 })
 _TIMEOUT = 10
+_EGRESS_IDS = (
+    "positive-exact-proxy-destination", "negative-direct-dns", "negative-direct-socket",
+    "negative-loopback", "negative-private-address", "negative-metadata-address", "negative-redirect",
+)
 
 
 class E3HelperError(Exception):
@@ -66,6 +70,7 @@ def fixed_command_graph(image_ref: str, resource_token: str) -> Sequence[Sequenc
     network = _resource(resource_token, "internal")
     proxy = _resource(resource_token, "proxy")
     client = _resource(resource_token, "client")
+    quota = _resource(resource_token, "quota")
     canary = _resource(resource_token, "canary")
     volume = _resource(resource_token, "volume")
     common = ("--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--pids-limit=64", "--memory=128m", "--cpus=0.5", "--user=1000:1000", "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m")
@@ -78,11 +83,14 @@ def fixed_command_graph(image_ref: str, resource_token: str) -> Sequence[Sequenc
         ("docker", "inspect", containment, "--format", "{{json .}}"),
         ("docker", "rm", "-f", containment),
         ("docker", "network", "create", "--internal", network),
-        ("docker", "run", "--name", proxy, "--network", network, *common, "--env", "FORGEOPS_PROBE_MODE=egress-proxy", image_ref),
+        ("docker", "run", "--detach", "--name", proxy, "--network", network, "--network-alias", "forgeops-e3-proxy", *common, "--env", "FORGEOPS_PROBE_MODE=egress-proxy", image_ref),
         ("docker", "run", "--name", client, "--network", network, *common, "--env", "FORGEOPS_PROBE_MODE=egress-client", image_ref),
         ("docker", "rm", "-f", client), ("docker", "rm", "-f", proxy), ("docker", "network", "rm", network),
+        ("docker", "run", "--name", quota, "--network=none", *common, "--env", "FORGEOPS_PROBE_MODE=quota", image_ref),
+        ("docker", "rm", "-f", quota),
         ("docker", "volume", "create", volume),
-        ("docker", "run", "--name", canary, "--network=none", *common, "--env", "FORGEOPS_PROBE_MODE=teardown-canary", image_ref),
+        ("docker", "run", "--name", canary, "--network=none", "--mount", f"type=volume,source={volume},target=/workspace", *common, "--env", "FORGEOPS_PROBE_MODE=teardown-canary", image_ref),
+        ("docker", "inspect", canary, "--format", "{{json .}}"),
         ("docker", "rm", "-f", canary), ("docker", "volume", "rm", volume),
         ("docker", "ps", "-a", "--filter", f"name={_resource(resource_token, '')}", "--format", "{{.ID}}"),
         ("docker", "network", "ls", "--filter", f"name={_resource(resource_token, '')}", "--format", "{{.ID}}"),
@@ -131,8 +139,6 @@ def _preflight(runner: ProcessRunner, graph: Sequence[Sequence[str]], image_ref:
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
     if _run(runner, graph[1]).strip() != "2 systemd":
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
-    if not {"memory", "pids", "cpu"}.issubset(set(_run(runner, graph[2]).split())):
-        raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
     image = _json(_run(runner, graph[3]))
     if image_ref not in image.get("RepoDigests", []):
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
@@ -141,9 +147,26 @@ def _preflight(runner: ProcessRunner, graph: Sequence[Sequence[str]], image_ref:
 def _probe_from(command: Sequence[str], runner: ProcessRunner) -> dict[str, Any]:
     probe = _json(_run(runner, command))
     required = {"root_uid", "rootfs_read_only", "cap_drop_all", "no_new_privileges", "forbidden_mounts", "forbidden_devices", "direct_socket_calls", "direct_dns_calls", "proxy_calls", "proxy_destination", "connected_addresses", "redirects", "quota_exceeded"}
-    if set(probe) != required:
+    permitted = required | {"write_calls", "pre_cleanup_residue", "memory_controller", "pids_controller", "cpu_controller"}
+    if not required.issubset(probe) or not set(probe).issubset(permitted):
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
     return probe
+
+
+def _egress_from(command: Sequence[str], runner: ProcessRunner) -> dict[str, dict[str, Any]]:
+    raw = _json(_run(runner, command))
+    scenarios = raw.get("egress_scenarios")
+    if not isinstance(scenarios, dict) or tuple(scenarios) != _EGRESS_IDS:
+        raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+    result: dict[str, dict[str, Any]] = {}
+    for case_id, value in scenarios.items():
+        if not isinstance(value, dict):
+            raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+        required = {"root_uid", "rootfs_read_only", "cap_drop_all", "no_new_privileges", "forbidden_mounts", "forbidden_devices", "direct_socket_calls", "direct_dns_calls", "proxy_calls", "proxy_destination", "connected_addresses", "redirects", "quota_exceeded"}
+        if set(value) != required:
+            raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+        result[case_id] = value
+    return result
 
 
 def _inspect_hardening(value: dict[str, Any]) -> None:
@@ -161,21 +184,26 @@ def _inspect_hardening(value: dict[str, Any]) -> None:
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
 
 
-def _executed(case: dict[str, Any], observed_at: str, probe: dict[str, Any]) -> dict[str, Any]:
+def _executed(case: dict[str, Any], observed_at: str, probe: dict[str, Any], effects: dict[str, int]) -> dict[str, Any]:
+    public_probe = {key: probe[key] for key in ("root_uid", "rootfs_read_only", "cap_drop_all", "no_new_privileges", "forbidden_mounts", "forbidden_devices", "direct_socket_calls", "direct_dns_calls", "proxy_calls", "proxy_destination", "connected_addresses", "redirects", "quota_exceeded")}
     observation = {"case_id": case["id"], "evidence_kind": "runtime", "observation_mode": "RUNTIME_EXECUTED", "observed_at": observed_at,
-                   "provision_calls": case["expected_provision_calls"], "network_calls": case["expected_network_calls"], "write_calls": case["expected_write_calls"],
-                   **probe, "residue": dict(_RESIDUE)}
-    if case["case_kind"] == "egress":
-        observation["proxy_calls"] = 1
-        observation["proxy_destination"] = case["expected_proxy_destination"]
-    if case["id"] == "negative-direct-dns": observation["direct_dns_calls"] = 1
-    if case["id"] == "negative-direct-socket": observation["direct_socket_calls"] = 1
-    if case["id"] in {"negative-loopback", "negative-private-address", "negative-metadata-address"}: observation["connected_addresses"] = ["127.0.0.1"]
-    if case["id"] == "negative-redirect": observation["redirects"] = 1
-    if case["id"] == "negative-process-residue": observation["residue"]["processes"] = 1
-    if case["id"] == "negative-mount-residue": observation["residue"]["mounts"] = 1
-    if case["id"] == "negative-secret-residue": observation["residue"]["transient_secrets"] = 1
-    if case["id"] == "negative-workspace-residue": observation["residue"]["workspaces"] = 1
+                   "provision_calls": effects["provision_calls"], "network_calls": effects["network_calls"], "write_calls": effects["write_calls"],
+                   **public_probe, "residue": dict(_RESIDUE)}
+    if case["case_kind"] == "teardown":
+        source = probe.get("pre_cleanup_residue", _RESIDUE)
+        if not isinstance(source, dict) or set(source) != set(_RESIDUE):
+            raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+        # Negative catalog entries select observed pre-cleanup canary facts;
+        # the sole positive represents the later fixed residue re-check.
+        selected = {
+            "negative-process-residue": "processes", "negative-mount-residue": "mounts",
+            "negative-secret-residue": "transient_secrets", "negative-workspace-residue": "workspaces",
+        }
+        residue = dict(_RESIDUE)
+        if case["id"] in selected:
+            field = selected[case["id"]]
+            residue[field] = source[field]
+        observation["residue"] = residue
     return observation
 
 
@@ -198,25 +226,61 @@ def _atomic_write(path: Path, value: object) -> None:
         if temporary.exists(): temporary.unlink()
 
 
-def collect_e3_attestation(identity: ExpectedIdentity, schema_path: Path, suite_path: Path, output_path: Path, runner: ProcessRunner = DEFAULT_PROCESS_RUNNER, *, resource_token: str | None = None) -> int:
+def _remove_stale_output(path: Path) -> None:
+    """A failed attempt must never leave a previous successful attestation."""
+    try:
+        if path.exists() or path.is_symlink():
+            path.unlink()
+    except OSError as error:
+        raise E3HelperError("E3_HELPER_INPUT_INVALID") from error
+
+
+def collect_e3_attestation(identity: ExpectedIdentity, schema_path: Path, suite_path: Path, output_path: Path, runner: ProcessRunner = DEFAULT_PROCESS_RUNNER) -> int:
     """Collect all 23 closed observations with a recording-compatible runner."""
 
-    token = f"{identity.run_id}-{identity.run_attempt}" if resource_token is None else resource_token
+    token = f"{identity.run_id}-{identity.run_attempt}"
+    graph: Sequence[Sequence[str]] = ()
+    attempted: set[int] = set()
+    completed: set[int] = set()
+    failure: E3HelperError | None = None
     try:
+        _remove_stale_output(output_path)
         image_ref, token = _validate_inputs(identity.image_ref, token)
+        if image_ref != f"ghcr.io/{identity.repository}-e3@{identity.image_digest}": raise E3HelperError("E3_HELPER_INPUT_INVALID")
         if identity.image_digest != image_ref.rsplit("@", 1)[1]: raise E3HelperError("E3_HELPER_INPUT_INVALID")
         suite = json.loads(suite_path.read_text(encoding="utf-8"))
         cases = [case for catalog in _CATALOGS for case in suite[catalog]]
-        if tuple(case.get("id") for case in cases) != _CASE_IDS or any(_CASE_ID.fullmatch(case.get("id", "")) is None for case in cases): raise E3HelperError("E3_HELPER_INPUT_INVALID")
+        if tuple(case.get("id") for case in cases) != _CASE_IDS or any(_CASE_ID.fullmatch(case.get("id", "")) is None for case in cases) or any(case.get("observation_mode") not in {"RUNTIME_EXECUTED", "PREPROVISION_DENIED"} for case in cases): raise E3HelperError("E3_HELPER_INPUT_INVALID")
         graph = fixed_command_graph(image_ref, token)
         _preflight(runner, graph, image_ref)
-        containment = _probe_from(graph[4], runner); _inspect_hardening(_json(_run(runner, graph[5]))); _run(runner, graph[6])
-        egress = _probe_from(graph[9], runner); _run(runner, graph[10]); _run(runner, graph[11]); _run(runner, graph[12])
-        _run(runner, graph[13]); quota = _probe_from(graph[14], runner); _run(runner, graph[15]); _run(runner, graph[16])
-        if any(_run(runner, command).strip() for command in graph[17:]): raise E3HelperError("SANDBOX_TEARDOWN_INCOMPLETE")
+        attempted.add(7); _run(runner, graph[7]); completed.add(7)
+        attempted.add(8); _run(runner, graph[8]); completed.add(8)
+        attempted.add(9); egress = _egress_from(graph[9], runner); completed.add(9)
+        attempted.add(4); containment = _probe_from(graph[4], runner); completed.add(4)
+        if not all(containment.get(name) is True for name in ("memory_controller", "pids_controller", "cpu_controller")): raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+        _inspect_hardening(_json(_run(runner, graph[5]))); completed.add(5)
+        attempted.add(13); quota = _probe_from(graph[13], runner); completed.add(13)
+        attempted.add(15); _run(runner, graph[15]); completed.add(15)
+        attempted.add(16); teardown = _probe_from(graph[16], runner); completed.add(16)
+        canary_inspect = _json(_run(runner, graph[17])); completed.add(17)
+        if not isinstance(canary_inspect.get("Mounts"), list): raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+        pre_residue = teardown.get("pre_cleanup_residue")
+        if not isinstance(pre_residue, dict): raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+        teardown["pre_cleanup_residue"] = {**pre_residue, "mounts": len(canary_inspect["Mounts"]), "leases": int(15 in completed)}
         observed_at = _now()
-        probes = {"containment": containment, "egress": egress, "quota": quota, "teardown": quota, "image_provenance": containment}
-        observations = [_denied(case, observed_at) if case["id"] in _DANGEROUS_NEGATIVES else _executed(case, observed_at, probes[case["case_kind"]]) for case in cases]
+        probes = {"containment": containment, "quota": quota, "teardown": teardown, "image_provenance": containment}
+        effects = {
+            "image_provenance": {"provision_calls": 1, "network_calls": 0, "write_calls": 0},
+            "containment": {"provision_calls": int(4 in completed), "network_calls": 0, "write_calls": 0},
+            "egress": {"provision_calls": int(9 in completed), "network_calls": int(7 in completed), "write_calls": 0},
+            "quota": {"provision_calls": int(13 in completed), "network_calls": 0, "write_calls": int(bool(quota.get("write_calls", 0)))},
+            "teardown": {"provision_calls": int(16 in completed), "network_calls": 0, "write_calls": int(bool(teardown.get("write_calls", 0)))},
+        }
+        observations = [
+            _denied(case, observed_at) if case["observation_mode"] == "PREPROVISION_DENIED"
+            else _executed(case, observed_at, egress[case["id"]] if case["case_kind"] == "egress" else probes[case["case_kind"]], effects[case["case_kind"]])
+            for case in cases
+        ]
         profile = {"runtime": "docker", "available": True, "rootless": True, "image_ref": image_ref, "image_digest": identity.image_digest,
                    "signature_verified": True, "issuer": "https://token.actions.githubusercontent.com", "expected_issuer": "https://token.actions.githubusercontent.com",
                    "provenance_ref": "sha256:" + hashlib.sha256(_canonical((image_ref, identity.image_digest, "https://token.actions.githubusercontent.com", identity.certificate_identity))).hexdigest(), "observed_at": observed_at}
@@ -224,10 +288,39 @@ def collect_e3_attestation(identity: ExpectedIdentity, schema_path: Path, suite_
         attestation = {"attestation_version": "1.0", "repository": identity.repository, "repository_id": identity.repository_id, "workflow_ref": identity.workflow_ref,
                        "workflow_sha": identity.workflow_sha, "source_sha": identity.source_sha, "run_id": identity.run_id, "run_attempt": identity.run_attempt,
                        "issuer": "https://token.actions.githubusercontent.com", "certificate_identity": identity.certificate_identity, "image_ref": image_ref, "image_digest": identity.image_digest,
-                       "observed_at": observed_at, "capabilities": {"rootless": True, "cgroup_version": "2", "cgroup_driver": "systemd", "memory_controller": True, "pids_controller": True, "cpu_controller": True},
+                       "observed_at": observed_at, "capabilities": {"rootless": True, "cgroup_version": "2", "cgroup_driver": "systemd", "memory_controller": containment["memory_controller"], "pids_controller": containment["pids_controller"], "cpu_controller": containment["cpu_controller"]},
                        "input_hashes": {"sandbox_schema_sha256": _hash(schema_path), "sandbox_suite_sha256": _hash(suite_path), "runtime_profile_sha256": hashlib.sha256(_canonical(profile)).hexdigest(), "helper_sha256": _hash(Path(__file__)), "probe_sha256": _hash(root / "tools/sandbox_security/e3_probe.py")},
                        "observations": observations, "terminal_residue": dict(_RESIDUE)}
+    except (E3HelperError, OSError, UnicodeError, json.JSONDecodeError) as error:
+        failure = error if isinstance(error, E3HelperError) else E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+    finally:
+        cleanup_failed = False
+        if graph:
+            # Cleanup commands are fixed and are attempted after every partial lifecycle.
+            for index in (6, 10, 11, 12, 14, 18, 19):
+                if index in {6} and 4 not in attempted: continue
+                if index in {10} and 9 not in attempted: continue
+                if index in {11} and 8 not in attempted: continue
+                if index in {12} and 7 not in attempted: continue
+                if index == 14 and 13 not in attempted: continue
+                if index in {18, 19} and 16 not in attempted: continue
+                try:
+                    _run(runner, graph[index])
+                except E3HelperError:
+                    cleanup_failed = True
+            if attempted and not cleanup_failed:
+                try:
+                    if any(_run(runner, command).strip() for command in graph[20:]): cleanup_failed = True
+                except E3HelperError:
+                    cleanup_failed = True
+        if failure is not None or cleanup_failed:
+            try: _remove_stale_output(output_path)
+            except E3HelperError: pass
+            return 2
+    try:
         _atomic_write(output_path, attestation)
         return 0
-    except (E3HelperError, OSError, UnicodeError, json.JSONDecodeError):
+    except OSError:
+        try: _remove_stale_output(output_path)
+        except E3HelperError: pass
         return 2

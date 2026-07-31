@@ -69,6 +69,7 @@
       "required": [
         "case_id",
         "evidence_kind",
+        "observation_mode",
         "observed_at",
         "provision_calls",
         "network_calls",
@@ -128,6 +129,7 @@
         "id",
         "kind",
         "case_kind",
+        "observation_mode",
         "expected",
         "expected_provision_calls",
         "expected_network_calls",

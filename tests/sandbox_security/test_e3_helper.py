@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import io
+import inspect
 from pathlib import Path
 import subprocess
 import tempfile
@@ -35,13 +36,38 @@ class RecordingRunner:
         if arguments[:3] == ["docker", "image", "inspect"]:
             return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps({"RepoDigests": [IMAGE]}), stderr="")
         if "FORGEOPS_PROBE_MODE=" in joined:
-            return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps({
+            if "FORGEOPS_PROBE_MODE=egress-client" in joined:
+                base = {
+                    "root_uid": 1000, "rootfs_read_only": True, "cap_drop_all": True,
+                    "no_new_privileges": True, "forbidden_mounts": 0, "forbidden_devices": 0,
+                    "direct_socket_calls": 0, "direct_dns_calls": 0, "proxy_calls": 0,
+                    "proxy_destination": "", "connected_addresses": [], "redirects": 0,
+                    "quota_exceeded": False,
+                }
+                scenarios = {
+                    "positive-exact-proxy-destination": {**base, "proxy_calls": 1, "proxy_destination": "proxy.sandbox.invalid:443"},
+                    "negative-direct-dns": {**base, "direct_dns_calls": 1},
+                    "negative-direct-socket": {**base, "direct_socket_calls": 1},
+                    "negative-loopback": {**base, "direct_socket_calls": 1},
+                    "negative-private-address": {**base, "direct_socket_calls": 1},
+                    "negative-metadata-address": {**base, "direct_socket_calls": 1},
+                    "negative-redirect": {**base, "redirects": 1},
+                }
+                return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps({"egress_scenarios": scenarios}), stderr="")
+            telemetry = {
                 "root_uid": 1000, "rootfs_read_only": True, "cap_drop_all": True,
                 "no_new_privileges": True, "forbidden_mounts": 0, "forbidden_devices": 0,
                 "direct_socket_calls": 0, "direct_dns_calls": 0, "proxy_calls": 0,
                 "proxy_destination": "", "connected_addresses": [], "redirects": 0,
                 "quota_exceeded": False,
-            }), stderr="")
+                "memory_controller": True, "pids_controller": True, "cpu_controller": True,
+            }
+            if "FORGEOPS_PROBE_MODE=quota" in joined:
+                telemetry["write_calls"] = 1
+            if "FORGEOPS_PROBE_MODE=teardown-canary" in joined:
+                telemetry["write_calls"] = 1
+                telemetry["pre_cleanup_residue"] = {"processes": 1, "mounts": 1, "leases": 1, "transient_secrets": 1, "workspaces": 1}
+            return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps(telemetry), stderr="")
         if arguments[:2] == ["docker", "inspect"]:
             return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps({
                 "Config": {"User": "1000:1000"},
@@ -55,14 +81,67 @@ class RecordingRunner:
 
 
 class FixedE3HelperTests(unittest.TestCase):
+    def test_collector_removes_stale_output_when_preflight_fails(self):
+        from tools.sandbox_security.e3_helper import collect_e3_attestation
+        from tools.sandbox_security.e3_attestation import ExpectedIdentity
+
+        identity = ExpectedIdentity("example/forgeops", "123", "main", "a" * 40, "b" * 40, "1001", 1, IMAGE, "sha256:" + "c" * 64)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "e3-attestation.json"
+            output.write_text('{"stale":true}', encoding="utf-8")
+            self.assertEqual(2, collect_e3_attestation(identity, SCHEMA, SUITE, output, runner=lambda *_a, **_k: (_ for _ in ()).throw(OSError())))
+            self.assertFalse(output.exists())
+
+    def test_collector_has_no_resource_token_override(self):
+        from tools.sandbox_security.e3_helper import collect_e3_attestation
+        self.assertNotIn("resource_token", inspect.signature(collect_e3_attestation).parameters)
+
+    def test_lifecycle_runs_network_proxy_and_client_before_containment(self):
+        from tools.sandbox_security.e3_helper import collect_e3_attestation
+        from tools.sandbox_security.e3_attestation import ExpectedIdentity
+
+        identity = ExpectedIdentity("example/forgeops", "123", "main", "a" * 40, "b" * 40, "1001", 1, IMAGE, "sha256:" + "c" * 64)
+        runner = RecordingRunner()
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertEqual(0, collect_e3_attestation(identity, SCHEMA, SUITE, Path(directory) / "out.json", runner=runner))
+        calls = [" ".join(arguments) for arguments, _kwargs in runner.calls]
+        network = next(index for index, call in enumerate(calls) if " network create --internal " in f" {call} ")
+        proxy = next(index for index, call in enumerate(calls) if "FORGEOPS_PROBE_MODE=egress-proxy" in call)
+        client = next(index for index, call in enumerate(calls) if "FORGEOPS_PROBE_MODE=egress-client" in call)
+        containment = next(index for index, call in enumerate(calls) if "FORGEOPS_PROBE_MODE=containment" in call)
+        self.assertLess(network, proxy)
+        self.assertLess(proxy, client)
+        self.assertLess(client, containment)
+
+    def test_mid_lifecycle_failure_still_cleans_attempted_resources_and_checks_residue(self):
+        from tools.sandbox_security.e3_helper import collect_e3_attestation
+        from tools.sandbox_security.e3_attestation import ExpectedIdentity
+
+        class FailingRunner(RecordingRunner):
+            def __call__(self, arguments, **kwargs):
+                result = super().__call__(arguments, **kwargs)
+                if "FORGEOPS_PROBE_MODE=containment" in " ".join(arguments):
+                    return subprocess.CompletedProcess(arguments, 1, stdout="", stderr="")
+                return result
+
+        identity = ExpectedIdentity("example/forgeops", "123", "main", "a" * 40, "b" * 40, "1001", 1, IMAGE, "sha256:" + "c" * 64)
+        runner = FailingRunner()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "out.json"
+            self.assertEqual(2, collect_e3_attestation(identity, SCHEMA, SUITE, output, runner=runner))
+            self.assertFalse(output.exists())
+        calls = [" ".join(arguments) for arguments, _kwargs in runner.calls]
+        self.assertTrue(any(" rm -f forgeops-e3-1001-1-containment" in f" {call}" for call in calls))
+        self.assertTrue(any(" network ls " in f" {call} " for call in calls))
+        self.assertTrue(any(" volume ls " in f" {call} " for call in calls))
     def test_probe_emits_only_the_closed_observation_fields_for_an_allowed_mode(self):
         from tools.sandbox_security import e3_probe
 
         output = io.StringIO()
-        with mock.patch.dict("os.environ", {"FORGEOPS_PROBE_MODE": "containment"}, clear=True), mock.patch("sys.stdout", output):
+        with mock.patch.dict("os.environ", {"FORGEOPS_PROBE_MODE": "containment"}, clear=True), mock.patch.object(e3_probe.os, "getuid", return_value=1000, create=True), mock.patch("sys.stdout", output):
             self.assertEqual(0, e3_probe.main())
         self.assertEqual(
-            {"root_uid", "rootfs_read_only", "cap_drop_all", "no_new_privileges", "forbidden_mounts", "forbidden_devices", "direct_socket_calls", "direct_dns_calls", "proxy_calls", "proxy_destination", "connected_addresses", "redirects", "quota_exceeded"},
+            {"root_uid", "rootfs_read_only", "cap_drop_all", "no_new_privileges", "forbidden_mounts", "forbidden_devices", "direct_socket_calls", "direct_dns_calls", "proxy_calls", "proxy_destination", "connected_addresses", "redirects", "quota_exceeded", "write_calls", "memory_controller", "pids_controller", "cpu_controller"},
             set(json.loads(output.getvalue())),
         )
 
@@ -78,12 +157,14 @@ class FixedE3HelperTests(unittest.TestCase):
         self.assertNotIn("--pid=host", serialized)
         self.assertNotIn("--network=host", serialized)
         self.assertGreaterEqual(len(commands), 12)
+        self.assertIn("--network-alias forgeops-e3-proxy", serialized)
+        self.assertIn("--mount type=volume,source=forgeops-e3-1001-1-volume,target=/workspace", serialized)
         for command in commands:
             self.assertIsInstance(command, tuple)
             self.assertTrue(all(type(part) is str for part in command))
             self.assertEqual("docker", command[0])
             for value in command:
-                if value.startswith("forgeops-e3-"):
+                if value.startswith("forgeops-e3-") and value != "forgeops-e3-proxy":
                     self.assertTrue(value.startswith("forgeops-e3-1001-1-"))
 
     def test_rejects_unsafe_inputs_before_the_recording_runner_has_effects(self):
@@ -98,8 +179,8 @@ class FixedE3HelperTests(unittest.TestCase):
         identity = ExpectedIdentity("example/forgeops", "123", "main", "a" * 40, "b" * 40, "1001", 1, IMAGE, "sha256:" + "c" * 64)
         runner = RecordingRunner()
         with tempfile.TemporaryDirectory() as directory:
-            result = collect_e3_attestation(identity, SCHEMA, SUITE, Path(directory) / "e3-attestation.json", runner=runner, resource_token="bad/token")
-        self.assertEqual(2, result)
+            with self.assertRaises(TypeError):
+                collect_e3_attestation(identity, SCHEMA, SUITE, Path(directory) / "e3-attestation.json", runner=runner, resource_token="bad/token")
         self.assertEqual([], runner.calls)
 
     def test_rejects_an_unregistered_case_id_before_any_runtime_effect(self):
@@ -134,6 +215,9 @@ class FixedE3HelperTests(unittest.TestCase):
         self.assertEqual("runtime", attestation["observations"][0]["evidence_kind"])
         self.assertEqual("PREPROVISION_DENIED", attestation["observations"][1]["observation_mode"])
         self.assertEqual((0, 0, 0), tuple(attestation["observations"][1][key] for key in ("provision_calls", "network_calls", "write_calls")))
+        teardown = {item["case_id"]: item["residue"] for item in attestation["observations"] if item["case_id"].startswith("negative-") and "residue" in item}
+        self.assertEqual({"processes": 1, "mounts": 0, "leases": 0, "transient_secrets": 0, "workspaces": 0}, teardown["negative-process-residue"])
+        self.assertEqual({"processes": 0, "mounts": 0, "leases": 0, "transient_secrets": 0, "workspaces": 0}, teardown["negative-mount-residue"])
         self.assertEqual({"processes": 0, "mounts": 0, "leases": 0, "transient_secrets": 0, "workspaces": 0}, attestation["terminal_residue"])
         self.assertTrue(runner.calls)
         for arguments, kwargs in runner.calls:

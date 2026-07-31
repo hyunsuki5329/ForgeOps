@@ -22,7 +22,8 @@
                                                     "expected_issuer":  "forgeops-test-issuer",
                                                     "provenance_ref":  "provenance:forgeops-test",
                                                     "observed_at":  "2026-07-26T00:00:00Z"
-                                                }
+                                                },
+                            "observation_mode":  "RUNTIME_EXECUTED"
                         },
                         {
                             "id":  "negative-tag-only",
@@ -103,7 +104,8 @@
                                   "expected_provision_calls":  1,
                                   "expected_network_calls":  0,
                                   "expected_write_calls":  0,
-                                  "expected_proxy_destination":  ""
+                                  "expected_proxy_destination":  "",
+                                  "observation_mode":  "RUNTIME_EXECUTED"
                               },
                               {
                                   "id":  "negative-root-user",
@@ -159,7 +161,8 @@
                              "expected_provision_calls":  1,
                              "expected_network_calls":  1,
                              "expected_write_calls":  0,
-                             "expected_proxy_destination":  "proxy.sandbox.invalid:443"
+                             "expected_proxy_destination":  "proxy.sandbox.invalid:443",
+                             "observation_mode":  "RUNTIME_EXECUTED"
                          },
                          {
                              "id":  "negative-direct-dns",
@@ -169,7 +172,8 @@
                              "expected_provision_calls":  1,
                              "expected_network_calls":  1,
                              "expected_write_calls":  0,
-                             "expected_proxy_destination":  "proxy.sandbox.invalid:443"
+                             "expected_proxy_destination":  "proxy.sandbox.invalid:443",
+                             "observation_mode":  "RUNTIME_EXECUTED"
                          },
                          {
                              "id":  "negative-direct-socket",
@@ -179,7 +183,8 @@
                              "expected_provision_calls":  1,
                              "expected_network_calls":  1,
                              "expected_write_calls":  0,
-                             "expected_proxy_destination":  "proxy.sandbox.invalid:443"
+                             "expected_proxy_destination":  "proxy.sandbox.invalid:443",
+                             "observation_mode":  "RUNTIME_EXECUTED"
                          },
                          {
                              "id":  "negative-loopback",
@@ -189,7 +194,8 @@
                              "expected_provision_calls":  1,
                              "expected_network_calls":  1,
                              "expected_write_calls":  0,
-                             "expected_proxy_destination":  "proxy.sandbox.invalid:443"
+                             "expected_proxy_destination":  "proxy.sandbox.invalid:443",
+                             "observation_mode":  "RUNTIME_EXECUTED"
                          },
                          {
                              "id":  "negative-private-address",
@@ -199,7 +205,8 @@
                              "expected_provision_calls":  1,
                              "expected_network_calls":  1,
                              "expected_write_calls":  0,
-                             "expected_proxy_destination":  "proxy.sandbox.invalid:443"
+                             "expected_proxy_destination":  "proxy.sandbox.invalid:443",
+                             "observation_mode":  "RUNTIME_EXECUTED"
                          },
                          {
                              "id":  "negative-metadata-address",
@@ -209,7 +216,8 @@
                              "expected_provision_calls":  1,
                              "expected_network_calls":  1,
                              "expected_write_calls":  0,
-                             "expected_proxy_destination":  "proxy.sandbox.invalid:443"
+                             "expected_proxy_destination":  "proxy.sandbox.invalid:443",
+                             "observation_mode":  "RUNTIME_EXECUTED"
                          },
                          {
                              "id":  "negative-redirect",
@@ -219,7 +227,8 @@
                              "expected_provision_calls":  1,
                              "expected_network_calls":  1,
                              "expected_write_calls":  0,
-                             "expected_proxy_destination":  "proxy.sandbox.invalid:443"
+                             "expected_proxy_destination":  "proxy.sandbox.invalid:443",
+                             "observation_mode":  "RUNTIME_EXECUTED"
                          }
                      ],
     "quota_cases":  [
@@ -231,7 +240,8 @@
                             "expected_provision_calls":  1,
                             "expected_network_calls":  0,
                             "expected_write_calls":  1,
-                            "expected_proxy_destination":  ""
+                            "expected_proxy_destination":  "",
+                            "observation_mode":  "RUNTIME_EXECUTED"
                         },
                         {
                             "id":  "negative-quota-escape",
@@ -254,7 +264,8 @@
                                "expected_provision_calls":  1,
                                "expected_network_calls":  0,
                                "expected_write_calls":  1,
-                               "expected_proxy_destination":  ""
+                               "expected_proxy_destination":  "",
+                               "observation_mode":  "RUNTIME_EXECUTED"
                            },
                            {
                                "id":  "negative-process-residue",
@@ -264,7 +275,8 @@
                                "expected_provision_calls":  1,
                                "expected_network_calls":  0,
                                "expected_write_calls":  1,
-                               "expected_proxy_destination":  ""
+                               "expected_proxy_destination":  "",
+                               "observation_mode":  "RUNTIME_EXECUTED"
                            },
                            {
                                "id":  "negative-mount-residue",
@@ -274,7 +286,8 @@
                                "expected_provision_calls":  1,
                                "expected_network_calls":  0,
                                "expected_write_calls":  1,
-                               "expected_proxy_destination":  ""
+                               "expected_proxy_destination":  "",
+                               "observation_mode":  "RUNTIME_EXECUTED"
                            },
                            {
                                "id":  "negative-secret-residue",
@@ -284,7 +297,8 @@
                                "expected_provision_calls":  1,
                                "expected_network_calls":  0,
                                "expected_write_calls":  1,
-                               "expected_proxy_destination":  ""
+                               "expected_proxy_destination":  "",
+                               "observation_mode":  "RUNTIME_EXECUTED"
                            },
                            {
                                "id":  "negative-workspace-residue",
@@ -294,7 +308,8 @@
                                "expected_provision_calls":  1,
                                "expected_network_calls":  0,
                                "expected_write_calls":  1,
-                               "expected_proxy_destination":  ""
+                               "expected_proxy_destination":  "",
+                               "observation_mode":  "RUNTIME_EXECUTED"
                            }
                        ]
 }

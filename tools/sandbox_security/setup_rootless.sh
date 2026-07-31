@@ -8,6 +8,8 @@ command -v newgidmap >/dev/null
 grep -q "^$(id -un):" /etc/subuid
 grep -q "^$(id -un):" /etc/subgid
 [ "$(stat -fc %T /sys/fs/cgroup)" = "cgroup2fs" ]
+controllers="$(cat /sys/fs/cgroup/cgroup.controllers)"
+case " $controllers " in *" memory "*" pids "*" cpu "*) ;; *) exit 1;; esac
 dockerd-rootless-setuptool.sh install --force
 systemctl --user start docker
 docker context use rootless

@@ -93,6 +93,9 @@ class SandboxSchemaTests(unittest.TestCase):
 
         self.assertEqual(["docker"], profile["properties"]["runtime"]["enum"])
         self.assertEqual(["test", "runtime"], observation["properties"]["evidence_kind"]["enum"])
+        self.assertEqual(["RUNTIME_EXECUTED", "PREPROVISION_DENIED"], observation["properties"]["observation_mode"]["enum"])
+        self.assertIn("observation_mode", observation["required"])
+        self.assertIn("observation_mode", sandbox_case["required"])
         self.assertEqual(
             ["image_provenance", "containment", "egress", "quota", "teardown"],
             sandbox_case["properties"]["case_kind"]["enum"],
@@ -127,6 +130,7 @@ class SandboxSchemaTests(unittest.TestCase):
         observation = {
             "case_id": "address-check",
             "evidence_kind": "test",
+           "observation_mode": "RUNTIME_EXECUTED",
             "observed_at": "2026-07-26T00:00:00Z",
             "provision_calls": 0,
             "network_calls": 0,
@@ -155,6 +159,10 @@ class SandboxSchemaTests(unittest.TestCase):
         validator = runtime.schema_validator(load_schema(), "RuntimeObservation")
 
         validator.validate(observation)
+        missing_mode = dict(observation)
+        missing_mode.pop("observation_mode")
+        with self.assertRaises(Exception):
+            validator.validate(missing_mode)
         observation["connected_addresses"] = ["999.0.0.1"]
 
         with self.assertRaisesRegex(Exception, "999.0.0.1"):
@@ -193,6 +201,7 @@ class SandboxCatalogTests(unittest.TestCase):
         )
 
         for case in cases:
+            self.assertIn(case["observation_mode"], {"RUNTIME_EXECUTED", "PREPROVISION_DENIED"})
             self.assertEqual(
                 {"expected_provision_calls", "expected_network_calls", "expected_write_calls"},
                 {key for key in case if key.startswith("expected_") and key.endswith("_calls")},
@@ -863,6 +872,7 @@ class SandboxEvaluatorTests(unittest.TestCase):
         return {
             "case_id": case_id,
             "evidence_kind": "test",
+            "observation_mode": "RUNTIME_EXECUTED",
             "observed_at": "2026-07-26T00:00:00Z",
             "provision_calls": 1,
             "network_calls": 0,

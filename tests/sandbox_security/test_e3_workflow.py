@@ -18,9 +18,43 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/vg-008-e3.yml"
 VALIDATION_AT = datetime(2026, 7, 30, tzinfo=timezone.utc)
+E3_EXACT_BYTE_INPUTS = (
+    "contracts/forgeops-sandbox-contract/1.0/schema.json",
+    "fixtures/forgeops-sandbox-security/suite.json",
+    "tools/sandbox_security/e3_helper.py",
+    "tools/sandbox_security/e3_probe.py",
+)
 
 
 class E3WorkflowPolicyTests(unittest.TestCase):
+    def test_exact_e3_byte_inputs_are_lf_without_a_repository_wide_policy(self):
+        attributes_path = ROOT / ".gitattributes"
+        active_lines = [
+            line.strip()
+            for line in attributes_path.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        self.assertEqual(
+            [f"{path} text eol=lf" for path in E3_EXACT_BYTE_INPUTS],
+            active_lines,
+        )
+
+        completed = subprocess.run(
+            ["git", "check-attr", "text", "eol", "--", *E3_EXACT_BYTE_INPUTS],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(
+            [
+                f"{path}: {attribute}: {value}"
+                for path in E3_EXACT_BYTE_INPUTS
+                for attribute, value in (("text", "set"), ("eol", "lf"))
+            ],
+            completed.stdout.splitlines(),
+        )
+
     def test_primary_key_parser_ignores_subkeys_and_rejects_an_appended_primary(self):
         text = WORKFLOW.read_text(encoding="utf-8")
         install = text.split("- name: Install rootless Docker prerequisites", 1)[1].split(

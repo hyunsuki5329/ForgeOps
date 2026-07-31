@@ -1,0 +1,28 @@
+{
+  "fixture_version": "1.0",
+  "observations": [
+    {"case_id": "positive-signed-digest", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-tag-only", "observation_mode": "PREPROVISION_DENIED"},
+    {"case_id": "negative-signature-unverified", "observation_mode": "PREPROVISION_DENIED"},
+    {"case_id": "negative-issuer-mismatch", "observation_mode": "PREPROVISION_DENIED"},
+    {"case_id": "positive-rootless-readonly", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-root-user", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-rootfs-writable", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-docker-socket", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-host-device", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "positive-exact-proxy-destination", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-direct-dns", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-direct-socket", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-loopback", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-private-address", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-metadata-address", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-redirect", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "positive-within-quota", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-quota-escape", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "positive-zero-residue", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-process-residue", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-mount-residue", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-secret-residue", "observation_mode": "RUNTIME_EXECUTED"},
+    {"case_id": "negative-workspace-residue", "observation_mode": "RUNTIME_EXECUTED"}
+  ]
+}

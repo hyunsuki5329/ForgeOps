@@ -54,6 +54,27 @@ def _report_safe_diagnostic(error: BaseException) -> None:
         print(error.code, file=sys.stderr)
 
 
+def _report_case_diagnostics(results: list[dict[str, Any]]) -> None:
+    """Report only closed case IDs and public evaluator codes."""
+
+    allowed_codes = verify._PUBLIC_ERROR_CODES | {"PASSED"}
+    for result in results:
+        case_id = result.get("case_id")
+        expected = result.get("expected")
+        actual = result.get("actual")
+        if (
+            result.get("status") != "PASSED"
+            and type(case_id) is str
+            and verify._PUBLIC_CASE_ID.fullmatch(case_id) is not None
+            and expected in allowed_codes
+            and actual in allowed_codes
+        ):
+            print(
+                f"E3_CONSUMER_CASE_REJECTED {case_id} {expected} {actual}",
+                file=sys.stderr,
+            )
+
+
 def _snapshot(root: Path, directory: Path) -> dict[str, Path]:
     """Copy each fixed input exactly once before hashing, parsing, or evaluating."""
     snapshots: dict[str, Path] = {}
@@ -173,6 +194,7 @@ def _evaluate_snapshot(snapshots: dict[str, Path], command_id: str, validation_a
                 actual = "SANDBOX_RUNTIME_UNAVAILABLE"
             selected.append(verify.public_case(case["id"], case["expected"], actual, observation, trusted_runtime_observer=True))
     if any(item["status"] != "PASSED" for item in selected):
+        _report_case_diagnostics(selected)
         raise runtime.RuntimeUnavailable("E3_CONSUMER_CASE_REJECTED")
     return selected, _hashes(snapshots)
 

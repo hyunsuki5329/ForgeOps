@@ -1531,6 +1531,24 @@ class SandboxCliTests(unittest.TestCase):
             e3_consumer._report_safe_diagnostic(RuntimeError("token=private"))
             self.assertEqual("", stderr.getvalue())
 
+    def test_consumer_case_diagnostics_expose_only_closed_public_fields(self):
+        from tools.sandbox_security import e3_consumer
+
+        closed = {
+            "case_id": "negative-root-user",
+            "expected": "SANDBOX_CONTAINMENT_VIOLATION",
+            "actual": "SANDBOX_EVALUATION_INVALID",
+            "status": "FAILED",
+        }
+        unsafe = closed | {"case_id": r"C:\private\secret.txt"}
+        with mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            e3_consumer._report_case_diagnostics([closed, unsafe])
+            self.assertEqual(
+                "E3_CONSUMER_CASE_REJECTED negative-root-user "
+                "SANDBOX_CONTAINMENT_VIOLATION SANDBOX_EVALUATION_INVALID\n",
+                stderr.getvalue(),
+            )
+
     def test_registered_commands_have_exact_result_paths(self):
         from tools.sandbox_security import verify
 

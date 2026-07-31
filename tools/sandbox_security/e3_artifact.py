@@ -29,15 +29,34 @@ from tools.sandbox_security.e3_attestation import (
 )
 
 
+PHASE0_RESULT_FILES = (
+    "artifacts/verification/vg-001-protocol-conformance-result.json",
+    "artifacts/verification/vg-001-sample-fixture-result.json",
+    "artifacts/verification/vg-002-contract-bridge-result.json",
+    "artifacts/verification/vg-003-state-transition-result.json",
+    "artifacts/verification/vg-003-event-order-result.json",
+    "artifacts/verification/vg-003-replay-contract-result.json",
+    "artifacts/verification/vg-004-interface-contract-result.json",
+    "artifacts/verification/vg-005-resource-authority-result.json",
+    "artifacts/verification/vg-005-protected-read-result.json",
+    "artifacts/verification/vg-006-command-network-result.json",
+    "artifacts/verification/vg-007-approval-policy-result.json",
+    "artifacts/verification/vg-008-image-provenance-result.json",
+    "artifacts/verification/vg-008-containment-egress-result.json",
+    "artifacts/verification/vg-008-teardown-result.json",
+    "artifacts/verification/vg-009-secret-surface-result.json",
+    "artifacts/verification/vg-009-artifact-isolation-result.json",
+    "artifacts/verification/vg-023-evidence-contract-result.json",
+    "artifacts/verification/vg-023-extension-provenance-result.json",
+)
+
 E3_PAYLOAD_FILES = (
     "artifacts/runtime/e3-attestation.json",
     "artifacts/runtime/e3-attestation.bundle.json",
     "artifacts/runtime/sandbox-runtime-profile.json",
     "artifacts/runtime/sandbox-runtime-observations.json",
     "artifacts/runtime/sandbox-e3-import-receipt.json",
-    "artifacts/verification/vg-008-image-provenance-result.json",
-    "artifacts/verification/vg-008-containment-egress-result.json",
-    "artifacts/verification/vg-008-teardown-result.json",
+    *PHASE0_RESULT_FILES,
     "artifacts/verification/phase-0-exit-result.json",
     "artifacts/reviews/phase-0-exit-report.md",
 )

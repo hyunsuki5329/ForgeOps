@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   build-sign:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -104,7 +104,7 @@ jobs:
 
   verify-e3:
     needs: build-sign
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -164,6 +164,34 @@ jobs:
           set -euo pipefail
           certificate_identity="https://github.com/$GITHUB_REPOSITORY/.github/workflows/vg-008-e3.yml@refs/heads/$DEFAULT_BRANCH"
           cosign verify --certificate-identity "$certificate_identity" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" "$FORGEOPS_E3_IMAGE_REF"
+
+      - name: Install rootless Docker prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          prerequisite_fail() {
+            printf '%s\n' "$1" >&2
+            exit "$2"
+          }
+          sudo apt-get update || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
+          docker_version="$(dpkg-query --show --showformat='${Version}' docker-ce-cli)" || prerequisite_fail "E3_ROOTLESS_DOCKER_CLI_VERSION_UNAVAILABLE" 40
+          uidmap_version="$(apt-cache policy uidmap | awk '/Candidate:/ { print $2; exit }')" || prerequisite_fail "E3_ROOTLESS_UIDMAP_VERSION_UNAVAILABLE" 41
+          rootless_version="$(apt-cache madison docker-ce-rootless-extras | awk -v expected="$docker_version" '$3 == expected { print $3; exit }')" || prerequisite_fail "E3_ROOTLESS_EXTRAS_VERSION_MISMATCH" 42
+          [[ "$docker_version" =~ ^[0-9A-Za-z.+:~_-]+$ ]] || prerequisite_fail "E3_ROOTLESS_DOCKER_CLI_VERSION_UNAVAILABLE" 40
+          [[ "$uidmap_version" =~ ^[0-9A-Za-z.+:~_-]+$ ]] || prerequisite_fail "E3_ROOTLESS_UIDMAP_VERSION_UNAVAILABLE" 41
+          test "$rootless_version" = "$docker_version" || prerequisite_fail "E3_ROOTLESS_EXTRAS_VERSION_MISMATCH" 42
+          sudo apt-get install --yes --no-install-recommends "uidmap=$uidmap_version" "docker-ce-rootless-extras=$docker_version" || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
+          command -v dockerd-rootless-setuptool.sh >/dev/null || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
+          command -v newuidmap >/dev/null || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
+          command -v newgidmap >/dev/null || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
+          runner_uid="$(id -u)"
+          test "$runner_uid" -ne 0 || prerequisite_fail "E3_ROOTLESS_USER_SESSION_FAILED" 44
+          export XDG_RUNTIME_DIR="/run/user/$runner_uid"
+          sudo loginctl enable-linger "$(id -un)" || prerequisite_fail "E3_ROOTLESS_USER_SESSION_FAILED" 44
+          sudo systemctl start "user@$runner_uid.service" || prerequisite_fail "E3_ROOTLESS_USER_SESSION_FAILED" 44
+          test "$(stat -c %u "$XDG_RUNTIME_DIR")" = "$runner_uid" || prerequisite_fail "E3_ROOTLESS_RUNTIME_DIR_INVALID" 45
+          test -S "$XDG_RUNTIME_DIR/bus" || prerequisite_fail "E3_ROOTLESS_USER_BUS_MISSING" 46
+          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"
 
       - name: Configure rootless Docker
         shell: bash

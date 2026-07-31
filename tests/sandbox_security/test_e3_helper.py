@@ -325,7 +325,7 @@ class FixedE3HelperTests(unittest.TestCase):
         self.assertEqual(2, result)
         self.assertEqual([], runner.calls)
 
-    def test_collects_a_closed_public_attestation_using_only_the_fixed_graph(self):
+    def test_collects_a_closed_public_attestation_with_egress_timeout_budget(self):
         from tools.sandbox_security.e3_helper import collect_e3_attestation
         from tools.sandbox_security.e3_attestation import ExpectedIdentity
 
@@ -348,7 +348,11 @@ class FixedE3HelperTests(unittest.TestCase):
         self.assertTrue(runner.calls)
         for arguments, kwargs in runner.calls:
             self.assertEqual("docker", arguments[0])
-            self.assertEqual({"shell": False, "check": False, "capture_output": True, "text": True, "timeout": 10}, kwargs)
+            expected_timeout = 15 if "FORGEOPS_PROBE_MODE=egress-client" in arguments else 10
+            self.assertEqual(
+                {"shell": False, "check": False, "capture_output": True, "text": True, "timeout": expected_timeout},
+                kwargs,
+            )
 
 
 if __name__ == "__main__":

@@ -1110,7 +1110,12 @@ def _install_attested_e3_boundary():
 
     def valid_documents(profile: dict, observations: dict, receipt: dict, profile_bytes: bytes, observations_bytes: bytes, validation_at: str) -> bool:
         try:
-            if profile_validator is None or set(observations) != {"observations_version", "observed_at", "observations", "terminal_residue"} or set(receipt) != receipt_keys:
+            if (
+                profile_validator is None
+                or set(observations) != {"observations_version", "observed_at", "observations", "terminal_residue"}
+                or set(receipt) != receipt_keys
+                or receipt["receipt_version"] != "1.0"
+            ):
                 return False
             profile_validator.validate(profile)
             if receipt["runtime_profile_sha256"] != hashlib.sha256(profile_bytes).hexdigest() or receipt["runtime_observations_sha256"] != hashlib.sha256(observations_bytes).hexdigest():
@@ -1121,7 +1126,12 @@ def _install_attested_e3_boundary():
             if type(residue) is not dict or set(residue) != residue_keys or any(type(value) is not int or value != 0 for value in residue.values()):
                 return False
             now = datetime.strptime(validation_at, _ATTESTED_TIMESTAMP).replace(tzinfo=utc)
-            for value in (profile["observed_at"], observations["observed_at"], receipt["observed_at"], *(item.get("observed_at") for item in observations["observations"])):
+            observed_at = profile["observed_at"]
+            if observations["observed_at"] != observed_at or receipt["observed_at"] != observed_at:
+                return False
+            if any(item.get("observed_at") != observed_at for item in observations["observations"] if type(item) is dict):
+                return False
+            for value in (observed_at, *(item.get("observed_at") for item in observations["observations"] if type(item) is dict)):
                 age = (now - datetime.strptime(value, _ATTESTED_TIMESTAMP).replace(tzinfo=utc)).total_seconds()
                 if not 0 <= age <= 300:
                     return False

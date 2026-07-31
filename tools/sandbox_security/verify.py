@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 from typing import Any, Mapping
@@ -87,6 +88,11 @@ _PUBLIC_EFFECT_COUNTERS = {
     "provision_calls": 0,
     "network_calls": 0,
     "write_calls": 0,
+}
+_COMMAND_CASE_TOTALS = {
+    "image-provenance-negative": 4,
+    "containment-egress-negative": 14,
+    "teardown-negative": 5,
 }
 
 
@@ -301,7 +307,9 @@ def run_cases(
     except (TypeError, ValueError):
         raise SandboxError("SANDBOX_RUNTIME_UNAVAILABLE") from None
     local_e3 = _HAS_E3_CONSTRUCTION(observer)
-    imported_e3 = _HAS_ATTESTED_E3_CONSTRUCTION(observer)
+    # Imported E3 authority is intentionally not accepted on this public,
+    # injectable API.  The isolated consumer owns that trust boundary.
+    imported_e3 = False
     trusted_runtime_observer = local_e3 or imported_e3
     imported_profile = observer.runtime_profile() if imported_e3 else None
     results: list[dict] = []
@@ -446,77 +454,90 @@ def _atomic_write_json(path: Path, value: Mapping[str, Any]) -> None:
             temporary_path.unlink()
 
 
-def run_cli(
-    *,
-    schema: str,
-    suite: str,
-    runtime_profile: str,
-    runtime: str,
-    result: str,
-    command_id: str,
-    project_root: Path = _ROOT,
-) -> int:
-    """Evaluate only a fresh imported E3 observation; this function never invokes Docker."""
-
-    schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
-        schema=schema,
-        suite=suite,
-        runtime_profile=runtime_profile,
-        runtime=runtime,
-        result=result,
-        command_id=command_id,
-        project_root=project_root,
-    )
+def _is_closed_consumer_success(path: Path, command_id: str) -> bool:
+    """Accept only the exact public success projection written by the child."""
     try:
-        schema_bytes = schema_path.read_bytes()
-        suite_bytes = suite_path.read_bytes()
-        input_hashes = {
-            "schema_sha256": hashlib.sha256(schema_bytes).hexdigest(),
-            "suite_sha256": hashlib.sha256(suite_bytes).hexdigest(),
-        }
-    except OSError as error:
-        raise SandboxError("SANDBOX_PUBLIC_RESULT_UNSAFE") from error
-    try:
-        schema_value = json.loads(schema_bytes.decode("utf-8"))
-        suite_value = json.loads(suite_bytes.decode("utf-8"))
-        Draft202012Validator(schema_value).validate(suite_value)
-        input_hashes["runtime_profile_sha256"] = _input_sha256(runtime_profile_path)
-        validation_at = _public_timestamp()
-        observer = _RUNTIME_MODULE.AttestedRuntimeObserver.from_imported_files(
-            runtime_profile_path,
-            project_root.resolve(strict=True) / ATTESTED_OBSERVATIONS,
-            project_root.resolve(strict=True) / ATTESTED_RECEIPT,
-            validation_at,
+        value = json.loads(path.read_bytes().decode("utf-8"))
+        expected_total = _COMMAND_CASE_TOTALS[command_id]
+        if type(value) is not dict or set(value) != {
+            "result_version", "command_id", "runtime", "status", "category", "time", "input_hashes",
+            "counts", "e3_runtime_assertion", "effect_counters", "residue_counters",
+        }:
+            return False
+        if (
+            value["result_version"] != "1.0" or value["command_id"] != command_id or value["runtime"] != "docker"
+            or value["status"] != "PASSED" or value["category"] != "PASSED" or value["e3_runtime_assertion"] is not True
+        ):
+            return False
+        datetime.strptime(value["time"], _TIMESTAMP_FORMAT)
+        hashes = value["input_hashes"]
+        if type(hashes) is not dict or set(hashes) != _FULL_INPUT_HASH_KEYS or any(type(item) is not str or re.fullmatch(r"[0-9a-f]{64}", item) is None for item in hashes.values()):
+            return False
+        if value["counts"] != {"cases_total": expected_total, "passed": expected_total, "failed": 0, "not_run": 0}:
+            return False
+        effects = value["effect_counters"]
+        residue = value["residue_counters"]
+        return (
+            type(effects) is dict and set(effects) == set(_PUBLIC_EFFECT_COUNTERS)
+            and all(type(item) is int and not isinstance(item, bool) and item >= 0 for item in effects.values())
+            and type(residue) is dict and set(residue) == set(_PUBLIC_RESIDUE_COUNTERS)
+            and all(type(item) is int and not isinstance(item, bool) and item == 0 for item in residue.values())
         )
-        if not _HAS_ATTESTED_E3_CONSTRUCTION(observer):
-            raise _RUNTIME_MODULE.RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
-        selected_ids = {
-            case["id"] for catalog in _COMMAND_CATALOGS[command_id] for case in suite_value[catalog]
-        }
-        all_results = run_cases(command_id, suite_value, observer, validation_at)
-        selected = [item for item in all_results if item["case_id"] in selected_ids]
-        if len(selected) != len(selected_ids) or any(item["status"] != "PASSED" for item in selected):
-            raise _RUNTIME_MODULE.RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
-        effect_counters = {
-            key: sum(item[key] for item in selected)
-            for key in _PUBLIC_EFFECT_COUNTERS
-        }
-        _atomic_write_json(output, {
-            "result_version": "1.0", "command_id": command_id, "runtime": "docker",
-            "status": "PASSED", "category": "PASSED", "time": validation_at,
-            "input_hashes": dict(sorted(input_hashes.items())),
-            "counts": {"cases_total": len(selected), "passed": len(selected), "failed": 0, "not_run": 0},
-            "e3_runtime_assertion": True, "effect_counters": effect_counters,
-            "residue_counters": dict(_PUBLIC_RESIDUE_COUNTERS),
-        })
-        return 0
-    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError, ValidationError, _RUNTIME_MODULE.RuntimeUnavailable, SandboxError):
-        pass
-    _atomic_write_json(
-        output,
-        safe_not_run(command_id, "SANDBOX_RUNTIME_UNAVAILABLE", input_hashes=input_hashes),
-    )
-    return 2
+    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        return False
+
+
+def _install_isolated_cli():
+    """Capture the only child launcher capabilities outside mutable module globals."""
+    process_runner = subprocess.run
+    consumer_path = Path(__file__).with_name("e3_consumer.py").resolve()
+    timeout_seconds = 30
+
+    def consumer_argv(project_root: Path, command_id: str) -> list[str]:
+        return [
+            sys.executable, "-I", str(consumer_path), "--project-root",
+            str(Path(project_root).resolve(strict=True)), "--command-id", command_id,
+        ]
+
+    def isolated_run_cli(
+        *, schema: str, suite: str, runtime_profile: str, runtime: str, result: str,
+        command_id: str, project_root: Path = _ROOT,
+    ) -> int:
+        schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
+            schema=schema, suite=suite, runtime_profile=runtime_profile, runtime=runtime,
+            result=result, command_id=command_id, project_root=project_root,
+        )
+        try:
+            input_hashes = {
+                "schema_sha256": _input_sha256(schema_path),
+                "suite_sha256": _input_sha256(suite_path),
+            }
+        except OSError as error:
+            raise SandboxError("SANDBOX_PUBLIC_RESULT_UNSAFE") from error
+        try:
+            input_hashes["runtime_profile_sha256"] = _input_sha256(runtime_profile_path)
+        except OSError:
+            pass
+        try:
+            output.unlink(missing_ok=True)
+        except OSError as error:
+            raise SandboxError("SANDBOX_PUBLIC_RESULT_UNSAFE") from error
+        try:
+            completed = process_runner(
+                consumer_argv(project_root, command_id), shell=False, check=False,
+                capture_output=True, text=True, timeout=timeout_seconds,
+            )
+            if completed.returncode == 0 and _is_closed_consumer_success(output, command_id):
+                return 0
+        except (OSError, subprocess.SubprocessError):
+            pass
+        _atomic_write_json(output, safe_not_run(command_id, "SANDBOX_RUNTIME_UNAVAILABLE", input_hashes=input_hashes))
+        return 2
+
+    return consumer_argv, isolated_run_cli
+
+
+consumer_argv, run_cli = _install_isolated_cli()
 
 
 def main(argv: list[str] | None = None) -> int:

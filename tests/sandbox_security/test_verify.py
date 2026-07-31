@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import io
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
+import weakref
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -1397,6 +1400,21 @@ class AttestedRuntimeObserverTests(unittest.TestCase):
                         profile_path, observations_path, receipt_path, self.validation_at
                     )
 
+    def test_receipt_time_must_exactly_match_the_profile_and_observation_snapshot(self):
+        """Accepting a merely-fresh receipt timestamp would detach the signed projection."""
+        from tools.sandbox_security import runtime
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            profile_path, observations_path, receipt_path = self._imported_files(Path(temporary_directory))
+            receipt = load_json(receipt_path)
+            receipt["observed_at"] = "2026-07-30T00:03:59Z"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+            with self.assertRaisesRegex(runtime.RuntimeUnavailable, "SANDBOX_RUNTIME_UNAVAILABLE"):
+                runtime.AttestedRuntimeObserver.from_imported_files(
+                    profile_path, observations_path, receipt_path, self.validation_at
+                )
+
     def test_attested_observer_rejects_instance_and_class_mutation(self):
         from tools.sandbox_security import runtime
 
@@ -1412,6 +1430,27 @@ class AttestedRuntimeObserverTests(unittest.TestCase):
             self.assertFalse(runtime.has_attested_e3_construction(observer))
         finally:
             runtime.AttestedRuntimeObserver.observe = original
+
+    def test_closure_forged_imported_observer_cannot_authorize_public_run_cases(self):
+        """Extracting a public closure seal must not cross the public evaluator boundary."""
+        from tools.sandbox_security import runtime, verify
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            profile, observations, receipt = self._imported_files(Path(temporary_directory))
+            observer = runtime.AttestedRuntimeObserver.from_imported_files(profile, observations, receipt, self.validation_at)
+            seals = next(
+                cell.cell_contents
+                for cell in runtime.has_attested_e3_construction.__closure__
+                if isinstance(cell.cell_contents, weakref.WeakKeyDictionary)
+            )
+            canonical = lambda value: (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode("utf-8")
+            seals[observer] = (canonical(observer._profile), canonical(observer._observations))
+            self.assertTrue(runtime.has_attested_e3_construction(observer))
+            results = verify.run_cases("image-provenance-negative", load_json(SUITE_PATH), observer, self.validation_at)
+
+        self.assertTrue(results)
+        self.assertTrue(all(result["status"] == "NOT_RUN" for result in results))
+        self.assertTrue(all(not result["runtime_evidence"] for result in results))
 
 
 class SandboxCliTests(unittest.TestCase):
@@ -1491,6 +1530,192 @@ class SandboxCliTests(unittest.TestCase):
         self.assertFalse(public_result["e3_runtime_assertion"])
         self.assertNotIn("cases", public_result)
         self.assertNotIn("identity", public_result)
+
+    def test_outer_cli_uses_closure_captured_consumer_and_hides_child_output(self):
+        """A mutable subprocess global must not replace the isolated child boundary."""
+        from tools.sandbox_security import verify
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            schema = root / "contracts/forgeops-sandbox-contract/1.0/schema.json"
+            suite = root / "fixtures/forgeops-sandbox-security/suite.json"
+            schema.parent.mkdir(parents=True)
+            suite.parent.mkdir(parents=True)
+            schema.write_bytes(SCHEMA_PATH.read_bytes())
+            suite.write_bytes(SUITE_PATH.read_bytes())
+            result = root / "artifacts/verification/vg-008-image-provenance-result.json"
+            with mock.patch.object(verify.subprocess, "run", side_effect=AssertionError("mutable subprocess global used")), mock.patch("sys.stdout", new_callable=io.StringIO) as stdout, mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+                exit_code = verify.run_cli(
+                    schema="contracts/forgeops-sandbox-contract/1.0/schema.json",
+                    suite="fixtures/forgeops-sandbox-security/suite.json",
+                    runtime_profile="artifacts/runtime/sandbox-runtime-profile.json",
+                    runtime="docker",
+                    result="artifacts/verification/vg-008-image-provenance-result.json",
+                    command_id="image-provenance-negative",
+                    project_root=root,
+                )
+
+            self.assertEqual(2, exit_code)
+            self.assertEqual(
+                [
+                    sys.executable, "-I", str((ROOT / "tools/sandbox_security/e3_consumer.py").resolve()),
+                    "--project-root", str(root.resolve()), "--command-id", "image-provenance-negative",
+                ],
+                verify.consumer_argv(root.resolve(), "image-provenance-negative"),
+            )
+            self.assertEqual("", stdout.getvalue())
+            self.assertEqual("", stderr.getvalue())
+            public_result = load_json(result)
+
+        self.assertEqual("NOT_RUN", public_result["status"])
+        self.assertNotIn("identity", json.dumps(public_result))
+
+    def test_outer_cli_removes_stale_passed_result_before_a_fail_closed_child(self):
+        """A child that cannot replace output must not leave an old E3 success visible."""
+        from tools.sandbox_security import verify
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            schema = root / "contracts/forgeops-sandbox-contract/1.0/schema.json"
+            suite = root / "fixtures/forgeops-sandbox-security/suite.json"
+            schema.parent.mkdir(parents=True)
+            suite.parent.mkdir(parents=True)
+            schema.write_bytes(SCHEMA_PATH.read_bytes())
+            suite.write_bytes(SUITE_PATH.read_bytes())
+            result = root / "artifacts/verification/vg-008-image-provenance-result.json"
+            result.parent.mkdir(parents=True)
+            result.write_text(json.dumps({"status": "PASSED", "e3_runtime_assertion": True, "identity": "stale"}), encoding="utf-8")
+
+            exit_code = verify.run_cli(
+                schema="contracts/forgeops-sandbox-contract/1.0/schema.json",
+                suite="fixtures/forgeops-sandbox-security/suite.json",
+                runtime_profile="artifacts/runtime/sandbox-runtime-profile.json",
+                runtime="docker",
+                result="artifacts/verification/vg-008-image-provenance-result.json",
+                command_id="image-provenance-negative",
+                project_root=root,
+            )
+            public_result = load_json(result)
+
+        self.assertEqual(2, exit_code)
+        self.assertEqual("NOT_RUN", public_result["status"])
+        self.assertFalse(public_result["e3_runtime_assertion"])
+        self.assertNotIn("identity", public_result)
+
+    def test_outer_success_validator_rejects_missing_stale_and_malformed_child_results(self):
+        """A return code alone must never authorize an E3 result."""
+        from tools.sandbox_security import verify
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            result = Path(temporary_directory) / "result.json"
+            self.assertFalse(verify._is_closed_consumer_success(result, "image-provenance-negative"))
+            result.write_text(json.dumps({"status": "PASSED", "e3_runtime_assertion": True}), encoding="utf-8")
+            self.assertFalse(verify._is_closed_consumer_success(result, "image-provenance-negative"))
+            malformed = {
+                "result_version": "1.0", "command_id": "image-provenance-negative", "runtime": "docker",
+                "status": "PASSED", "category": "PASSED", "time": "not-a-time",
+                "input_hashes": {"schema_sha256": "a" * 64, "suite_sha256": "b" * 64, "runtime_profile_sha256": "c" * 64},
+                "counts": {"cases_total": 4, "passed": 4, "failed": 0, "not_run": 0},
+                "e3_runtime_assertion": True,
+                "effect_counters": {"provision_calls": 0, "network_calls": 0, "write_calls": 0},
+                "residue_counters": {"processes": 0, "mounts": 0, "leases": 0, "transient_secrets": 0, "workspaces": 0},
+            }
+            result.write_text(json.dumps(malformed), encoding="utf-8")
+            self.assertFalse(verify._is_closed_consumer_success(result, "image-provenance-negative"))
+
+    def test_injected_zero_exit_child_without_a_closed_result_is_overwritten_not_run(self):
+        """Even a closure-tampered child launcher cannot turn exit zero into E3 success."""
+        from tools.sandbox_security import verify
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            schema = root / "contracts/forgeops-sandbox-contract/1.0/schema.json"
+            suite = root / "fixtures/forgeops-sandbox-security/suite.json"
+            schema.parent.mkdir(parents=True)
+            suite.parent.mkdir(parents=True)
+            schema.write_bytes(SCHEMA_PATH.read_bytes())
+            suite.write_bytes(SUITE_PATH.read_bytes())
+            result = root / "artifacts/verification/vg-008-image-provenance-result.json"
+            result.parent.mkdir(parents=True)
+            result.write_text(json.dumps({"status": "PASSED", "identity": "stale"}), encoding="utf-8")
+            runner_cell = next(cell for cell in verify.run_cli.__closure__ if cell.cell_contents is subprocess.run)
+            original_runner = runner_cell.cell_contents
+            try:
+                runner_cell.cell_contents = lambda *_arguments, **_kwargs: completed(returncode=0)
+                exit_code = verify.run_cli(
+                    schema="contracts/forgeops-sandbox-contract/1.0/schema.json",
+                    suite="fixtures/forgeops-sandbox-security/suite.json",
+                    runtime_profile="artifacts/runtime/sandbox-runtime-profile.json",
+                    runtime="docker",
+                    result="artifacts/verification/vg-008-image-provenance-result.json",
+                    command_id="image-provenance-negative",
+                    project_root=root,
+                )
+            finally:
+                runner_cell.cell_contents = original_runner
+            public_result = load_json(result)
+
+        self.assertEqual(2, exit_code)
+        self.assertEqual("NOT_RUN", public_result["status"])
+        self.assertFalse(public_result["e3_runtime_assertion"])
+        self.assertNotIn("identity", public_result)
+
+    def test_injected_zero_exit_child_with_malformed_success_is_overwritten_not_run(self):
+        """A child-written extra field or incomplete success envelope must be rejected by the parent."""
+        from tools.sandbox_security import verify
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            schema = root / "contracts/forgeops-sandbox-contract/1.0/schema.json"
+            suite = root / "fixtures/forgeops-sandbox-security/suite.json"
+            schema.parent.mkdir(parents=True)
+            suite.parent.mkdir(parents=True)
+            schema.write_bytes(SCHEMA_PATH.read_bytes())
+            suite.write_bytes(SUITE_PATH.read_bytes())
+            result = root / "artifacts/verification/vg-008-image-provenance-result.json"
+            runner_cell = next(cell for cell in verify.run_cli.__closure__ if cell.cell_contents is subprocess.run)
+            original_runner = runner_cell.cell_contents
+
+            def malformed_child(arguments, **_kwargs):
+                child_root = Path(arguments[4])
+                target = child_root / "artifacts/verification/vg-008-image-provenance-result.json"
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(json.dumps({"status": "PASSED", "e3_runtime_assertion": True, "cases": []}), encoding="utf-8")
+                return completed(returncode=0)
+
+            try:
+                runner_cell.cell_contents = malformed_child
+                exit_code = verify.run_cli(
+                    schema="contracts/forgeops-sandbox-contract/1.0/schema.json",
+                    suite="fixtures/forgeops-sandbox-security/suite.json",
+                    runtime_profile="artifacts/runtime/sandbox-runtime-profile.json",
+                    runtime="docker",
+                    result="artifacts/verification/vg-008-image-provenance-result.json",
+                    command_id="image-provenance-negative",
+                    project_root=root,
+                )
+            finally:
+                runner_cell.cell_contents = original_runner
+            public_result = load_json(result)
+
+        self.assertEqual(2, exit_code)
+        self.assertEqual("NOT_RUN", public_result["status"])
+        self.assertNotIn("cases", public_result)
+
+    def test_consumer_removes_stale_success_before_an_early_snapshot_failure(self):
+        """A missing fixed input must not leave a previous consumer success behind."""
+        from tools.sandbox_security import e3_consumer
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            result = root / "artifacts/verification/vg-008-teardown-result.json"
+            result.parent.mkdir(parents=True)
+            result.write_text(json.dumps({"status": "PASSED", "e3_runtime_assertion": True}), encoding="utf-8")
+
+            exit_code = e3_consumer.consume(root, "teardown-negative")
+
+        self.assertEqual(2, exit_code)
+        self.assertFalse(result.exists())
 
     def test_malformed_exact_literal_suite_writes_safe_not_run(self):
         from tools.sandbox_security import verify

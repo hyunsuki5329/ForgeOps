@@ -121,20 +121,23 @@ def _quota() -> dict[str, object]:
 
 
 def _teardown() -> dict[str, object]:
-    workspace = Path(tempfile.mkdtemp(prefix="e3-teardown-"))
+    workspace = Path("/workspace/.e3-teardown")
+    try: workspace.mkdir()
+    except OSError: pass
     secret = workspace / "canary"
     created = False
     try:
         secret.write_bytes(b"canary"); created = True
     except OSError:
         pass
-    finally:
-        try: secret.unlink(missing_ok=True); workspace.rmdir()
-        except OSError: pass
+    cleanup_confirmed = False
+    try: secret.unlink(missing_ok=True); workspace.rmdir()
+    except OSError: pass
+    cleanup_confirmed = not secret.exists() and not workspace.exists()
     try: mount_count = len(Path("/proc/self/mountinfo").read_text(encoding="utf-8").splitlines())
     except OSError: mount_count = 0
     return {**_containment(), "write_calls": int(created), "quota_exceeded": False,
-            "pre_cleanup_residue": {"processes": int(os.getpid() > 0), "mounts": mount_count, "leases": 0, "transient_secrets": int(created), "workspaces": int(created)}}
+            "pre_cleanup_residue": {"processes": int(os.getpid() > 0), "mounts": mount_count, "leases": 0, "transient_secrets": int(created), "workspaces": int(created)}, "cleanup_confirmed": cleanup_confirmed}
 
 
 def main() -> int:

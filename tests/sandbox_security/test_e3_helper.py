@@ -18,6 +18,22 @@ SUITE = ROOT / "fixtures/forgeops-sandbox-security/suite.json"
 IMAGE = "ghcr.io/example/forgeops-e3@sha256:" + "c" * 64
 
 
+class RootlessSetupTests(unittest.TestCase):
+    def test_controller_check_is_order_independent_and_rejects_each_missing_controller(self):
+        script = (ROOT / "tools/sandbox_security/setup_rootless.sh").read_text(encoding="utf-8")
+        self.assertIn("for controller in memory pids cpu", script)
+        self.assertIn('" $controller "', script)
+
+        def admitted(value: str) -> bool:
+            available = set(value.split())
+            return all(name in available for name in ("memory", "pids", "cpu"))
+
+        self.assertTrue(admitted("cpuset cpu io memory hugetlb pids rdma misc dmem"))
+        for missing in ("memory", "pids", "cpu"):
+            with self.subTest(missing=missing):
+                self.assertFalse(admitted(" ".join(name for name in ("memory", "pids", "cpu") if name != missing)))
+
+
 class RecordingRunner:
     """A complete Docker-response double; no process is ever started."""
 
@@ -67,8 +83,11 @@ class RecordingRunner:
             if "FORGEOPS_PROBE_MODE=teardown-canary" in joined:
                 telemetry["write_calls"] = 1
                 telemetry["pre_cleanup_residue"] = {"processes": 1, "mounts": 1, "leases": 1, "transient_secrets": 1, "workspaces": 1}
+                telemetry["cleanup_confirmed"] = True
             return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps(telemetry), stderr="")
         if arguments[:2] == ["docker", "inspect"]:
+            if "canary" in arguments[2]:
+                return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps({"Mounts": [{"Type": "volume", "Name": "forgeops-e3-1001-1-volume", "Destination": "/workspace"}]}), stderr="")
             return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps({
                 "Config": {"User": "1000:1000"},
                 "HostConfig": {"ReadonlyRootfs": True, "CapDrop": ["ALL"],
@@ -134,6 +153,21 @@ class FixedE3HelperTests(unittest.TestCase):
         self.assertTrue(any(" rm -f forgeops-e3-1001-1-containment" in f" {call}" for call in calls))
         self.assertTrue(any(" network ls " in f" {call} " for call in calls))
         self.assertTrue(any(" volume ls " in f" {call} " for call in calls))
+
+    def test_canary_requires_exact_named_volume_mount(self):
+        from tools.sandbox_security.e3_helper import collect_e3_attestation
+        from tools.sandbox_security.e3_attestation import ExpectedIdentity
+        class WrongMountRunner(RecordingRunner):
+            def __call__(self, arguments, **kwargs):
+                result = super().__call__(arguments, **kwargs)
+                if arguments[:2] == ["docker", "inspect"] and "canary" in arguments[2]:
+                    return subprocess.CompletedProcess(arguments, 0, stdout=json.dumps({"Mounts": []}), stderr="")
+                return result
+        identity = ExpectedIdentity("example/forgeops", "123", "main", "a" * 40, "b" * 40, "1001", 1, IMAGE, "sha256:" + "c" * 64)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "out.json"
+            self.assertEqual(2, collect_e3_attestation(identity, SCHEMA, SUITE, output, runner=WrongMountRunner()))
+            self.assertFalse(output.exists())
     def test_probe_emits_only_the_closed_observation_fields_for_an_allowed_mode(self):
         from tools.sandbox_security import e3_probe
 
@@ -217,7 +251,7 @@ class FixedE3HelperTests(unittest.TestCase):
         self.assertEqual((0, 0, 0), tuple(attestation["observations"][1][key] for key in ("provision_calls", "network_calls", "write_calls")))
         teardown = {item["case_id"]: item["residue"] for item in attestation["observations"] if item["case_id"].startswith("negative-") and "residue" in item}
         self.assertEqual({"processes": 1, "mounts": 0, "leases": 0, "transient_secrets": 0, "workspaces": 0}, teardown["negative-process-residue"])
-        self.assertEqual({"processes": 0, "mounts": 0, "leases": 0, "transient_secrets": 0, "workspaces": 0}, teardown["negative-mount-residue"])
+        self.assertEqual({"processes": 0, "mounts": 1, "leases": 0, "transient_secrets": 0, "workspaces": 0}, teardown["negative-mount-residue"])
         self.assertEqual({"processes": 0, "mounts": 0, "leases": 0, "transient_secrets": 0, "workspaces": 0}, attestation["terminal_residue"])
         self.assertTrue(runner.calls)
         for arguments, kwargs in runner.calls:

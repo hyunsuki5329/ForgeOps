@@ -77,7 +77,6 @@ def fixed_command_graph(image_ref: str, resource_token: str) -> Sequence[Sequenc
     return (
         ("docker", "info", "--format", "{{json .SecurityOptions}}"),
         ("docker", "info", "--format", "{{.CgroupVersion}} {{.CgroupDriver}}"),
-        ("docker", "info", "--format", "{{json .DriverStatus}}"),
         ("docker", "image", "inspect", image_ref, "--format", "{{json .}}"),
         ("docker", "run", "--name", containment, "--network=none", *common, "--env", "FORGEOPS_PROBE_MODE=containment", image_ref),
         ("docker", "inspect", containment, "--format", "{{json .}}"),
@@ -139,7 +138,7 @@ def _preflight(runner: ProcessRunner, graph: Sequence[Sequence[str]], image_ref:
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
     if _run(runner, graph[1]).strip() != "2 systemd":
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
-    image = _json(_run(runner, graph[3]))
+    image = _json(_run(runner, graph[2]))
     if image_ref not in image.get("RepoDigests", []):
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
 
@@ -147,7 +146,7 @@ def _preflight(runner: ProcessRunner, graph: Sequence[Sequence[str]], image_ref:
 def _probe_from(command: Sequence[str], runner: ProcessRunner) -> dict[str, Any]:
     probe = _json(_run(runner, command))
     required = {"root_uid", "rootfs_read_only", "cap_drop_all", "no_new_privileges", "forbidden_mounts", "forbidden_devices", "direct_socket_calls", "direct_dns_calls", "proxy_calls", "proxy_destination", "connected_addresses", "redirects", "quota_exceeded"}
-    permitted = required | {"write_calls", "pre_cleanup_residue", "memory_controller", "pids_controller", "cpu_controller"}
+    permitted = required | {"write_calls", "pre_cleanup_residue", "cleanup_confirmed", "memory_controller", "pids_controller", "cpu_controller"}
     if not required.issubset(probe) or not set(probe).issubset(permitted):
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
     return probe
@@ -253,28 +252,31 @@ def collect_e3_attestation(identity: ExpectedIdentity, schema_path: Path, suite_
         if tuple(case.get("id") for case in cases) != _CASE_IDS or any(_CASE_ID.fullmatch(case.get("id", "")) is None for case in cases) or any(case.get("observation_mode") not in {"RUNTIME_EXECUTED", "PREPROVISION_DENIED"} for case in cases): raise E3HelperError("E3_HELPER_INPUT_INVALID")
         graph = fixed_command_graph(image_ref, token)
         _preflight(runner, graph, image_ref)
+        attempted.add(6); _run(runner, graph[6]); completed.add(6)
         attempted.add(7); _run(runner, graph[7]); completed.add(7)
-        attempted.add(8); _run(runner, graph[8]); completed.add(8)
-        attempted.add(9); egress = _egress_from(graph[9], runner); completed.add(9)
-        attempted.add(4); containment = _probe_from(graph[4], runner); completed.add(4)
+        attempted.add(8); egress = _egress_from(graph[8], runner); completed.add(8)
+        attempted.add(3); containment = _probe_from(graph[3], runner); completed.add(3)
         if not all(containment.get(name) is True for name in ("memory_controller", "pids_controller", "cpu_controller")): raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
-        _inspect_hardening(_json(_run(runner, graph[5]))); completed.add(5)
-        attempted.add(13); quota = _probe_from(graph[13], runner); completed.add(13)
-        attempted.add(15); _run(runner, graph[15]); completed.add(15)
-        attempted.add(16); teardown = _probe_from(graph[16], runner); completed.add(16)
-        canary_inspect = _json(_run(runner, graph[17])); completed.add(17)
-        if not isinstance(canary_inspect.get("Mounts"), list): raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+        _inspect_hardening(_json(_run(runner, graph[4]))); completed.add(4)
+        attempted.add(12); quota = _probe_from(graph[12], runner); completed.add(12)
+        attempted.add(14); _run(runner, graph[14]); completed.add(14)
+        attempted.add(15); teardown = _probe_from(graph[15], runner); completed.add(15)
+        if teardown.get("cleanup_confirmed") is not True: raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
+        canary_inspect = _json(_run(runner, graph[16])); completed.add(16)
+        expected_mount = {"Type": "volume", "Name": _resource(token, "volume"), "Destination": "/workspace"}
+        mounts = canary_inspect.get("Mounts")
+        if not isinstance(mounts, list) or len(mounts) != 1 or any(mounts[0].get(key) != value for key, value in expected_mount.items()): raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
         pre_residue = teardown.get("pre_cleanup_residue")
         if not isinstance(pre_residue, dict): raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE")
-        teardown["pre_cleanup_residue"] = {**pre_residue, "mounts": len(canary_inspect["Mounts"]), "leases": int(15 in completed)}
+        teardown["pre_cleanup_residue"] = {**pre_residue, "mounts": 1, "leases": int(14 in completed)}
         observed_at = _now()
         probes = {"containment": containment, "quota": quota, "teardown": teardown, "image_provenance": containment}
         effects = {
             "image_provenance": {"provision_calls": 1, "network_calls": 0, "write_calls": 0},
-            "containment": {"provision_calls": int(4 in completed), "network_calls": 0, "write_calls": 0},
-            "egress": {"provision_calls": int(9 in completed), "network_calls": int(7 in completed), "write_calls": 0},
-            "quota": {"provision_calls": int(13 in completed), "network_calls": 0, "write_calls": int(bool(quota.get("write_calls", 0)))},
-            "teardown": {"provision_calls": int(16 in completed), "network_calls": 0, "write_calls": int(bool(teardown.get("write_calls", 0)))},
+            "containment": {"provision_calls": int(3 in completed), "network_calls": 0, "write_calls": 0},
+            "egress": {"provision_calls": int(8 in completed), "network_calls": int(6 in completed), "write_calls": 0},
+            "quota": {"provision_calls": int(12 in completed), "network_calls": 0, "write_calls": int(bool(quota.get("write_calls", 0)))},
+            "teardown": {"provision_calls": int(15 in completed), "network_calls": 0, "write_calls": int(bool(teardown.get("write_calls", 0)))},
         }
         observations = [
             _denied(case, observed_at) if case["observation_mode"] == "PREPROVISION_DENIED"
@@ -297,20 +299,20 @@ def collect_e3_attestation(identity: ExpectedIdentity, schema_path: Path, suite_
         cleanup_failed = False
         if graph:
             # Cleanup commands are fixed and are attempted after every partial lifecycle.
-            for index in (6, 10, 11, 12, 14, 18, 19):
-                if index in {6} and 4 not in attempted: continue
-                if index in {10} and 9 not in attempted: continue
-                if index in {11} and 8 not in attempted: continue
-                if index in {12} and 7 not in attempted: continue
-                if index == 14 and 13 not in attempted: continue
-                if index in {18, 19} and 16 not in attempted: continue
+            for index in (5, 9, 10, 11, 13, 17, 18):
+                if index == 5 and 3 not in attempted: continue
+                if index == 9 and 8 not in attempted: continue
+                if index == 10 and 7 not in attempted: continue
+                if index == 11 and 6 not in attempted: continue
+                if index == 13 and 12 not in attempted: continue
+                if index in {17, 18} and 15 not in attempted: continue
                 try:
                     _run(runner, graph[index])
                 except E3HelperError:
                     cleanup_failed = True
             if attempted and not cleanup_failed:
                 try:
-                    if any(_run(runner, command).strip() for command in graph[20:]): cleanup_failed = True
+                    if any(_run(runner, command).strip() for command in graph[19:]): cleanup_failed = True
                 except E3HelperError:
                     cleanup_failed = True
         if failure is not None or cleanup_failed:

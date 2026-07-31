@@ -17,6 +17,9 @@ import sys
 import tempfile
 from typing import Any, Mapping, Sequence
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from tools.sandbox_security.e3_attestation import (
     DEFAULT_PROCESS_RUNNER,
     E3Error,

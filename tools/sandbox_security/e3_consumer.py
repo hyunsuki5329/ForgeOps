@@ -75,6 +75,35 @@ def _report_case_diagnostics(results: list[dict[str, Any]]) -> None:
             )
 
 
+def _report_containment_field_diagnostics(result: dict[str, Any], observation: object) -> None:
+    """Name only fixed containment checks that rejected a selected case."""
+
+    if (
+        result.get("status") != "FAILED"
+        or result.get("actual") != "SANDBOX_CONTAINMENT_VIOLATION"
+        or type(observation) is not dict
+    ):
+        return
+    failing_fields: list[str] = []
+    if observation.get("root_uid") == 0:
+        failing_fields.append("root_uid")
+    if observation.get("rootfs_read_only") is not True:
+        failing_fields.append("rootfs_read_only")
+    if observation.get("cap_drop_all") is not True:
+        failing_fields.append("cap_drop_all")
+    if observation.get("no_new_privileges") is not True:
+        failing_fields.append("no_new_privileges")
+    if observation.get("forbidden_mounts"):
+        failing_fields.append("forbidden_mounts")
+    if observation.get("forbidden_devices"):
+        failing_fields.append("forbidden_devices")
+    if failing_fields:
+        print(
+            "E3_CONSUMER_CONTAINMENT_FIELDS " + " ".join(failing_fields),
+            file=sys.stderr,
+        )
+
+
 def _snapshot(root: Path, directory: Path) -> dict[str, Path]:
     """Copy each fixed input exactly once before hashing, parsing, or evaluating."""
     snapshots: dict[str, Path] = {}
@@ -192,7 +221,12 @@ def _evaluate_snapshot(snapshots: dict[str, Path], command_id: str, validation_a
                 actual = verify._public_error_code(error)
             except Exception:
                 actual = "SANDBOX_RUNTIME_UNAVAILABLE"
-            selected.append(verify.public_case(case["id"], case["expected"], actual, observation, trusted_runtime_observer=True))
+            result = verify.public_case(
+                case["id"], case["expected"], actual, observation,
+                trusted_runtime_observer=True,
+            )
+            selected.append(result)
+            _report_containment_field_diagnostics(result, observation)
     if any(item["status"] != "PASSED" for item in selected):
         _report_case_diagnostics(selected)
         raise runtime.RuntimeUnavailable("E3_CONSUMER_CASE_REJECTED")

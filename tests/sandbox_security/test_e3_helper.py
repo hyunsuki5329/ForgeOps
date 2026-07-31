@@ -271,6 +271,19 @@ class FixedE3HelperTests(unittest.TestCase):
             set(json.loads(output.getvalue())),
         )
 
+    def test_probe_accepts_a_zero_effective_capability_mask_with_proc_whitespace(self):
+        from tools.sandbox_security import e3_probe
+
+        with mock.patch.object(
+            e3_probe,
+            "_status",
+            return_value={"CapEff": "\t0000000000000000", "NoNewPrivs": "\t1"},
+        ), mock.patch.object(e3_probe.os, "getuid", return_value=1000, create=True):
+            observation = e3_probe._containment()
+
+        self.assertTrue(observation["cap_drop_all"])
+        self.assertTrue(observation["no_new_privileges"])
+
     def test_egress_client_emits_only_helper_closed_fields_in_order(self):
         from tools.sandbox_security import e3_probe
 

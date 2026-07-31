@@ -44,7 +44,7 @@ def _containment() -> dict[str, object]:
     except OSError: controllers = set()
     return {
         "root_uid": os.getuid(), "rootfs_read_only": not wrote,
-        "cap_drop_all": status.get("CapEff", "") == "0000000000000000",
+        "cap_drop_all": status.get("CapEff", "").strip() == "0000000000000000",
         "no_new_privileges": status.get("NoNewPrivs", "").strip() == "1",
         "forbidden_mounts": int("/var/run/docker.sock" in mount_text),
         "forbidden_devices": int(Path("/dev/kmsg").exists() or Path("/dev/fuse").exists()),

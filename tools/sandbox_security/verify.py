@@ -15,7 +15,6 @@ import json
 import os
 from pathlib import Path
 import re
-import subprocess
 import sys
 import tempfile
 from typing import Any, Mapping
@@ -88,11 +87,6 @@ _PUBLIC_EFFECT_COUNTERS = {
     "provision_calls": 0,
     "network_calls": 0,
     "write_calls": 0,
-}
-_COMMAND_CASE_TOTALS = {
-    "image-provenance-negative": 4,
-    "containment-egress-negative": 14,
-    "teardown-negative": 5,
 }
 
 
@@ -454,44 +448,39 @@ def _atomic_write_json(path: Path, value: Mapping[str, Any]) -> None:
             temporary_path.unlink()
 
 
-def _is_closed_consumer_success(path: Path, command_id: str) -> bool:
-    """Accept only the exact public success projection written by the child."""
+def _write_admitted_not_run(command_id: str, schema_path: Path, suite_path: Path, runtime_profile_path: Path, output: Path) -> int:
+    """Write the only public parent result; this path never evaluates imported E3."""
     try:
-        value = json.loads(path.read_bytes().decode("utf-8"))
-        expected_total = _COMMAND_CASE_TOTALS[command_id]
-        if type(value) is not dict or set(value) != {
-            "result_version", "command_id", "runtime", "status", "category", "time", "input_hashes",
-            "counts", "e3_runtime_assertion", "effect_counters", "residue_counters",
-        }:
-            return False
-        if (
-            value["result_version"] != "1.0" or value["command_id"] != command_id or value["runtime"] != "docker"
-            or value["status"] != "PASSED" or value["category"] != "PASSED" or value["e3_runtime_assertion"] is not True
-        ):
-            return False
-        datetime.strptime(value["time"], _TIMESTAMP_FORMAT)
-        hashes = value["input_hashes"]
-        if type(hashes) is not dict or set(hashes) != _FULL_INPUT_HASH_KEYS or any(type(item) is not str or re.fullmatch(r"[0-9a-f]{64}", item) is None for item in hashes.values()):
-            return False
-        if value["counts"] != {"cases_total": expected_total, "passed": expected_total, "failed": 0, "not_run": 0}:
-            return False
-        effects = value["effect_counters"]
-        residue = value["residue_counters"]
-        return (
-            type(effects) is dict and set(effects) == set(_PUBLIC_EFFECT_COUNTERS)
-            and all(type(item) is int and not isinstance(item, bool) and item >= 0 for item in effects.values())
-            and type(residue) is dict and set(residue) == set(_PUBLIC_RESIDUE_COUNTERS)
-            and all(type(item) is int and not isinstance(item, bool) and item == 0 for item in residue.values())
-        )
-    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError, ValueError):
-        return False
+        input_hashes = {
+            "schema_sha256": _input_sha256(schema_path),
+            "suite_sha256": _input_sha256(suite_path),
+        }
+    except OSError as error:
+        raise SandboxError("SANDBOX_PUBLIC_RESULT_UNSAFE") from error
+    try:
+        input_hashes["runtime_profile_sha256"] = _input_sha256(runtime_profile_path)
+    except OSError:
+        pass
+    _atomic_write_json(output, safe_not_run(command_id, "SANDBOX_RUNTIME_UNAVAILABLE", input_hashes=input_hashes))
+    return 2
 
 
-def _install_isolated_cli():
-    """Capture the only child launcher capabilities outside mutable module globals."""
-    process_runner = subprocess.run
+def run_cli(
+    *, schema: str, suite: str, runtime_profile: str, runtime: str, result: str,
+    command_id: str, project_root: Path = _ROOT,
+) -> int:
+    """Public callable: only write a closed capability-gap result, never consume E3."""
+    schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
+        schema=schema, suite=suite, runtime_profile=runtime_profile, runtime=runtime,
+        result=result, command_id=command_id, project_root=project_root,
+    )
+    return _write_admitted_not_run(command_id, schema_path, suite_path, runtime_profile_path, output)
+
+
+def _install_cli_main():
+    """Keep exec capability and consumer path out of the public callable surface."""
+    execv = os.execv
     consumer_path = Path(__file__).with_name("e3_consumer.py").resolve()
-    timeout_seconds = 30
 
     def consumer_argv(project_root: Path, command_id: str) -> list[str]:
         return [
@@ -499,70 +488,33 @@ def _install_isolated_cli():
             str(Path(project_root).resolve(strict=True)), "--command-id", command_id,
         ]
 
-    def isolated_run_cli(
-        *, schema: str, suite: str, runtime_profile: str, runtime: str, result: str,
-        command_id: str, project_root: Path = _ROOT,
-    ) -> int:
-        schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
-            schema=schema, suite=suite, runtime_profile=runtime_profile, runtime=runtime,
-            result=result, command_id=command_id, project_root=project_root,
-        )
+    def cli_main(argv: list[str] | None = None) -> int:
+        """Replace this process with the only authority allowed to consume E3."""
+        parser = argparse.ArgumentParser(description="ForgeOps VG-008 sandbox verifier")
+        parser.add_argument("--schema", required=True)
+        parser.add_argument("--suite", required=True)
+        parser.add_argument("--runtime-profile", required=True)
+        parser.add_argument("--runtime", required=True, choices=("docker",))
+        parser.add_argument("--result", required=True)
+        parser.add_argument("--command-id", required=True, choices=tuple(TRUSTED_RESULTS))
+        arguments = parser.parse_args(argv)
         try:
-            input_hashes = {
-                "schema_sha256": _input_sha256(schema_path),
-                "suite_sha256": _input_sha256(suite_path),
-            }
-        except OSError as error:
-            raise SandboxError("SANDBOX_PUBLIC_RESULT_UNSAFE") from error
-        try:
-            input_hashes["runtime_profile_sha256"] = _input_sha256(runtime_profile_path)
+            schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
+                schema=arguments.schema, suite=arguments.suite, runtime_profile=arguments.runtime_profile,
+                runtime=arguments.runtime, result=arguments.result, command_id=arguments.command_id,
+                project_root=_ROOT,
+            )
+            execv(sys.executable, consumer_argv(_ROOT, arguments.command_id))
+        except SandboxError as error:
+            parser.error(error.code)
         except OSError:
             pass
-        try:
-            output.unlink(missing_ok=True)
-        except OSError as error:
-            raise SandboxError("SANDBOX_PUBLIC_RESULT_UNSAFE") from error
-        try:
-            completed = process_runner(
-                consumer_argv(project_root, command_id), shell=False, check=False,
-                capture_output=True, text=True, timeout=timeout_seconds,
-            )
-            if completed.returncode == 0 and _is_closed_consumer_success(output, command_id):
-                return 0
-        except (OSError, subprocess.SubprocessError):
-            pass
-        _atomic_write_json(output, safe_not_run(command_id, "SANDBOX_RUNTIME_UNAVAILABLE", input_hashes=input_hashes))
-        return 2
+        return _write_admitted_not_run(arguments.command_id, schema_path, suite_path, runtime_profile_path, output)
 
-    return consumer_argv, isolated_run_cli
+    return consumer_argv, cli_main
 
 
-consumer_argv, run_cli = _install_isolated_cli()
-
-
-def main(argv: list[str] | None = None) -> int:
-    """Parse the registered command surface and emit a truthful non-success result."""
-
-    parser = argparse.ArgumentParser(description="ForgeOps VG-008 sandbox verifier")
-    parser.add_argument("--schema", required=True)
-    parser.add_argument("--suite", required=True)
-    parser.add_argument("--runtime-profile", required=True)
-    parser.add_argument("--runtime", required=True, choices=("docker",))
-    parser.add_argument("--result", required=True)
-    parser.add_argument("--command-id", required=True, choices=tuple(TRUSTED_RESULTS))
-    arguments = parser.parse_args(argv)
-    try:
-        return run_cli(
-            schema=arguments.schema,
-            suite=arguments.suite,
-            runtime_profile=arguments.runtime_profile,
-            runtime=arguments.runtime,
-            result=arguments.result,
-            command_id=arguments.command_id,
-        )
-    except SandboxError as error:
-        parser.error(error.code)
-    return 2
+consumer_argv, main = _install_cli_main()
 
 
 if __name__ == "__main__":

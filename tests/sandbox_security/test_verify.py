@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import io
 import os
 from pathlib import Path
@@ -1606,6 +1607,8 @@ class SandboxCliTests(unittest.TestCase):
         original_executable = sys.executable
         execv_cell = next(cell for cell in verify.main.__closure__ if cell.cell_contents is os.execv)
         original_execv = execv_cell.cell_contents
+        platform_cell = next(cell for cell in verify.main.__closure__ if cell.cell_contents == os.name)
+        original_platform = platform_cell.cell_contents
         exec_calls = []
         try:
             def fake_execv(_executable, arguments):
@@ -1615,6 +1618,7 @@ class SandboxCliTests(unittest.TestCase):
                 fake_result.write_text(json.dumps({"status": "PASSED", "e3_runtime_assertion": True, "identity": "reviewer-forged"}), encoding="utf-8")
 
             execv_cell.cell_contents = fake_execv
+            platform_cell.cell_contents = "posix"
             with tempfile.TemporaryDirectory() as attacker_root, mock.patch.object(verify, "_ROOT", Path(attacker_root)), mock.patch.object(verify.sys, "executable", r"C:\\attacker\\python.exe"):
                     exit_code = verify.main([
                         "--schema", "contracts/forgeops-sandbox-contract/1.0/schema.json",
@@ -1626,6 +1630,7 @@ class SandboxCliTests(unittest.TestCase):
             public_result = load_json(result)
         finally:
             execv_cell.cell_contents = original_execv
+            platform_cell.cell_contents = original_platform
             result.write_bytes(original_result)
 
         self.assertEqual(2, exit_code)
@@ -1643,6 +1648,33 @@ class SandboxCliTests(unittest.TestCase):
             exec_calls,
         )
 
+    @unittest.skipUnless(os.name == "nt", "Windows must not use POSIX exec authority")
+    def test_windows_installed_main_never_calls_the_captured_execv(self):
+        """A Windows CLI must use the admitted NOT_RUN writer without process replacement."""
+        from tools.sandbox_security import verify
+
+        result = ROOT / "artifacts/verification/vg-008-image-provenance-result.json"
+        original = result.read_bytes()
+        execv_cell = next(cell for cell in verify.main.__closure__ if cell.cell_contents is os.execv)
+        original_execv = execv_cell.cell_contents
+        exec_calls = []
+        try:
+            execv_cell.cell_contents = lambda executable, arguments: exec_calls.append((executable, arguments))
+            exit_code = verify.main([
+                "--schema", "contracts/forgeops-sandbox-contract/1.0/schema.json",
+                "--suite", "fixtures/forgeops-sandbox-security/suite.json",
+                "--runtime-profile", "artifacts/runtime/sandbox-runtime-profile.json",
+                "--runtime", "docker",
+                "--result", "artifacts/verification/vg-008-image-provenance-result.json",
+                "--command-id", "image-provenance-negative",
+            ])
+        finally:
+            execv_cell.cell_contents = original_execv
+            result.write_bytes(original)
+
+        self.assertEqual(2, exit_code)
+        self.assertEqual([], exec_calls)
+
 
     def test_consumer_removes_stale_success_before_an_early_snapshot_failure(self):
         """A missing fixed input must not leave a previous consumer success behind."""
@@ -1659,6 +1691,38 @@ class SandboxCliTests(unittest.TestCase):
         self.assertEqual(2, exit_code)
         self.assertFalse(result.exists())
 
+    def test_consumer_early_snapshot_failure_preserves_all_registered_input_hashes(self):
+        """Missing signed imports must not drop the present runtime-profile hash."""
+        from tools.sandbox_security import e3_consumer
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            input_bytes = {
+                "schema": b'{"schema":"fixture"}\n',
+                "suite": b'{"suite":"fixture"}\n',
+                "runtime_profile": b'{"profile":"fixture"}\n',
+            }
+            input_paths = {
+                "schema": root / "contracts/forgeops-sandbox-contract/1.0/schema.json",
+                "suite": root / "fixtures/forgeops-sandbox-security/suite.json",
+                "runtime_profile": root / "artifacts/runtime/sandbox-runtime-profile.json",
+            }
+            for name, path in input_paths.items():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(input_bytes[name])
+
+            exit_code = e3_consumer.consume(root, "image-provenance-negative")
+            result = load_json(root / "artifacts/verification/vg-008-image-provenance-result.json")
+
+        self.assertEqual(2, exit_code)
+        self.assertEqual(
+            {
+                "schema_sha256": hashlib.sha256(input_bytes["schema"]).hexdigest(),
+                "suite_sha256": hashlib.sha256(input_bytes["suite"]).hexdigest(),
+                "runtime_profile_sha256": hashlib.sha256(input_bytes["runtime_profile"]).hexdigest(),
+            },
+            result["input_hashes"],
+        )
     def test_malformed_exact_literal_suite_writes_safe_not_run(self):
         from tools.sandbox_security import verify
 
@@ -1784,6 +1848,46 @@ class SandboxCliTests(unittest.TestCase):
             self.assertEqual("NOT_RUN", load_json(result)["status"])
         finally:
             result.write_bytes(original)
+
+    @unittest.skipUnless(os.name == "nt", "Windows process replacement behavior")
+    def test_windows_direct_subprocess_returns_two_with_all_registered_input_hashes(self):
+        """Windows direct execution must keep NOT_RUN and its exit code consistent."""
+        result = ROOT / "artifacts/verification/vg-008-image-provenance-result.json"
+        original = result.read_bytes()
+        arguments = [
+            sys.executable,
+            "tools/sandbox_security/verify.py",
+            "--schema",
+            "contracts/forgeops-sandbox-contract/1.0/schema.json",
+            "--suite",
+            "fixtures/forgeops-sandbox-security/suite.json",
+            "--runtime-profile",
+            "artifacts/runtime/sandbox-runtime-profile.json",
+            "--runtime",
+            "docker",
+            "--result",
+            str(result.relative_to(ROOT)),
+            "--command-id",
+            "image-provenance-negative",
+        ]
+        try:
+            completed_process = subprocess.run(
+                arguments,
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            public_result = load_json(result)
+        finally:
+            result.write_bytes(original)
+
+        self.assertEqual(2, completed_process.returncode, completed_process.stderr)
+        self.assertEqual("NOT_RUN", public_result["status"])
+        self.assertEqual(
+            {"schema_sha256", "suite_sha256", "runtime_profile_sha256"},
+            set(public_result["input_hashes"]),
+        )
 
 
 if __name__ == "__main__":

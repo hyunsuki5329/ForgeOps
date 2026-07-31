@@ -148,6 +148,9 @@ def consume(project_root: Path, command_id: str) -> int:
                     "schema_sha256": hashlib.sha256(schema.read_bytes()).hexdigest(),
                     "suite_sha256": hashlib.sha256(suite.read_bytes()).hexdigest(),
                 }
+                runtime_profile = root / _FIXED_INPUTS["profile"]
+                if runtime_profile.is_file():
+                    hashes["runtime_profile_sha256"] = hashlib.sha256(runtime_profile.read_bytes()).hexdigest()
             except Exception:
                 return 2
         return _not_run(command_id, hashes, output)

@@ -480,6 +480,7 @@ def run_cli(
 def _install_cli_main():
     """Keep exec capability and consumer path out of the public callable surface."""
     execv = os.execv
+    platform_name = os.name
     interpreter = str(Path(sys.executable).resolve(strict=True))
     project_root = _ROOT.resolve(strict=True)
     consumer_path = Path(__file__).with_name("e3_consumer.py").resolve()
@@ -506,7 +507,8 @@ def _install_cli_main():
                 runtime=arguments.runtime, result=arguments.result, command_id=arguments.command_id,
                 project_root=project_root,
             )
-            execv(interpreter, consumer_argv(arguments.command_id))
+            if platform_name == "posix":
+                execv(interpreter, consumer_argv(arguments.command_id))
         except SandboxError as error:
             parser.error(error.code)
         except OSError:

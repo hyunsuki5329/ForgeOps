@@ -10,15 +10,19 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import sys
 import tempfile
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from tools.sandbox_security.e3_attestation import (
     DEFAULT_PROCESS_RUNNER,
+    E3Error,
     ExpectedIdentity,
     ProcessRunner,
+    expected_identity_from_environment,
 )
 
 
@@ -245,7 +249,7 @@ def collect_e3_attestation(identity: ExpectedIdentity, schema_path: Path, suite_
     try:
         _remove_stale_output(output_path)
         image_ref, token = _validate_inputs(identity.image_ref, token)
-        if image_ref != f"ghcr.io/{identity.repository}-e3@{identity.image_digest}": raise E3HelperError("E3_HELPER_INPUT_INVALID")
+        if image_ref != f"ghcr.io/{identity.repository.lower()}-e3@{identity.image_digest}": raise E3HelperError("E3_HELPER_INPUT_INVALID")
         if identity.image_digest != image_ref.rsplit("@", 1)[1]: raise E3HelperError("E3_HELPER_INPUT_INVALID")
         suite = json.loads(suite_path.read_text(encoding="utf-8"))
         cases = [case for catalog in _CATALOGS for case in suite[catalog]]
@@ -326,3 +330,28 @@ def collect_e3_attestation(identity: ExpectedIdentity, schema_path: Path, suite_
         try: _remove_stale_output(output_path)
         except E3HelperError: pass
         return 2
+
+
+def run_cli(*, environment: Mapping[str, str] = os.environ, project_root: Path = Path(__file__).resolve().parents[2], runner: ProcessRunner = DEFAULT_PROCESS_RUNNER) -> int:
+    """Collect to the only registered path from a protected GitHub identity."""
+
+    try:
+        identity = expected_identity_from_environment(environment)
+    except E3Error:
+        return 2
+    return collect_e3_attestation(
+        identity,
+        project_root / "contracts/forgeops-sandbox-contract/1.0/schema.json",
+        project_root / "fixtures/forgeops-sandbox-security/suite.json",
+        project_root / "artifacts/runtime/e3-attestation.json",
+        runner,
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
+    arguments = sys.argv[1:] if argv is None else argv
+    return 2 if arguments else run_cli()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

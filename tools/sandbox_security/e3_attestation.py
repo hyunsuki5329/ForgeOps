@@ -10,8 +10,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
-from typing import Any, Protocol
+from typing import Any, Mapping, Protocol
 
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import ValidationError
@@ -24,6 +25,10 @@ _SANDBOX_SCHEMA_PATH = _ROOT / "contracts/forgeops-sandbox-contract/1.0/schema.j
 _SANDBOX_SUITE_PATH = _ROOT / "fixtures/forgeops-sandbox-security/suite.json"
 _TIMESTAMP = "%Y-%m-%dT%H:%M:%SZ"
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
+_HEX40 = re.compile(r"^[0-9a-f]{40}$")
+_REPOSITORY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
+_BRANCH = re.compile(r"^[A-Za-z0-9._/-]+$")
+_DIGEST_REF = re.compile(r"^ghcr\.io/[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*-e3@sha256:[0-9a-f]{64}$")
 _FORBIDDEN_KEYS = frozenset({"token", "secret", "credential", "environment", "stdout", "stderr", "log", "certificate_pem", "certificate_chain", "private_path"})
 _CATALOGS = ("image_cases", "containment_cases", "egress_cases", "quota_cases", "teardown_cases")
 
@@ -58,6 +63,41 @@ class ExpectedIdentity:
     @property
     def certificate_identity(self) -> str:
         return f"https://github.com/{self.repository}/.github/workflows/vg-008-e3.yml@{self.workflow_ref}"
+
+
+def expected_identity_from_environment(environment: Mapping[str, str]) -> ExpectedIdentity:
+    """Admit only the protected GitHub run identity used by the fixed CLIs."""
+
+    try:
+        repository = environment["GITHUB_REPOSITORY"]
+        repository_id = environment["GITHUB_REPOSITORY_ID"]
+        default_branch = environment["GITHUB_EVENT_DEFAULT_BRANCH"]
+        source_sha = environment["GITHUB_SHA"]
+        workflow_sha = environment["GITHUB_WORKFLOW_SHA"]
+        run_id = environment["GITHUB_RUN_ID"]
+        run_attempt_text = environment["GITHUB_RUN_ATTEMPT"]
+        image_ref = environment["FORGEOPS_E3_IMAGE_REF"]
+        image_digest = environment["FORGEOPS_E3_IMAGE_DIGEST"]
+        run_attempt = int(run_attempt_text)
+    except (KeyError, TypeError, ValueError) as error:
+        raise E3Error("E3_IDENTITY_INVALID") from error
+    if not (
+        all(type(value) is str for value in (repository, repository_id, default_branch, source_sha, workflow_sha, run_id, run_attempt_text, image_ref, image_digest))
+        and _REPOSITORY.fullmatch(repository)
+        and repository_id.isdecimal()
+        and _BRANCH.fullmatch(default_branch)
+        and _HEX40.fullmatch(source_sha)
+        and _HEX40.fullmatch(workflow_sha)
+        and run_id.isdecimal()
+        and run_attempt >= 1
+        and _DIGEST_REF.fullmatch(image_ref)
+        and re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest)
+        and environment.get("GITHUB_REF") == f"refs/heads/{default_branch}"
+        and environment.get("GITHUB_REF_PROTECTED") == "true"
+        and image_ref == f"ghcr.io/{repository.lower()}-e3@{image_digest}"
+    ):
+        raise E3Error("E3_IDENTITY_INVALID")
+    return ExpectedIdentity(repository, repository_id, default_branch, source_sha, workflow_sha, run_id, run_attempt, image_ref, image_digest)
 
 
 def _canonical_bytes(value: object) -> bytes:
@@ -114,7 +154,7 @@ def _public_profile(attestation: dict[str, Any]) -> dict[str, Any]:
 
 
 def _validate_identity(attestation: dict[str, Any], expected: ExpectedIdentity) -> None:
-    expected_image_ref = f"ghcr.io/{expected.repository}-e3@{expected.image_digest}"
+    expected_image_ref = f"ghcr.io/{expected.repository.lower()}-e3@{expected.image_digest}"
     if expected.image_ref != expected_image_ref:
         raise E3Error("E3_IDENTITY_INVALID")
     expected_fields = {
@@ -253,3 +293,31 @@ def import_signed_attestation(attestation_path: Path, bundle_path: Path, expecte
         }
         _atomic_write(outputs["receipt"], receipt)
     return outputs
+
+
+def run_cli(operation: str, *, environment: Mapping[str, str] = os.environ, project_root: Path = _ROOT, runner: ProcessRunner = DEFAULT_PROCESS_RUNNER) -> int:
+    """Run the sole fixed import operation without exposing paths or identity flags."""
+
+    if operation != "import":
+        return 2
+    try:
+        identity = expected_identity_from_environment(environment)
+        import_signed_attestation(
+            project_root / "artifacts/runtime/e3-attestation.json",
+            project_root / "artifacts/runtime/e3-attestation.bundle.json",
+            identity,
+            project_root,
+            runner,
+        )
+    except (E3Error, OSError):
+        return 2
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    arguments = sys.argv[1:] if argv is None else argv
+    return run_cli(arguments[0]) if len(arguments) == 1 else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

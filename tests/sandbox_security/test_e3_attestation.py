@@ -120,6 +120,24 @@ class SignedE3AttestationTests(unittest.TestCase):
             self.identity.certificate_identity,
         )
 
+    def test_mixed_case_github_repository_uses_lowercase_ghcr_package(self):
+        from tools.sandbox_security.e3_attestation import ExpectedIdentity, verify_signed_attestation
+
+        identity = ExpectedIdentity(
+            "Owner/ForgeOps", "123456", "main", "a" * 40, "b" * 40, "1001", 1,
+            "ghcr.io/owner/forgeops-e3@sha256:" + "c" * 64, "sha256:" + "c" * 64,
+        )
+        attestation = self._attestation()
+        attestation.update({
+            "repository": identity.repository, "image_ref": identity.image_ref,
+            "certificate_identity": identity.certificate_identity,
+        })
+        self._refresh_profile_hash(attestation)
+        with tempfile.TemporaryDirectory() as directory:
+            verified = verify_signed_attestation(*self._write_inputs(Path(directory), attestation), identity, self._runner, VALIDATION_AT)
+        self.assertEqual("Owner/ForgeOps", verified["repository"])
+        self.assertEqual("ghcr.io/owner/forgeops-e3@sha256:" + "c" * 64, verified["image_ref"])
+
     def test_verifies_and_imports_exact_identity_with_closed_cosign_arguments(self):
         from tools.sandbox_security.e3_attestation import import_signed_attestation, verify_signed_attestation
 
@@ -323,6 +341,45 @@ class SignedE3AttestationTests(unittest.TestCase):
             bundle_path.write_bytes(b"tampered bundle")
             self.assertNotEqual(hashlib.sha256(attestation_path.read_bytes()).hexdigest(), receipt["attestation_sha256"])
             self.assertNotEqual(hashlib.sha256(bundle_path.read_bytes()).hexdigest(), receipt["bundle_sha256"])
+
+    def test_import_cli_uses_fixed_paths_and_protected_github_identity(self):
+        from unittest import mock
+        from tools.sandbox_security import e3_attestation
+
+        environment = {
+            "GITHUB_REPOSITORY": "example/forgeops", "GITHUB_REPOSITORY_ID": "123456",
+            "GITHUB_EVENT_DEFAULT_BRANCH": "main", "GITHUB_REF": "refs/heads/main",
+            "GITHUB_REF_PROTECTED": "true", "GITHUB_SHA": "a" * 40,
+            "GITHUB_WORKFLOW_SHA": "b" * 40, "GITHUB_RUN_ID": "1001",
+            "GITHUB_RUN_ATTEMPT": "1", "FORGEOPS_E3_IMAGE_REF": self.identity.image_ref,
+            "FORGEOPS_E3_IMAGE_DIGEST": self.identity.image_digest,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory)
+            with mock.patch.object(e3_attestation, "import_signed_attestation", return_value={}) as importer:
+                self.assertEqual(0, e3_attestation.run_cli("import", environment=environment, project_root=project_root))
+            attestation, bundle, identity, output_root = importer.call_args.args[:4]
+            self.assertEqual(project_root / "artifacts/runtime/e3-attestation.json", attestation)
+            self.assertEqual(project_root / "artifacts/runtime/e3-attestation.bundle.json", bundle)
+            self.assertEqual(self.identity, identity)
+            self.assertEqual(project_root, output_root)
+
+    def test_import_cli_rejects_wrong_ref_or_unknown_operation_before_verification(self):
+        from unittest import mock
+        from tools.sandbox_security import e3_attestation
+
+        environment = {
+            "GITHUB_REPOSITORY": "example/forgeops", "GITHUB_REPOSITORY_ID": "123456",
+            "GITHUB_EVENT_DEFAULT_BRANCH": "main", "GITHUB_REF": "refs/heads/other",
+            "GITHUB_REF_PROTECTED": "true", "GITHUB_SHA": "a" * 40,
+            "GITHUB_WORKFLOW_SHA": "b" * 40, "GITHUB_RUN_ID": "1001",
+            "GITHUB_RUN_ATTEMPT": "1", "FORGEOPS_E3_IMAGE_REF": self.identity.image_ref,
+            "FORGEOPS_E3_IMAGE_DIGEST": self.identity.image_digest,
+        }
+        for operation in ("import", "verify", "../../import"):
+            with self.subTest(operation=operation), mock.patch.object(e3_attestation, "import_signed_attestation") as importer:
+                self.assertEqual(2, e3_attestation.run_cli(operation, environment=environment))
+                importer.assert_not_called()
 
 
 if __name__ == "__main__":

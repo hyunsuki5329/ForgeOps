@@ -100,6 +100,45 @@ class RecordingRunner:
 
 
 class FixedE3HelperTests(unittest.TestCase):
+    def test_cli_uses_only_protected_github_identity_and_fixed_repository_paths(self):
+        from tools.sandbox_security import e3_helper
+
+        environment = {
+            "GITHUB_REPOSITORY": "example/forgeops", "GITHUB_REPOSITORY_ID": "123",
+            "GITHUB_EVENT_DEFAULT_BRANCH": "main", "GITHUB_REF": "refs/heads/main",
+            "GITHUB_REF_PROTECTED": "true", "GITHUB_SHA": "a" * 40,
+            "GITHUB_WORKFLOW_SHA": "b" * 40, "GITHUB_RUN_ID": "1001",
+            "GITHUB_RUN_ATTEMPT": "1", "FORGEOPS_E3_IMAGE_REF": IMAGE,
+            "FORGEOPS_E3_IMAGE_DIGEST": "sha256:" + "c" * 64,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory)
+            expected_output = project_root / "artifacts/runtime/e3-attestation.json"
+            with mock.patch.object(e3_helper, "collect_e3_attestation", return_value=0) as collect:
+                self.assertEqual(0, e3_helper.run_cli(environment=environment, project_root=project_root))
+            identity, schema, suite, output = collect.call_args.args[:4]
+            self.assertEqual("example/forgeops", identity.repository)
+            self.assertEqual(IMAGE, identity.image_ref)
+            self.assertEqual(project_root / "contracts/forgeops-sandbox-contract/1.0/schema.json", schema)
+            self.assertEqual(project_root / "fixtures/forgeops-sandbox-security/suite.json", suite)
+            self.assertEqual(expected_output, output)
+
+    def test_cli_rejects_unprotected_or_tag_identity_before_runtime_effects(self):
+        from tools.sandbox_security import e3_helper
+
+        base = {
+            "GITHUB_REPOSITORY": "example/forgeops", "GITHUB_REPOSITORY_ID": "123",
+            "GITHUB_EVENT_DEFAULT_BRANCH": "main", "GITHUB_REF": "refs/heads/main",
+            "GITHUB_REF_PROTECTED": "true", "GITHUB_SHA": "a" * 40,
+            "GITHUB_WORKFLOW_SHA": "b" * 40, "GITHUB_RUN_ID": "1001",
+            "GITHUB_RUN_ATTEMPT": "1", "FORGEOPS_E3_IMAGE_REF": IMAGE,
+            "FORGEOPS_E3_IMAGE_DIGEST": "sha256:" + "c" * 64,
+        }
+        for changes in ({"GITHUB_REF_PROTECTED": "false"}, {"FORGEOPS_E3_IMAGE_REF": "ghcr.io/example/forgeops-e3:latest"}, {"GITHUB_REPOSITORY": object()}):
+            with self.subTest(changes=changes), mock.patch.object(e3_helper, "collect_e3_attestation") as collect:
+                self.assertEqual(2, e3_helper.run_cli(environment={**base, **changes}))
+                collect.assert_not_called()
+
     def test_collector_removes_stale_output_when_preflight_fails(self):
         from tools.sandbox_security.e3_helper import collect_e3_attestation
         from tools.sandbox_security.e3_attestation import ExpectedIdentity

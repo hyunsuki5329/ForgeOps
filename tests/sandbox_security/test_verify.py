@@ -1549,6 +1549,38 @@ class SandboxCliTests(unittest.TestCase):
                 stderr.getvalue(),
             )
 
+    def test_consumer_containment_diagnostics_expose_only_failing_field_names(self):
+        from tools.sandbox_security import e3_consumer
+
+        failed = {
+            "case_id": "positive-signed-digest",
+            "expected": "PASSED",
+            "actual": "SANDBOX_CONTAINMENT_VIOLATION",
+            "status": "FAILED",
+        }
+        observation = {
+            "root_uid": 1000,
+            "rootfs_read_only": False,
+            "cap_drop_all": False,
+            "no_new_privileges": True,
+            "forbidden_mounts": 0,
+            "forbidden_devices": 1,
+            "private_detail": r"C:\private\secret.txt token=private",
+        }
+        with mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            e3_consumer._report_containment_field_diagnostics(failed, observation)
+            e3_consumer._report_containment_field_diagnostics(
+                failed | {"status": "PASSED"}, observation
+            )
+            e3_consumer._report_containment_field_diagnostics(
+                failed | {"actual": "SANDBOX_EGRESS_VIOLATION"}, observation
+            )
+            self.assertEqual(
+                "E3_CONSUMER_CONTAINMENT_FIELDS "
+                "rootfs_read_only cap_drop_all forbidden_devices\n",
+                stderr.getvalue(),
+            )
+
     def test_registered_commands_have_exact_result_paths(self):
         from tools.sandbox_security import verify
 

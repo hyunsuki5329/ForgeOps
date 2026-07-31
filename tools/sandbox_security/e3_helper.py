@@ -91,7 +91,7 @@ def fixed_command_graph(image_ref: str, resource_token: str) -> Sequence[Sequenc
         ("docker", "rm", "-f", containment),
         ("docker", "network", "create", "--internal", network),
         ("docker", "run", "--detach", "--name", proxy, "--network", network, "--network-alias", "forgeops-e3-proxy", *common, "--env", "FORGEOPS_PROBE_MODE=egress-proxy", image_ref),
-        ("docker", "run", "--name", client, "--network", network, *common, "--env", "FORGEOPS_PROBE_MODE=egress-client", image_ref),
+        ("docker", "run", "--name", client, "--network", network, "--dns-option", "timeout:1", "--dns-option", "attempts:1", *common, "--env", "FORGEOPS_PROBE_MODE=egress-client", image_ref),
         ("docker", "rm", "-f", client), ("docker", "rm", "-f", proxy), ("docker", "network", "rm", network),
         ("docker", "run", "--name", quota, "--network=none", *common, "--env", "FORGEOPS_PROBE_MODE=quota", image_ref),
         ("docker", "rm", "-f", quota),

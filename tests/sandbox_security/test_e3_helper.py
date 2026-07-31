@@ -325,7 +325,7 @@ class FixedE3HelperTests(unittest.TestCase):
         self.assertEqual(2, result)
         self.assertEqual([], runner.calls)
 
-    def test_collects_a_closed_public_attestation_with_egress_timeout_budget(self):
+    def test_collects_a_closed_public_attestation_with_bounded_egress_resolver(self):
         from tools.sandbox_security.e3_helper import collect_e3_attestation
         from tools.sandbox_security.e3_attestation import ExpectedIdentity
 
@@ -346,13 +346,28 @@ class FixedE3HelperTests(unittest.TestCase):
         self.assertEqual({"processes": 0, "mounts": 1, "leases": 0, "transient_secrets": 0, "workspaces": 0}, teardown["negative-mount-residue"])
         self.assertEqual({"processes": 0, "mounts": 0, "leases": 0, "transient_secrets": 0, "workspaces": 0}, attestation["terminal_residue"])
         self.assertTrue(runner.calls)
+        resolver_environment = "RES_OPTIONS=attempts:1 timeout:1"
+        resolver_options = ("timeout:1", "attempts:1")
+        client_commands = []
         for arguments, kwargs in runner.calls:
             self.assertEqual("docker", arguments[0])
-            expected_timeout = 15 if "FORGEOPS_PROBE_MODE=egress-client" in arguments else 10
+            is_egress_client = "FORGEOPS_PROBE_MODE=egress-client" in arguments
+            expected_timeout = 15 if is_egress_client else 10
             self.assertEqual(
                 {"shell": False, "check": False, "capture_output": True, "text": True, "timeout": expected_timeout},
                 kwargs,
             )
+            if is_egress_client:
+                client_commands.append(arguments)
+                self.assertNotIn(resolver_environment, arguments)
+                self.assertEqual(2, arguments.count("--dns-option"))
+                for resolver_option in resolver_options:
+                    self.assertIn(resolver_option, arguments)
+                    self.assertEqual(["--dns-option", resolver_option], arguments[arguments.index(resolver_option) - 1:arguments.index(resolver_option) + 1])
+            else:
+                self.assertNotIn(resolver_environment, arguments)
+                self.assertNotIn("--dns-option", arguments)
+        self.assertEqual(1, len(client_commands))
 
 
 if __name__ == "__main__":

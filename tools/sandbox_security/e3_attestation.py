@@ -114,6 +114,9 @@ def _public_profile(attestation: dict[str, Any]) -> dict[str, Any]:
 
 
 def _validate_identity(attestation: dict[str, Any], expected: ExpectedIdentity) -> None:
+    expected_image_ref = f"ghcr.io/{expected.repository}-e3@{expected.image_digest}"
+    if expected.image_ref != expected_image_ref:
+        raise E3Error("E3_IDENTITY_INVALID")
     expected_fields = {
         "repository": expected.repository, "repository_id": expected.repository_id, "workflow_ref": expected.workflow_ref,
         "workflow_sha": expected.workflow_sha, "source_sha": expected.source_sha, "run_id": expected.run_id,
@@ -214,28 +217,34 @@ def import_signed_attestation(attestation_path: Path, bundle_path: Path, expecte
     """Verify and atomically project only the three fixed runtime artifacts."""
 
     try:
-        attestation_bytes = attestation_path.read_bytes()
-        bundle_bytes = bundle_path.read_bytes()
+        source_attestation_bytes = attestation_path.read_bytes()
+        source_bundle_bytes = bundle_path.read_bytes()
     except OSError as error:
         raise E3Error("E3_ATTESTATION_INVALID") from error
-    attestation = verify_signed_attestation(attestation_path, bundle_path, expected, runner, validation_at)
-    outputs = {
-        "profile": output_root / "artifacts/runtime/sandbox-runtime-profile.json",
-        "observations": output_root / "artifacts/runtime/sandbox-runtime-observations.json",
-        "receipt": output_root / "artifacts/runtime/sandbox-e3-import-receipt.json",
-    }
-    profile = _public_profile(attestation)
-    observations = {"observations_version": "1.0", "observed_at": attestation["observed_at"], "observations": attestation["observations"]}
-    _atomic_write(outputs["profile"], profile)
-    _atomic_write(outputs["observations"], observations)
-    receipt = {
-        "receipt_version": "1.0", "attestation_sha256": _sha256_bytes(attestation_bytes), "bundle_sha256": _sha256_bytes(bundle_bytes),
-        "repository": expected.repository, "repository_id": expected.repository_id, "default_branch": expected.default_branch, "workflow_ref": expected.workflow_ref,
-        "source_sha": expected.source_sha, "workflow_sha": expected.workflow_sha, "run_id": expected.run_id, "run_attempt": expected.run_attempt,
-        "image_ref": expected.image_ref, "image_digest": expected.image_digest, "issuer": OIDC_ISSUER,
-        "certificate_identity": expected.certificate_identity, "observed_at": attestation["observed_at"],
-        "verification_kind": "runtime" if runner is DEFAULT_PROCESS_RUNNER else "test",
-        "runtime_profile_sha256": _sha256_bytes(outputs["profile"].read_bytes()), "runtime_observations_sha256": _sha256_bytes(outputs["observations"].read_bytes()),
-    }
-    _atomic_write(outputs["receipt"], receipt)
+    with tempfile.TemporaryDirectory(prefix=".e3-snapshot-") as snapshot_directory:
+        snapshot_root = Path(snapshot_directory)
+        snapshot_attestation = snapshot_root / "e3-attestation.json"
+        snapshot_bundle = snapshot_root / "e3-attestation.bundle.json"
+        snapshot_attestation.write_bytes(source_attestation_bytes)
+        snapshot_bundle.write_bytes(source_bundle_bytes)
+        attestation = verify_signed_attestation(snapshot_attestation, snapshot_bundle, expected, runner, validation_at)
+        outputs = {
+            "profile": output_root / "artifacts/runtime/sandbox-runtime-profile.json",
+            "observations": output_root / "artifacts/runtime/sandbox-runtime-observations.json",
+            "receipt": output_root / "artifacts/runtime/sandbox-e3-import-receipt.json",
+        }
+        profile = _public_profile(attestation)
+        observations = {"observations_version": "1.0", "observed_at": attestation["observed_at"], "observations": attestation["observations"]}
+        _atomic_write(outputs["profile"], profile)
+        _atomic_write(outputs["observations"], observations)
+        receipt = {
+            "receipt_version": "1.0", "attestation_sha256": _sha256_bytes(source_attestation_bytes), "bundle_sha256": _sha256_bytes(source_bundle_bytes),
+            "repository": expected.repository, "repository_id": expected.repository_id, "default_branch": expected.default_branch, "workflow_ref": expected.workflow_ref,
+            "source_sha": expected.source_sha, "workflow_sha": expected.workflow_sha, "run_id": expected.run_id, "run_attempt": expected.run_attempt,
+            "image_ref": expected.image_ref, "image_digest": expected.image_digest, "issuer": OIDC_ISSUER,
+            "certificate_identity": expected.certificate_identity, "observed_at": attestation["observed_at"],
+            "verification_kind": "runtime" if runner is DEFAULT_PROCESS_RUNNER else "test",
+            "runtime_profile_sha256": _sha256_bytes(outputs["profile"].read_bytes()), "runtime_observations_sha256": _sha256_bytes(outputs["observations"].read_bytes()),
+        }
+        _atomic_write(outputs["receipt"], receipt)
     return outputs

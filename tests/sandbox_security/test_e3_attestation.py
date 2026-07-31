@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -88,6 +89,17 @@ class SignedE3AttestationTests(unittest.TestCase):
         bundle_path.write_bytes(bundle)
         return attestation_path, bundle_path
 
+    @staticmethod
+    def _refresh_profile_hash(attestation: dict) -> None:
+        profile = {
+            "runtime": "docker", "available": True, "rootless": attestation["capabilities"]["rootless"],
+            "image_ref": attestation["image_ref"], "image_digest": attestation["image_digest"], "signature_verified": True,
+            "issuer": attestation["issuer"], "expected_issuer": attestation["issuer"],
+            "provenance_ref": "sha256:" + hashlib.sha256(canonical_bytes((attestation["image_ref"], attestation["image_digest"], attestation["issuer"], attestation["certificate_identity"]))).hexdigest(),
+            "observed_at": attestation["observed_at"],
+        }
+        attestation["input_hashes"]["runtime_profile_sha256"] = sha256(profile)
+
     def test_schema_is_closed_and_fixture_has_all_registered_cases_once(self):
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
@@ -127,6 +139,32 @@ class SignedE3AttestationTests(unittest.TestCase):
             self.assertEqual("test", receipt["verification_kind"])
             self.assertEqual(hashlib.sha256(outputs["profile"].read_bytes()).hexdigest(), receipt["runtime_profile_sha256"])
             self.assertEqual(self.identity.image_ref, profile["image_ref"])
+
+    def test_direct_verification_uses_the_complete_fixed_cosign_argv(self):
+        from tools.sandbox_security.e3_attestation import verify_signed_attestation
+
+        calls = []
+
+        def runner(arguments, **kwargs):
+            calls.append((arguments, kwargs))
+            return subprocess.CompletedProcess(arguments, 0, stdout="verified", stderr="")
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            attestation_path, bundle_path = self._write_inputs(Path(temporary_directory))
+            verify_signed_attestation(attestation_path, bundle_path, self.identity, runner, VALIDATION_AT)
+
+        self.assertEqual(
+            [[
+                "cosign", "verify-blob", "--bundle", str(bundle_path), "--certificate-identity",
+                self.identity.certificate_identity, "--certificate-oidc-issuer",
+                "https://token.actions.githubusercontent.com", str(attestation_path),
+            ]],
+            [arguments for arguments, _kwargs in calls],
+        )
+        self.assertEqual(
+            [{"shell": False, "check": False, "capture_output": True, "text": True, "timeout": 30}],
+            [kwargs for _arguments, kwargs in calls],
+        )
 
     def test_rejects_identity_mismatches_before_or_after_signature_verification(self):
         from tools.sandbox_security.e3_attestation import E3Error, verify_signed_attestation
@@ -169,6 +207,88 @@ class SignedE3AttestationTests(unittest.TestCase):
                 paths = self._write_inputs(Path(temporary_directory), attestation)
                 with self.assertRaisesRegex(E3Error, "E3_ATTESTATION_INVALID"):
                     verify_signed_attestation(*paths, self.identity, self._runner, VALIDATION_AT)
+
+    def test_rejects_every_forbidden_raw_key_and_allows_certificate_identity(self):
+        from tools.sandbox_security.e3_attestation import E3Error, verify_signed_attestation
+
+        forbidden = ("token", "secret", "credential", "environment", "stdout", "stderr", "log", "certificate_pem", "certificate_chain", "private_path")
+        for key in forbidden:
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as temporary_directory:
+                attestation = self._attestation()
+                attestation[key] = "public-placeholder"
+                with self.assertRaisesRegex(E3Error, "E3_ATTESTATION_INVALID"):
+                    verify_signed_attestation(*self._write_inputs(Path(temporary_directory), attestation), self.identity, self._runner, VALIDATION_AT)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            self.assertEqual(self.identity.certificate_identity, self._attestation()["certificate_identity"])
+            verify_signed_attestation(*self._write_inputs(Path(temporary_directory)), self.identity, self._runner, VALIDATION_AT)
+
+    def test_rejects_non_ghcr_or_wrong_repository_package_identity(self):
+        from tools.sandbox_security.e3_attestation import E3Error, verify_signed_attestation
+
+        image_refs = (
+            ("registry.example/example/forgeops-e3@sha256:" + "c" * 64, "E3_ATTESTATION_INVALID"),
+            ("ghcr.io/example/other-e3@sha256:" + "c" * 64, "E3_IDENTITY_INVALID"),
+        )
+        for image_ref, error_code in image_refs:
+            with self.subTest(image_ref=image_ref), tempfile.TemporaryDirectory() as temporary_directory:
+                expected = replace(self.identity, image_ref=image_ref)
+                attestation = self._attestation()
+                attestation["image_ref"] = image_ref
+                self._refresh_profile_hash(attestation)
+                with self.assertRaisesRegex(E3Error, error_code):
+                    verify_signed_attestation(*self._write_inputs(Path(temporary_directory), attestation), expected, self._runner, VALIDATION_AT)
+
+    def test_rejects_capabilities_that_cannot_support_e3_import(self):
+        from tools.sandbox_security.e3_attestation import E3Error, verify_signed_attestation
+
+        incompatible = {
+            "rootless": False, "cgroup_version": "1", "cgroup_driver": "cgroupfs",
+            "memory_controller": False, "pids_controller": False, "cpu_controller": False,
+        }
+        for field, value in incompatible.items():
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary_directory:
+                attestation = self._attestation()
+                attestation["capabilities"][field] = value
+                self._refresh_profile_hash(attestation)
+                with self.assertRaisesRegex(E3Error, "E3_ATTESTATION_INVALID"):
+                    verify_signed_attestation(*self._write_inputs(Path(temporary_directory), attestation), self.identity, self._runner, VALIDATION_AT)
+
+    def test_import_uses_snapshot_bytes_for_verification_and_receipt(self):
+        from tools.sandbox_security.e3_attestation import import_signed_attestation
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            attestation_path, bundle_path = self._write_inputs(root)
+            verified_bytes = {}
+
+            def runner(arguments, **kwargs):
+                verified_bytes["attestation"] = Path(arguments[-1]).read_bytes()
+                verified_bytes["bundle"] = Path(arguments[3]).read_bytes()
+                self.assertNotEqual(attestation_path, Path(arguments[-1]))
+                self.assertNotEqual(bundle_path, Path(arguments[3]))
+                attestation_path.write_bytes(b"attacker replacement")
+                bundle_path.write_bytes(b"attacker bundle replacement")
+                return subprocess.CompletedProcess(arguments, 0, stdout="verified", stderr="")
+
+            outputs = import_signed_attestation(attestation_path, bundle_path, self.identity, root, runner, VALIDATION_AT)
+            receipt = json.loads(outputs["receipt"].read_text(encoding="utf-8"))
+
+        self.assertEqual(hashlib.sha256(verified_bytes["attestation"]).hexdigest(), receipt["attestation_sha256"])
+        self.assertEqual(hashlib.sha256(verified_bytes["bundle"]).hexdigest(), receipt["bundle_sha256"])
+
+    def test_failed_verification_creates_none_of_the_three_output_files(self):
+        from tools.sandbox_security.e3_attestation import E3Error, import_signed_attestation
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            attestation = self._attestation()
+            attestation["terminal_residue"]["processes"] = 1
+            paths = self._write_inputs(root, attestation)
+            with self.assertRaisesRegex(E3Error, "E3_ATTESTATION_INVALID"):
+                import_signed_attestation(*paths, self.identity, root, self._runner, VALIDATION_AT)
+            self.assertFalse((root / "artifacts/runtime/sandbox-runtime-profile.json").exists())
+            self.assertFalse((root / "artifacts/runtime/sandbox-runtime-observations.json").exists())
+            self.assertFalse((root / "artifacts/runtime/sandbox-e3-import-receipt.json").exists())
 
     def test_rejects_stale_and_future_evidence(self):
         from tools.sandbox_security.e3_attestation import E3Error, verify_signed_attestation

@@ -1195,6 +1195,14 @@ def _install_attested_e3_boundary():
                 reconstructed_observations = {"observations_version": "1.0", "observed_at": attestation["observed_at"], "observations": attestation["observations"], "terminal_residue": attestation["terminal_residue"]}
                 if canonical(reconstructed_profile) == profile_bytes and canonical(reconstructed_observations) == observations_bytes:
                     seals[instance] = (canonical(instance._profile), canonical(instance._observations))
+        except e3_attestation.E3Error as error:
+            code = str(error)
+            if code not in {
+                "E3_ATTESTATION_INVALID", "E3_EVIDENCE_STALE", "E3_HASH_MISMATCH",
+                "E3_IDENTITY_INVALID", "E3_SIGNATURE_INVALID",
+            }:
+                code = "E3_ATTESTATION_INVALID"
+            raise RuntimeUnavailable(code) from None
         except Exception:
             pass
         return instance

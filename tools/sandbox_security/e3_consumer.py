@@ -9,7 +9,7 @@ replace evidence after it has been snapshotted.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -37,7 +37,21 @@ _FIXED_INPUTS = {
 
 
 def _timestamp() -> str:
-    return datetime.utcnow().replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+_SAFE_DIAGNOSTICS = frozenset({
+    "E3_ATTESTATION_INVALID", "E3_EVIDENCE_STALE", "E3_HASH_MISMATCH",
+    "E3_IDENTITY_INVALID", "E3_SIGNATURE_INVALID",
+    "E3_CONSUMER_IMPORT_UNSEALED", "E3_CONSUMER_CASE_REJECTED",
+})
+
+
+def _report_safe_diagnostic(error: BaseException) -> None:
+    """Emit only fixed public-safe rejection stages, never exception text."""
+
+    if type(error) is runtime.RuntimeUnavailable and error.code in _SAFE_DIAGNOSTICS:
+        print(error.code, file=sys.stderr)
 
 
 def _snapshot(root: Path, directory: Path) -> dict[str, Path]:
@@ -143,7 +157,7 @@ def _evaluate_snapshot(snapshots: dict[str, Path], command_id: str, validation_a
         snapshots["profile"], snapshots["observations"], snapshots["receipt"], validation_at,
     )
     if not runtime.has_attested_e3_construction(observer):
-        raise runtime.RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        raise runtime.RuntimeUnavailable("E3_CONSUMER_IMPORT_UNSEALED")
     profile = observer.runtime_profile()
     selected: list[dict[str, Any]] = []
     for catalog in verify._COMMAND_CATALOGS[command_id]:
@@ -159,7 +173,7 @@ def _evaluate_snapshot(snapshots: dict[str, Path], command_id: str, validation_a
                 actual = "SANDBOX_RUNTIME_UNAVAILABLE"
             selected.append(verify.public_case(case["id"], case["expected"], actual, observation, trusted_runtime_observer=True))
     if any(item["status"] != "PASSED" for item in selected):
-        raise runtime.RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        raise runtime.RuntimeUnavailable("E3_CONSUMER_CASE_REJECTED")
     return selected, _hashes(snapshots)
 
 
@@ -195,7 +209,8 @@ def consume(project_root: Path, command_id: str) -> int:
             "residue_counters": dict(verify._PUBLIC_RESIDUE_COUNTERS),
         })
         return 0
-    except Exception:
+    except Exception as error:
+        _report_safe_diagnostic(error)
         if not hashes:
             try:
                 schema = root / _FIXED_INPUTS["schema"]

@@ -47,6 +47,7 @@ _DANGEROUS_NEGATIVES = frozenset({
     "negative-host-device", "negative-quota-escape",
 })
 _TIMEOUT = 10
+_EGRESS_TIMEOUT = 15
 _EGRESS_IDS = (
     "positive-exact-proxy-destination", "negative-direct-dns", "negative-direct-socket",
     "negative-loopback", "negative-private-address", "negative-metadata-address", "negative-redirect",
@@ -118,7 +119,8 @@ def _canonical(value: object) -> bytes:
 
 def _run(runner: ProcessRunner, command: Sequence[str]) -> str:
     try:
-        result = runner(list(command), shell=False, check=False, capture_output=True, text=True, timeout=_TIMEOUT)
+        timeout = _EGRESS_TIMEOUT if "FORGEOPS_PROBE_MODE=egress-client" in command else _TIMEOUT
+        result = runner(list(command), shell=False, check=False, capture_output=True, text=True, timeout=timeout)
     except Exception as error:
         raise E3HelperError("SANDBOX_RUNTIME_UNAVAILABLE") from error
     if getattr(result, "returncode", 1) != 0 or not isinstance(getattr(result, "stdout", None), str):

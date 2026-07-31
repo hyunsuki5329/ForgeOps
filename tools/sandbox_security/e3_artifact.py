@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
 import sys
 import tempfile
 from typing import Any, Mapping
@@ -42,6 +44,7 @@ E3_PAYLOAD_FILES = (
 )
 E3_MANIFEST_FILE = "artifacts/runtime/e3-artifact-manifest.json"
 E3_ARTIFACT_FILES = E3_PAYLOAD_FILES + (E3_MANIFEST_FILE,)
+E3_STAGING_ROOT = "e3-upload"
 MAX_FILE_BYTES = 1_048_576
 MAX_ARTIFACT_BYTES = 4_194_304
 _ROOT = Path(__file__).resolve().parents[2]
@@ -112,10 +115,38 @@ def _safe_relative(path: str) -> bool:
     return type(path) is str and path != "" and not value.is_absolute() and ".." not in value.parts and "\\" not in path and ":" not in path
 
 
-def _read_payload(path: Path) -> bytes:
+def _root_directory(root: Path) -> Path:
     try:
-        if path.is_symlink() or not path.is_file():
+        if root.is_symlink():
             raise ArtifactError("E3_ARTIFACT_INVALID")
+        resolved = root.resolve(strict=True)
+    except OSError as error:
+        raise ArtifactError("E3_ARTIFACT_INVALID") from error
+    if not resolved.is_dir():
+        raise ArtifactError("E3_ARTIFACT_INVALID")
+    return resolved
+
+
+def _guard_relative_path(root: Path, relative: str, *, require_file: bool = True) -> Path:
+    if not _safe_relative(relative):
+        raise ArtifactError("E3_ARTIFACT_INVALID")
+    current = root
+    try:
+        for part in PurePosixPath(relative).parts:
+            current = current / part
+            if current.is_symlink():
+                raise ArtifactError("E3_ARTIFACT_INVALID")
+        resolved = current.resolve(strict=True)
+    except OSError as error:
+        raise ArtifactError("E3_ARTIFACT_INVALID") from error
+    if not resolved.is_relative_to(root) or (require_file and not resolved.is_file()):
+        raise ArtifactError("E3_ARTIFACT_INVALID")
+    return resolved
+
+
+def _read_payload(root: Path, relative: str) -> bytes:
+    path = _guard_relative_path(root, relative)
+    try:
         size = path.stat().st_size
         if not 0 < size <= MAX_FILE_BYTES:
             raise ArtifactError("E3_ARTIFACT_INVALID")
@@ -156,12 +187,17 @@ def _ready_phase(root: Path) -> dict[str, Any]:
 def build_manifest(root: Path, output: Path, *, runner: ProcessRunner = DEFAULT_PROCESS_RUNNER, validation_at: datetime | None = None) -> dict[str, Any]:
     """Hash the exact public payload and atomically emit a non-self-hashing manifest."""
 
-    root = root.resolve()
+    root = _root_directory(root)
     expected_output = root / E3_MANIFEST_FILE
-    if output.resolve() != expected_output.resolve():
+    if output.absolute() != expected_output.absolute():
+        raise ArtifactError("E3_ARTIFACT_INVALID")
+    _guard_relative_path(root, "artifacts/runtime", require_file=False)
+    if expected_output.is_symlink():
         raise ArtifactError("E3_ARTIFACT_INVALID")
     _remove_output(expected_output)
     try:
+        for relative in E3_PAYLOAD_FILES:
+            _guard_relative_path(root, relative)
         phase = _ready_phase(root)
         attestation = _load_json(root / E3_PAYLOAD_FILES[0])
         workflow_ref = attestation["workflow_ref"]
@@ -179,10 +215,12 @@ def build_manifest(root: Path, output: Path, *, runner: ProcessRunner = DEFAULT_
             )
         except E3Error as error:
             raise ArtifactError("E3_ARTIFACT_SIGNATURE_INVALID") from error
+        if attestation["workflow_sha"] != attestation["source_sha"]:
+            raise ArtifactError("E3_ARTIFACT_IDENTITY_INVALID")
         files = []
         total = 0
         for relative in E3_PAYLOAD_FILES:
-            content = _read_payload(root / relative)
+            content = _read_payload(root, relative)
             total += len(content)
             files.append({"path": relative, "sha256": hashlib.sha256(content).hexdigest(), "size": len(content)})
         if total > MAX_ARTIFACT_BYTES:
@@ -217,24 +255,43 @@ def _validation_time(value: datetime | None) -> datetime:
 
 
 def _exact_tree(source: Path) -> None:
+    expected = set(E3_ARTIFACT_FILES)
+    for relative in E3_ARTIFACT_FILES:
+        parts = PurePosixPath(relative).parts
+        expected.update(PurePosixPath(*parts[:index]).as_posix() for index in range(1, len(parts)))
     try:
-        observed = {path.relative_to(source).as_posix() for path in source.rglob("*") if path.is_file() or path.is_symlink()}
+        observed = set()
+        for path in source.rglob("*"):
+            relative = path.relative_to(source).as_posix()
+            if path.is_symlink() or not path.resolve(strict=True).is_relative_to(source):
+                raise ArtifactError("E3_ARTIFACT_INVALID")
+            observed.add(relative)
     except (OSError, ValueError) as error:
         raise ArtifactError("E3_ARTIFACT_INVALID") from error
-    if observed != set(E3_ARTIFACT_FILES):
+    if observed != expected:
         raise ArtifactError("E3_ARTIFACT_INVALID")
 
 
-def verify_downloaded_artifact(
+@contextmanager
+def _snapshot_source(source: Path):
+    source = _root_directory(source)
+    _exact_tree(source)
+    with tempfile.TemporaryDirectory(prefix="forgeops-e3-snapshot-") as directory:
+        snapshot = Path(directory)
+        for relative in E3_ARTIFACT_FILES:
+            content = _read_payload(source, relative)
+            target = snapshot / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        _exact_tree(snapshot)
+        yield snapshot
+
+
+def _verify_snapshot(
     source: Path, expected_repository: str, expected_repository_id: str,
     expected_default_branch: str, expected_run_id: str, expected_run_attempt: int,
-    expected_source_sha: str, *, runner: ProcessRunner = DEFAULT_PROCESS_RUNNER,
-    validation_at: datetime | None = None,
+    expected_source_sha: str, *, runner: ProcessRunner, validation_at: datetime | None,
 ) -> dict[str, Any]:
-    """Verify exact payload hashes, GitHub API identity, freshness and Cosign proof."""
-
-    source = source.resolve()
-    _exact_tree(source)
     manifest = _load_json(source / E3_MANIFEST_FILE)
     if set(manifest) != _MANIFEST_KEYS or manifest.get("manifest_version") != "1.0" or manifest.get("status") != "READY":
         raise ArtifactError("E3_ARTIFACT_INVALID")
@@ -247,7 +304,7 @@ def verify_downloaded_artifact(
     for item in files:
         if type(item) is not dict or set(item) != {"path", "sha256", "size"} or not _safe_relative(item["path"]):
             raise ArtifactError("E3_ARTIFACT_INVALID")
-        content = _read_payload(source / item["path"])
+        content = _read_payload(source, item["path"])
         total += len(content)
         if item["size"] != len(content) or not _SHA256.fullmatch(item["sha256"]) or hashlib.sha256(content).hexdigest() != item["sha256"]:
             raise ArtifactError("E3_ARTIFACT_INVALID")
@@ -256,7 +313,8 @@ def verify_downloaded_artifact(
     expected_values = {
         "repository": expected_repository, "repository_id": expected_repository_id,
         "default_branch": expected_default_branch, "workflow_ref": f"refs/heads/{expected_default_branch}",
-        "source_sha": expected_source_sha, "run_id": expected_run_id, "run_attempt": expected_run_attempt,
+        "workflow_sha": expected_source_sha, "source_sha": expected_source_sha,
+        "run_id": expected_run_id, "run_attempt": expected_run_attempt,
     }
     if any(manifest.get(key) != value for key, value in expected_values.items()):
         raise ArtifactError("E3_ARTIFACT_IDENTITY_INVALID")
@@ -270,7 +328,7 @@ def verify_downloaded_artifact(
     try:
         identity = ExpectedIdentity(
             expected_repository, expected_repository_id, expected_default_branch, expected_source_sha,
-            manifest["workflow_sha"], expected_run_id, expected_run_attempt,
+            expected_source_sha, expected_run_id, expected_run_attempt,
             manifest["image_ref"], manifest["image_digest"],
         )
         attestation = verify_signed_attestation(
@@ -279,7 +337,8 @@ def verify_downloaded_artifact(
         )
     except (E3Error, KeyError, TypeError) as error:
         raise ArtifactError("E3_ARTIFACT_SIGNATURE_INVALID") from error
-    if any(manifest.get(key) != attestation.get(key) for key in ("repository", "repository_id", "workflow_ref", "workflow_sha", "source_sha", "run_id", "run_attempt", "image_ref", "image_digest", "issuer", "certificate_identity", "observed_at") if key != "observed_at"):
+    identity_keys = ("repository", "repository_id", "workflow_ref", "workflow_sha", "source_sha", "run_id", "run_attempt", "image_ref", "image_digest", "issuer", "certificate_identity")
+    if any(manifest.get(key) != attestation.get(key) for key in identity_keys):
         raise ArtifactError("E3_ARTIFACT_IDENTITY_INVALID")
     if manifest["created_at"] != attestation["observed_at"]:
         raise ArtifactError("E3_ARTIFACT_IDENTITY_INVALID")
@@ -287,31 +346,110 @@ def verify_downloaded_artifact(
     return manifest
 
 
-def import_downloaded_artifact(source: Path, root: Path, expected_identity: ExpectedIdentity, *, runner: ProcessRunner = DEFAULT_PROCESS_RUNNER, validation_at: datetime | None = None) -> dict[str, Path]:
+def verify_downloaded_artifact(
+    source: Path, expected_repository: str, expected_repository_id: str,
+    expected_default_branch: str, expected_run_id: str, expected_run_attempt: int,
+    expected_source_sha: str, *, runner: ProcessRunner = DEFAULT_PROCESS_RUNNER,
+    validation_at: datetime | None = None,
+) -> dict[str, Any]:
+    """Verify exact payload hashes, GitHub API identity, freshness and Cosign proof."""
+
+    with _snapshot_source(source) as snapshot:
+        return _verify_snapshot(
+            snapshot, expected_repository, expected_repository_id, expected_default_branch,
+            expected_run_id, expected_run_attempt, expected_source_sha,
+            runner=runner, validation_at=validation_at,
+        )
+
+
+def _safe_target(root: Path, relative: str) -> Path:
+    if not _safe_relative(relative):
+        raise ArtifactError("E3_ARTIFACT_INVALID")
+    current = root
+    try:
+        for part in PurePosixPath(relative).parts[:-1]:
+            current = current / part
+            if current.is_symlink():
+                raise ArtifactError("E3_ARTIFACT_INVALID")
+            current.mkdir(exist_ok=True)
+            if not current.resolve(strict=True).is_relative_to(root):
+                raise ArtifactError("E3_ARTIFACT_INVALID")
+        target = current / PurePosixPath(relative).name
+        if target.is_symlink() or (target.exists() and not target.is_file()):
+            raise ArtifactError("E3_ARTIFACT_INVALID")
+    except OSError as error:
+        raise ArtifactError("E3_ARTIFACT_INVALID") from error
+    return target
+
+
+def stage_upload_artifact(root: Path) -> Path:
+    """Create the sole non-hidden upload root from exact allowlisted bytes."""
+
+    root = _root_directory(root)
+    staging = root / E3_STAGING_ROOT
+    if staging.is_symlink():
+        raise ArtifactError("E3_ARTIFACT_INVALID")
+    if staging.exists():
+        if not staging.is_dir() or not staging.resolve(strict=True).is_relative_to(root):
+            raise ArtifactError("E3_ARTIFACT_INVALID")
+        shutil.rmtree(staging)
+    captured = {relative: _read_payload(root, relative) for relative in E3_ARTIFACT_FILES}
+    temporary = Path(tempfile.mkdtemp(prefix="forgeops-e3-upload-", dir=root))
+    try:
+        for relative, content in captured.items():
+            target = temporary / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        _exact_tree(temporary)
+        os.replace(temporary, staging)
+    except (OSError, ArtifactError) as error:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+        raise ArtifactError("E3_ARTIFACT_INVALID") from error
+    return staging
+
+
+def import_downloaded_artifact(source: Path, root: Path, expected_identity: ExpectedIdentity, *, runner: ProcessRunner = DEFAULT_PROCESS_RUNNER, validation_at: datetime | None = None, replacer=os.replace) -> dict[str, Path]:
     """Verify then atomically replace only fixed repository targets."""
 
-    verify_downloaded_artifact(
-        source, expected_identity.repository, expected_identity.repository_id,
-        expected_identity.default_branch, expected_identity.run_id,
-        expected_identity.run_attempt, expected_identity.source_sha,
-        runner=runner, validation_at=validation_at,
-    )
-    snapshot = {relative: (source / relative).read_bytes() for relative in E3_ARTIFACT_FILES}
-    resolved_root = root.resolve()
-    outputs: dict[str, Path] = {}
-    for relative, content in snapshot.items():
-        target = resolved_root / relative
-        if any(parent.is_symlink() for parent in (target.parent, *target.parents) if parent != resolved_root and resolved_root in parent.parents):
-            raise ArtifactError("E3_ARTIFACT_INVALID")
-        _atomic_write(target, content)
-        outputs[relative] = target
-    return outputs
+    resolved_root = _root_directory(root)
+    targets = {relative: _safe_target(resolved_root, relative) for relative in E3_ARTIFACT_FILES}
+    manifest_target = targets[E3_MANIFEST_FILE]
+    _remove_output(manifest_target)
+    staged: dict[str, Path] = {}
+    try:
+        with _snapshot_source(source) as snapshot_root:
+            _verify_snapshot(
+                snapshot_root, expected_identity.repository, expected_identity.repository_id,
+                expected_identity.default_branch, expected_identity.run_id,
+                expected_identity.run_attempt, expected_identity.source_sha,
+                runner=runner, validation_at=validation_at,
+            )
+            captured = {relative: _read_payload(snapshot_root, relative) for relative in E3_ARTIFACT_FILES}
+            for relative, content in captured.items():
+                target = targets[relative]
+                descriptor, temporary_name = tempfile.mkstemp(prefix=".e3-import-", dir=target.parent)
+                with os.fdopen(descriptor, "wb") as temporary_file:
+                    temporary_file.write(content)
+                staged[relative] = Path(temporary_name)
+            for relative in E3_PAYLOAD_FILES:
+                replacer(staged.pop(relative), targets[relative])
+            replacer(staged.pop(E3_MANIFEST_FILE), manifest_target)
+    except (OSError, ArtifactError) as error:
+        _remove_output(manifest_target)
+        raise ArtifactError("E3_ARTIFACT_INVALID") from error
+    finally:
+        for temporary in staged.values():
+            if temporary.exists():
+                temporary.unlink()
+    return targets
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="ForgeOps E3 public artifact verifier")
     subparsers = parser.add_subparsers(dest="operation", required=True)
     subparsers.add_parser("build")
+    subparsers.add_parser("stage-upload")
     verify = subparsers.add_parser("verify-download")
     verify.add_argument("--source", required=True)
     verify.add_argument("--expected-repository", required=True)
@@ -324,6 +462,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if arguments.operation == "build":
             build_manifest(_ROOT, _ROOT / E3_MANIFEST_FILE)
+        elif arguments.operation == "stage-upload":
+            stage_upload_artifact(_ROOT)
         else:
             verify_downloaded_artifact(
                 Path(arguments.source), arguments.expected_repository, arguments.expected_repository_id,

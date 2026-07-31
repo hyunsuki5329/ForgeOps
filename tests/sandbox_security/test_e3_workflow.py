@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -52,21 +53,27 @@ class E3WorkflowPolicyTests(unittest.TestCase):
             name, sha = value.split("@", 1)
             self.assertEqual(40, len(sha))
             self.assertEqual(pins[name], sha)
+        self.assertEqual(2, text.count("cosign-release: 'v3.0.6'"))
 
     def test_workflow_invokes_fixed_clis_and_uploads_only_the_public_allowlist(self):
-        from tools.sandbox_security.e3_artifact import E3_ARTIFACT_FILES
+        from tools.sandbox_security.e3_artifact import E3_ARTIFACT_FILES, E3_STAGING_ROOT
 
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("python tools/sandbox_security/e3_helper.py", text)
         self.assertIn("python tools/sandbox_security/e3_attestation.py import", text)
         self.assertEqual(3, text.count("python tools/sandbox_security/verify.py"))
         self.assertIn("python tools/sandbox_security/e3_artifact.py build", text)
+        self.assertIn("python tools/sandbox_security/e3_artifact.py stage-upload", text)
         self.assertIn("name: forgeops-e3-evidence-${{ github.run_id }}-${{ github.run_attempt }}", text)
         self.assertIn("if-no-files-found: error", text)
         self.assertIn("include-hidden-files: false", text)
         self.assertIn("retention-days: 7", text)
+        upload = text.split("- name: Upload public E3 evidence", 1)[1]
+        self.assertIn(f"path: {E3_STAGING_ROOT}", upload)
+        self.assertNotIn("path: |", upload)
         for path in E3_ARTIFACT_FILES:
-            self.assertIn(f"          {path}", text)
+            self.assertNotIn(f"          {path}", upload)
+        self.assertIn('test "$WORKFLOW_SHA" = "$SOURCE_SHA"', text)
 
 
 class E3ArtifactTests(unittest.TestCase):
@@ -75,8 +82,9 @@ class E3ArtifactTests(unittest.TestCase):
 
         factory = SignedE3AttestationTests()
         factory.setUp()
-        self.identity = factory.identity
+        self.identity = replace(factory.identity, workflow_sha=factory.identity.source_sha)
         self.attestation = factory._attestation()
+        self.attestation["workflow_sha"] = self.identity.workflow_sha
         self.runner = factory._runner
 
     @staticmethod
@@ -129,6 +137,33 @@ class E3ArtifactTests(unittest.TestCase):
                 self.assertEqual(hashlib.sha256((root / item["path"]).read_bytes()).hexdigest(), item["sha256"])
             self.assertEqual("READY", manifest["status"])
             self.assertEqual("1001", manifest["run_id"])
+
+    def test_staging_contains_only_the_exact_artifacts_tree(self):
+        from tools.sandbox_security.e3_artifact import E3_ARTIFACT_FILES, E3_MANIFEST_FILE, E3_STAGING_ROOT, build_manifest, stage_upload_artifact
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = self._source(Path(directory))
+            build_manifest(root, root / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
+            staging = stage_upload_artifact(root)
+            self.assertEqual(root / E3_STAGING_ROOT, staging)
+            self.assertEqual(set(E3_ARTIFACT_FILES), {path.relative_to(staging).as_posix() for path in staging.rglob("*") if path.is_file()})
+            self.assertFalse(any(path.name.startswith(".") for path in staging.rglob("*")))
+
+    def test_builder_and_staging_reject_parent_component_symlink(self):
+        from tools.sandbox_security.e3_artifact import ArtifactError, E3_MANIFEST_FILE, build_manifest, stage_upload_artifact
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = self._source(Path(directory))
+            artifacts_directory = root / "artifacts"
+            original_is_symlink = Path.is_symlink
+            with mock.patch("pathlib.Path.is_symlink", autospec=True, side_effect=lambda value: value == artifacts_directory or original_is_symlink(value)):
+                with self.assertRaises(ArtifactError):
+                    build_manifest(root, root / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
+
+            build_manifest(root, root / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
+            with mock.patch("pathlib.Path.is_symlink", autospec=True, side_effect=lambda value: value == artifacts_directory or original_is_symlink(value)):
+                with self.assertRaises(ArtifactError):
+                    stage_upload_artifact(root)
 
     def test_builder_rejects_missing_secret_like_oversized_and_not_ready_inputs(self):
         from tools.sandbox_security.e3_artifact import ArtifactError, E3_MANIFEST_FILE, E3_PAYLOAD_FILES, MAX_FILE_BYTES, build_manifest
@@ -194,6 +229,32 @@ class E3ArtifactTests(unittest.TestCase):
                 with self.assertRaises(ArtifactError):
                     verify_downloaded_artifact(root, repository, self.identity.repository_id, self.identity.default_branch, self.identity.run_id, self.identity.run_attempt, self.identity.source_sha, runner=self.runner, validation_at=validation_at)
 
+    def test_download_rejects_parent_symlink_and_externally_unbound_workflow_sha(self):
+        from tools.sandbox_security.e3_artifact import ArtifactError, E3_MANIFEST_FILE, E3_PAYLOAD_FILES, build_manifest, verify_downloaded_artifact
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = self._source(Path(directory))
+            build_manifest(root, root / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
+            artifacts_directory = root / "artifacts"
+            original_is_symlink = Path.is_symlink
+            with mock.patch("pathlib.Path.is_symlink", autospec=True, side_effect=lambda value: value == artifacts_directory or original_is_symlink(value)):
+                with self.assertRaises(ArtifactError):
+                    verify_downloaded_artifact(root, self.identity.repository, self.identity.repository_id, self.identity.default_branch, self.identity.run_id, self.identity.run_attempt, self.identity.source_sha, runner=self.runner, validation_at=VALIDATION_AT)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = self._source(Path(directory))
+            build_manifest(root, root / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
+            attestation = json.loads((root / E3_PAYLOAD_FILES[0]).read_text(encoding="utf-8"))
+            attestation["workflow_sha"] = "b" * 40
+            self._write(root / E3_PAYLOAD_FILES[0], attestation)
+            manifest = json.loads((root / E3_MANIFEST_FILE).read_text(encoding="utf-8"))
+            manifest["workflow_sha"] = "b" * 40
+            manifest["files"][0]["sha256"] = hashlib.sha256((root / E3_PAYLOAD_FILES[0]).read_bytes()).hexdigest()
+            manifest["files"][0]["size"] = (root / E3_PAYLOAD_FILES[0]).stat().st_size
+            self._write(root / E3_MANIFEST_FILE, manifest)
+            with self.assertRaises(ArtifactError):
+                verify_downloaded_artifact(root, self.identity.repository, self.identity.repository_id, self.identity.default_branch, self.identity.run_id, self.identity.run_attempt, self.identity.source_sha, runner=self.runner, validation_at=VALIDATION_AT)
+
     def test_fresh_verified_artifact_imports_only_known_targets(self):
         from tools.sandbox_security.e3_artifact import E3_ARTIFACT_FILES, E3_MANIFEST_FILE, build_manifest, import_downloaded_artifact
 
@@ -204,6 +265,45 @@ class E3ArtifactTests(unittest.TestCase):
             imported = import_downloaded_artifact(source, target, self.identity, runner=self.runner, validation_at=VALIDATION_AT)
             self.assertEqual(set(E3_ARTIFACT_FILES), set(imported))
             self.assertEqual(set(E3_ARTIFACT_FILES), {path.relative_to(target).as_posix() for path in target.rglob("*") if path.is_file()})
+
+    def test_import_uses_validated_snapshot_when_source_changes_during_verification(self):
+        from tools.sandbox_security.e3_artifact import E3_MANIFEST_FILE, E3_PAYLOAD_FILES, build_manifest, import_downloaded_artifact
+
+        with tempfile.TemporaryDirectory() as source_directory, tempfile.TemporaryDirectory() as target_directory:
+            source = self._source(Path(source_directory))
+            build_manifest(source, source / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
+            original = (source / E3_PAYLOAD_FILES[5]).read_bytes()
+
+            def mutating_runner(arguments, **kwargs):
+                result = self.runner(arguments, **kwargs)
+                self._write(source / E3_PAYLOAD_FILES[5], {"status": "ATTACKER_REPLACEMENT"})
+                return result
+
+            target = Path(target_directory)
+            import_downloaded_artifact(source, target, self.identity, runner=mutating_runner, validation_at=VALIDATION_AT)
+            self.assertEqual(original, (target / E3_PAYLOAD_FILES[5]).read_bytes())
+
+    def test_import_invalidates_manifest_and_prestages_before_mid_replace_failure(self):
+        from tools.sandbox_security.e3_artifact import ArtifactError, E3_MANIFEST_FILE, E3_PAYLOAD_FILES, build_manifest, import_downloaded_artifact
+
+        with tempfile.TemporaryDirectory() as source_directory, tempfile.TemporaryDirectory() as target_directory:
+            source = self._source(Path(source_directory))
+            build_manifest(source, source / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
+            target = Path(target_directory)
+            stale_manifest = target / E3_MANIFEST_FILE
+            self._write(stale_manifest, {"status": "READY", "stale": True})
+            calls = 0
+
+            def fail_second_replace(source_path, target_path):
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("injected replace failure")
+                os.replace(source_path, target_path)
+
+            with self.assertRaises(ArtifactError):
+                import_downloaded_artifact(source, target, self.identity, runner=self.runner, validation_at=VALIDATION_AT, replacer=fail_second_replace)
+            self.assertFalse(stale_manifest.exists())
 
 
 if __name__ == "__main__":

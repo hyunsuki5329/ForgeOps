@@ -5,7 +5,10 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 import json
+import os
+from pathlib import Path
 import re
 import subprocess
 import weakref
@@ -67,6 +70,7 @@ class RuntimeObservation:
     redirects: int
     quota_exceeded: bool
     residue: Residue
+    observation_mode: str = "RUNTIME_EXECUTED"
 
 
 class RuntimeObserver(Protocol):
@@ -139,7 +143,9 @@ _DIGEST_IMAGE = re.compile(r"^[^@\s]+@sha256:[0-9a-f]{64}$")
 _REGISTERED_PROBE_KINDS = frozenset(
     {"image_provenance", "containment", "egress", "quota", "teardown"}
 )
-_TRUSTED_ISSUER = "forgeops-test-issuer"
+LOCAL_TEST_ISSUER = "forgeops-test-issuer"
+EXTERNAL_E3_ISSUER = "https://token.actions.githubusercontent.com"
+_TRUSTED_ISSUER = LOCAL_TEST_ISSUER
 _VERSION_COMMAND = ["docker", "version", "--format", "{{json .Server}}"]
 _MIN_TIMEOUT_SECONDS = 1
 _MAX_TIMEOUT_SECONDS = 30
@@ -887,3 +893,340 @@ def _install_verified_e3_boundary() -> tuple[Callable[[object], bool], Callable[
 
 
 has_e3_construction, observe_e3 = _install_verified_e3_boundary()
+
+
+_ATTESTED_SEALS: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+_ATTESTED_TIMESTAMP = "%Y-%m-%dT%H:%M:%SZ"
+_ATTESTED_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+_ATTESTED_HEX = re.compile(r"^[0-9a-f]{64}$")
+_ATTESTED_CATALOGS = ("image_cases", "containment_cases", "egress_cases", "quota_cases", "teardown_cases")
+
+
+def _attested_hash(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _attested_time(value: object) -> datetime:
+    if type(value) is not str:
+        raise ValueError
+    return datetime.strptime(value, _ATTESTED_TIMESTAMP).replace(tzinfo=timezone.utc)
+
+
+def _attested_case_ids() -> tuple[str, ...]:
+    try:
+        suite = json.loads(
+            (Path(__file__).resolve().parents[2] / "fixtures/forgeops-sandbox-security/suite.json").read_text(encoding="utf-8")
+        )
+        return tuple(case["id"] for catalog in _ATTESTED_CATALOGS for case in suite[catalog])
+    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as error:
+        raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE") from error
+
+
+class AttestedRuntimeObserver(TrustedRuntimeObserver):
+    """Read only fresh, importer-sealed E3 observations from fixed public files."""
+
+    @classmethod
+    def from_imported_files(
+        cls,
+        profile_path: Path,
+        observations_path: Path,
+        receipt_path: Path,
+        validation_at: str,
+    ) -> "AttestedRuntimeObserver":
+        try:
+            profile_bytes = Path(profile_path).read_bytes()
+            observations_bytes = Path(observations_path).read_bytes()
+            receipt_bytes = Path(receipt_path).read_bytes()
+            profile = json.loads(profile_bytes.decode("utf-8"))
+            observation_document = json.loads(observations_bytes.decode("utf-8"))
+            receipt = json.loads(receipt_bytes.decode("utf-8"))
+        except (OSError, TypeError, UnicodeError, json.JSONDecodeError) as error:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE") from error
+        if type(cls) is not type or cls is not AttestedRuntimeObserver:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        if not _validate_attested_import(profile, observation_document, receipt, profile_bytes, observations_bytes, validation_at):
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        observer = cls()
+        observer._profile = copy.deepcopy(profile)
+        observer._observations = {item["case_id"]: copy.deepcopy(item) for item in observation_document["observations"]}
+        observer._validation_at = validation_at
+        _ATTESTED_SEALS[observer] = (
+            _canonical_attested(observer._profile),
+            _canonical_attested(observer._observations),
+            validation_at,
+        )
+        return observer
+
+    def observe(self, case: dict) -> dict:
+        if not has_attested_e3_construction(self) or type(case) is not dict or type(case.get("id")) is not str:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        try:
+            return copy.deepcopy(self._observations[case["id"]])
+        except KeyError as error:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE") from error
+
+    def runtime_profile(self) -> dict:
+        if not has_attested_e3_construction(self):
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        return copy.deepcopy(self._profile)
+
+
+def _canonical_attested(value: object) -> bytes:
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode("utf-8")
+
+
+def _validate_attested_import(
+    profile: object,
+    observation_document: object,
+    receipt: object,
+    profile_bytes: bytes,
+    observations_bytes: bytes,
+    validation_at: str,
+) -> bool:
+    """Validate every imported public field before any observer exists."""
+    try:
+        if type(profile) is not dict or type(observation_document) is not dict or type(receipt) is not dict:
+            return False
+        profile_keys = {
+            "runtime", "available", "rootless", "image_ref", "image_digest", "signature_verified",
+            "issuer", "expected_issuer", "provenance_ref", "observed_at",
+        }
+        if set(profile) != profile_keys or set(observation_document) != {"observations_version", "observed_at", "observations", "terminal_residue"}:
+            return False
+        if receipt.get("verification_kind") != "runtime" or receipt.get("issuer") != EXTERNAL_E3_ISSUER:
+            return False
+        if receipt.get("runtime_profile_sha256") != _attested_hash(profile_bytes):
+            return False
+        if receipt.get("runtime_observations_sha256") != _attested_hash(observations_bytes):
+            return False
+        if not all(type(receipt.get(key)) is str and _ATTESTED_HEX.fullmatch(receipt[key]) for key in ("runtime_profile_sha256", "runtime_observations_sha256")):
+            return False
+        if (
+            profile["runtime"] != "docker" or profile["available"] is not True or profile["rootless"] is not True
+            or profile["signature_verified"] is not True or profile["issuer"] != EXTERNAL_E3_ISSUER
+            or profile["expected_issuer"] != EXTERNAL_E3_ISSUER or type(profile["image_ref"]) is not str
+            or type(profile["image_digest"]) is not str or _ATTESTED_DIGEST.fullmatch(profile["image_digest"]) is None
+            or profile["image_ref"].rsplit("@", 1)[-1] != profile["image_digest"]
+            or receipt.get("image_ref") != profile["image_ref"] or receipt.get("image_digest") != profile["image_digest"]
+        ):
+            return False
+        expected_ids = _attested_case_ids()
+        observations = observation_document["observations"]
+        terminal_residue = observation_document["terminal_residue"]
+        if (
+            type(terminal_residue) is not dict
+            or set(terminal_residue) != {"processes", "mounts", "leases", "transient_secrets", "workspaces"}
+            or any(type(value) is not int or value != 0 for value in terminal_residue.values())
+        ):
+            return False
+        if type(observations) is not list or len(observations) != 23:
+            return False
+        if tuple(item.get("case_id") if type(item) is dict else None for item in observations) != expected_ids:
+            return False
+        if len({item["case_id"] for item in observations}) != 23:
+            return False
+        trusted_at = _attested_time(validation_at)
+        timestamps = (profile["observed_at"], observation_document["observed_at"], receipt.get("observed_at"), *(item.get("observed_at") for item in observations if type(item) is dict))
+        for timestamp in timestamps:
+            age = (trusted_at - _attested_time(timestamp)).total_seconds()
+            if not 0 <= age <= 300:
+                return False
+        for observation in observations:
+            if type(observation) is not dict or observation.get("evidence_kind") != "runtime":
+                return False
+            if set(observation.get("residue", {})) != {"processes", "mounts", "leases", "transient_secrets", "workspaces"}:
+                return False
+            if any(type(value) is not int or value < 0 for value in observation["residue"].values()):
+                return False
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return False
+    return True
+
+
+_ATTESTED_CLASS_SNAPSHOT = dict(vars(AttestedRuntimeObserver))
+
+
+def has_attested_e3_construction(observer: object) -> bool:
+    """Verify the immutable imported-E3 construction and mutation-free surface."""
+    try:
+        seal = _ATTESTED_SEALS.get(observer)
+        values = vars(observer)
+        return (
+            type(observer) is AttestedRuntimeObserver
+            and dict(vars(AttestedRuntimeObserver)) == _ATTESTED_CLASS_SNAPSHOT
+            and set(values) == {"_profile", "_observations", "_validation_at"}
+            and type(seal) is tuple and len(seal) == 3
+            and _canonical_attested(values["_profile"]) == seal[0]
+            and _canonical_attested(values["_observations"]) == seal[1]
+            and values["_validation_at"] == seal[2]
+        )
+    except (AttributeError, TypeError, ValueError):
+        return False
+
+
+def _install_attested_e3_boundary():
+    """Install an imported-E3 boundary whose authority state never escapes closures."""
+    from tools.sandbox_security import e3_attestation
+
+    observer_type = type("AttestedRuntimeObserver", (TrustedRuntimeObserver,), {})
+    original_run = subprocess.run
+    verify_signed = e3_attestation.verify_signed_attestation
+    expected_identity_type = e3_attestation.ExpectedIdentity
+    public_profile = e3_attestation._public_profile
+    canonical = e3_attestation._canonical_bytes
+    environment_get = os.environ.get
+    utc = timezone.utc
+    issuer = "https://token.actions.githubusercontent.com"
+    receipt_keys = frozenset({
+        "receipt_version", "attestation_sha256", "bundle_sha256", "repository", "repository_id",
+        "default_branch", "workflow_ref", "source_sha", "workflow_sha", "run_id", "run_attempt",
+        "image_ref", "image_digest", "issuer", "certificate_identity", "observed_at",
+        "verification_kind", "runtime_profile_sha256", "runtime_observations_sha256",
+    })
+    residue_keys = frozenset({"processes", "mounts", "leases", "transient_secrets", "workspaces"})
+    required_context = (
+        "GITHUB_REPOSITORY", "GITHUB_REPOSITORY_ID", "GITHUB_REF", "GITHUB_SHA",
+        "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_WORKFLOW_SHA",
+    )
+    seals: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+    schema_path = Path(__file__).resolve().parents[2] / "contracts/forgeops-sandbox-contract/1.0/schema.json"
+    try:
+        sandbox_schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        profile_validator = schema_validator(sandbox_schema, "RuntimeProfile")
+        observation_validator = schema_validator(sandbox_schema, "RuntimeObservation")
+        suite = json.loads((Path(__file__).resolve().parents[2] / "fixtures/forgeops-sandbox-security/suite.json").read_text(encoding="utf-8"))
+        case_ids = tuple(case["id"] for catalog in _ATTESTED_CATALOGS for case in suite[catalog])
+    except Exception:
+        case_ids = ()
+        profile_validator = observation_validator = None
+
+    def load_snapshot(path: Path) -> tuple[bytes, dict] | None:
+        try:
+            raw = Path(path).read_bytes()
+            value = json.loads(raw.decode("utf-8"))
+            return (raw, value) if type(value) is dict else None
+        except (OSError, UnicodeError, json.JSONDecodeError, TypeError):
+            return None
+
+    def valid_documents(profile: dict, observations: dict, receipt: dict, profile_bytes: bytes, observations_bytes: bytes, validation_at: str) -> bool:
+        try:
+            if (
+                profile_validator is None
+                or set(observations) != {"observations_version", "observed_at", "observations", "terminal_residue"}
+                or set(receipt) != receipt_keys
+                or receipt["receipt_version"] != "1.0"
+            ):
+                return False
+            profile_validator.validate(profile)
+            if receipt["runtime_profile_sha256"] != hashlib.sha256(profile_bytes).hexdigest() or receipt["runtime_observations_sha256"] != hashlib.sha256(observations_bytes).hexdigest():
+                return False
+            if type(observations["observations"]) is not list or tuple(item.get("case_id") if type(item) is dict else None for item in observations["observations"]) != case_ids:
+                return False
+            residue = observations["terminal_residue"]
+            if type(residue) is not dict or set(residue) != residue_keys or any(type(value) is not int or value != 0 for value in residue.values()):
+                return False
+            now = datetime.strptime(validation_at, _ATTESTED_TIMESTAMP).replace(tzinfo=utc)
+            observed_at = profile["observed_at"]
+            if observations["observed_at"] != observed_at or receipt["observed_at"] != observed_at:
+                return False
+            if any(item.get("observed_at") != observed_at for item in observations["observations"] if type(item) is dict):
+                return False
+            for value in (observed_at, *(item.get("observed_at") for item in observations["observations"] if type(item) is dict)):
+                age = (now - datetime.strptime(value, _ATTESTED_TIMESTAMP).replace(tzinfo=utc)).total_seconds()
+                if not 0 <= age <= 300:
+                    return False
+            for item in observations["observations"]:
+                observation_validator.validate(item)
+                if item["evidence_kind"] != "runtime" or set(item["residue"]) != residue_keys or any(type(value) is not int or value < 0 for value in item["residue"].values()):
+                    return False
+            return profile["issuer"] == issuer and profile["expected_issuer"] == issuer and profile["rootless"] is True and profile["signature_verified"] is True
+        except Exception:
+            return False
+
+    def expected_from_context(receipt: dict):
+        values = {key: environment_get(key) for key in required_context}
+        if any(type(value) is not str or not value for value in values.values()) or not values["GITHUB_REF"].startswith("refs/heads/"):
+            return None
+        try:
+            run_attempt = int(values["GITHUB_RUN_ATTEMPT"])
+        except ValueError:
+            return None
+        branch = values["GITHUB_REF"].removeprefix("refs/heads/")
+        expected = expected_identity_type(values["GITHUB_REPOSITORY"], values["GITHUB_REPOSITORY_ID"], branch, values["GITHUB_SHA"], values["GITHUB_WORKFLOW_SHA"], values["GITHUB_RUN_ID"], run_attempt, receipt.get("image_ref"), receipt.get("image_digest"))
+        fields = {
+            "repository": expected.repository, "repository_id": expected.repository_id, "default_branch": expected.default_branch,
+            "workflow_ref": expected.workflow_ref, "source_sha": expected.source_sha, "workflow_sha": expected.workflow_sha,
+            "run_id": expected.run_id, "run_attempt": expected.run_attempt, "image_ref": expected.image_ref,
+            "image_digest": expected.image_digest, "issuer": issuer, "certificate_identity": expected.certificate_identity,
+        }
+        return expected if all(receipt.get(key) == value for key, value in fields.items()) else None
+
+    def __init__(self):
+        self._profile = None
+        self._observations = None
+
+    @classmethod
+    def from_imported_files(cls, profile_path: Path, observations_path: Path, receipt_path: Path, validation_at: str):
+        loaded = [load_snapshot(path) for path in (profile_path, observations_path, receipt_path)]
+        if any(value is None for value in loaded):
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        (profile_bytes, profile), (observations_bytes, observations), (receipt_bytes, receipt) = loaded
+        if cls is not observer_type or not valid_documents(profile, observations, receipt, profile_bytes, observations_bytes, validation_at):
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        instance = cls()
+        instance._profile = copy.deepcopy(profile)
+        instance._observations = {item["case_id"]: copy.deepcopy(item) for item in observations["observations"]}
+        expected = expected_from_context(receipt)
+        sibling_root = Path(receipt_path).parent
+        attestation_path = sibling_root / "e3-attestation.json"
+        bundle_path = sibling_root / "e3-attestation.bundle.json"
+        attestation_snapshot = load_snapshot(attestation_path)
+        try:
+            bundle_bytes = bundle_path.read_bytes()
+            if expected is not None and attestation_snapshot is not None and receipt["verification_kind"] == "runtime" and receipt["attestation_sha256"] == hashlib.sha256(attestation_snapshot[0]).hexdigest() and receipt["bundle_sha256"] == hashlib.sha256(bundle_bytes).hexdigest() and e3_attestation.DEFAULT_PROCESS_RUNNER is original_run:
+                with tempfile.TemporaryDirectory(prefix=".e3-runtime-") as directory:
+                    snapshot_attestation = Path(directory) / "e3-attestation.json"
+                    snapshot_bundle = Path(directory) / "e3-attestation.bundle.json"
+                    snapshot_attestation.write_bytes(attestation_snapshot[0])
+                    snapshot_bundle.write_bytes(bundle_bytes)
+                    attestation = verify_signed(snapshot_attestation, snapshot_bundle, expected, original_run, datetime.strptime(validation_at, _ATTESTED_TIMESTAMP).replace(tzinfo=utc))
+                reconstructed_profile = public_profile(attestation)
+                reconstructed_observations = {"observations_version": "1.0", "observed_at": attestation["observed_at"], "observations": attestation["observations"], "terminal_residue": attestation["terminal_residue"]}
+                if canonical(reconstructed_profile) == profile_bytes and canonical(reconstructed_observations) == observations_bytes:
+                    seals[instance] = (canonical(instance._profile), canonical(instance._observations))
+        except Exception:
+            pass
+        return instance
+
+    def observe(self, case: dict) -> dict:
+        if not gate(self) or type(case) is not dict or type(case.get("id")) is not str:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        try:
+            return copy.deepcopy(self._observations[case["id"]])
+        except KeyError as error:
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE") from error
+
+    def runtime_profile(self) -> dict:
+        if not gate(self):
+            raise RuntimeUnavailable("SANDBOX_RUNTIME_UNAVAILABLE")
+        return copy.deepcopy(self._profile)
+
+    observer_type.__init__ = __init__
+    observer_type.from_imported_files = from_imported_files
+    observer_type.observe = observe
+    observer_type.runtime_profile = runtime_profile
+    class_snapshot = dict(vars(observer_type))
+
+    def gate(instance: object) -> bool:
+        try:
+            seal = seals.get(instance)
+            values = vars(instance)
+            return type(instance) is observer_type and dict(vars(observer_type)) == class_snapshot and set(values) == {"_profile", "_observations"} and type(seal) is tuple and seal == (canonical(values["_profile"]), canonical(values["_observations"]))
+        except Exception:
+            return False
+
+    return observer_type, gate
+
+
+AttestedRuntimeObserver, has_attested_e3_construction = _install_attested_e3_boundary()
+del _ATTESTED_SEALS, _ATTESTED_CLASS_SNAPSHOT

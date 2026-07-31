@@ -125,6 +125,21 @@ project_profile:
       cwd: "."
       evidence_tier: E3
       required: true
+    - id: image-provenance-negative
+      command: python tools/sandbox_security/verify.py --schema contracts/forgeops-sandbox-contract/1.0/schema.json --suite fixtures/forgeops-sandbox-security/suite.json --runtime-profile artifacts/runtime/sandbox-runtime-profile.json --runtime docker --result artifacts/verification/vg-008-image-provenance-result.json --command-id image-provenance-negative
+      cwd: "."
+      evidence_tier: E3
+      required: true
+    - id: containment-egress-negative
+      command: python tools/sandbox_security/verify.py --schema contracts/forgeops-sandbox-contract/1.0/schema.json --suite fixtures/forgeops-sandbox-security/suite.json --runtime-profile artifacts/runtime/sandbox-runtime-profile.json --runtime docker --result artifacts/verification/vg-008-containment-egress-result.json --command-id containment-egress-negative
+      cwd: "."
+      evidence_tier: E3
+      required: true
+    - id: teardown-negative
+      command: python tools/sandbox_security/verify.py --schema contracts/forgeops-sandbox-contract/1.0/schema.json --suite fixtures/forgeops-sandbox-security/suite.json --runtime-profile artifacts/runtime/sandbox-runtime-profile.json --runtime docker --result artifacts/verification/vg-008-teardown-result.json --command-id teardown-negative
+      cwd: "."
+      evidence_tier: E3
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -177,6 +192,11 @@ project_profile:
         - id: forgeops-phase0-exit
           command_ids:
             - phase0-exit-gate
+        - id: forgeops-sandbox-security
+          command_ids:
+            - image-provenance-negative
+            - containment-egress-negative
+            - teardown-negative
       validation_discovery:
         - pyproject.toml
         - uv.lock

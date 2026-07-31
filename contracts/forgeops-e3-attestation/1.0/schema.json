@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ForgeOps E3 signed runtime attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["attestation_version", "repository", "repository_id", "workflow_ref", "workflow_sha", "source_sha", "run_id", "run_attempt", "issuer", "certificate_identity", "image_ref", "image_digest", "observed_at", "capabilities", "input_hashes", "observations", "terminal_residue"],
+  "properties": {
+    "attestation_version": {"const": "1.0"},
+    "repository": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "repository_id": {"type": "string", "pattern": "^[0-9]+$"},
+    "workflow_ref": {"type": "string", "pattern": "^refs/heads/[A-Za-z0-9._/-]+$"},
+    "workflow_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "source_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "run_id": {"type": "string", "pattern": "^[0-9]+$"},
+    "run_attempt": {"type": "integer", "minimum": 1},
+    "issuer": {"const": "https://token.actions.githubusercontent.com"},
+    "certificate_identity": {"type": "string", "pattern": "^https://github\\.com/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*/\\.github/workflows/vg-008-e3\\.yml@refs/heads/[A-Za-z0-9._/-]+$"},
+    "image_ref": {"type": "string", "pattern": "^ghcr\\.io/[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*-e3@sha256:[0-9a-f]{64}$"},
+    "image_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "observed_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "capabilities": {"$ref": "#/$defs/capabilities"},
+    "input_hashes": {"$ref": "#/$defs/input_hashes"},
+    "observations": {"type": "array", "minItems": 23, "maxItems": 23, "items": {"$ref": "#/$defs/observation"}},
+    "terminal_residue": {"$ref": "#/$defs/residue"}
+  },
+  "$defs": {
+    "capabilities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["rootless", "cgroup_version", "cgroup_driver", "memory_controller", "pids_controller", "cpu_controller"],
+      "properties": {
+        "rootless": {"const": true}, "cgroup_version": {"const": "2"}, "cgroup_driver": {"const": "systemd"},
+        "memory_controller": {"const": true}, "pids_controller": {"const": true}, "cpu_controller": {"const": true}
+      }
+    },
+    "input_hashes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sandbox_schema_sha256", "sandbox_suite_sha256", "runtime_profile_sha256", "helper_sha256", "probe_sha256"],
+      "properties": {
+        "sandbox_schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "sandbox_suite_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "runtime_profile_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "helper_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "probe_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "residue": {
+      "type": "object", "additionalProperties": false,
+      "required": ["processes", "mounts", "leases", "transient_secrets", "workspaces"],
+      "properties": {"processes": {"const": 0}, "mounts": {"const": 0}, "leases": {"const": 0}, "transient_secrets": {"const": 0}, "workspaces": {"const": 0}}
+    },
+    "observation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["case_id", "evidence_kind", "observation_mode", "observed_at", "provision_calls", "network_calls", "write_calls", "root_uid", "rootfs_read_only", "cap_drop_all", "no_new_privileges", "forbidden_mounts", "forbidden_devices", "direct_socket_calls", "direct_dns_calls", "proxy_calls", "proxy_destination", "connected_addresses", "redirects", "quota_exceeded", "residue"],
+      "properties": {
+        "case_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}, "evidence_kind": {"const": "runtime"}, "observation_mode": {"enum": ["RUNTIME_EXECUTED", "PREPROVISION_DENIED"]},
+        "observed_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+        "provision_calls": {"type": "integer", "minimum": 0}, "network_calls": {"type": "integer", "minimum": 0}, "write_calls": {"type": "integer", "minimum": 0}, "root_uid": {"type": "integer", "minimum": 0},
+        "rootfs_read_only": {"type": "boolean"}, "cap_drop_all": {"type": "boolean"}, "no_new_privileges": {"type": "boolean"}, "forbidden_mounts": {"type": "integer", "minimum": 0}, "forbidden_devices": {"type": "integer", "minimum": 0},
+        "direct_socket_calls": {"type": "integer", "minimum": 0}, "direct_dns_calls": {"type": "integer", "minimum": 0}, "proxy_calls": {"type": "integer", "minimum": 0}, "proxy_destination": {"type": "string"},
+        "connected_addresses": {"type": "array", "uniqueItems": true, "items": {"anyOf": [{"type": "string", "format": "ipv4"}, {"type": "string", "format": "ipv6"}]}},
+        "redirects": {"type": "integer", "minimum": 0}, "quota_exceeded": {"type": "boolean"},
+        "residue": {"type": "object", "additionalProperties": false, "required": ["processes", "mounts", "leases", "transient_secrets", "workspaces"], "properties": {"processes": {"type": "integer", "minimum": 0}, "mounts": {"type": "integer", "minimum": 0}, "leases": {"type": "integer", "minimum": 0}, "transient_secrets": {"type": "integer", "minimum": 0}, "workspaces": {"type": "integer", "minimum": 0}}}
+      }
+    }
+  }
+}

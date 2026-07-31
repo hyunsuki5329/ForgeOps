@@ -28,8 +28,10 @@ if __package__ in {None, ""}:
 from tools.sandbox_security import runtime
 
 
+_RUNTIME_MODULE = runtime
 _HAS_E3_CONSTRUCTION = runtime.has_e3_construction
 _OBSERVE_E3 = runtime.observe_e3
+_HAS_ATTESTED_E3_CONSTRUCTION = runtime.has_attested_e3_construction
 
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -38,7 +40,8 @@ _CATALOGS = ("image_cases", "containment_cases", "egress_cases", "quota_cases", 
 _TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _PUBLIC_CASE_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-TRUSTED_ISSUER = "forgeops-test-issuer"
+TRUSTED_ISSUER = runtime.LOCAL_TEST_ISSUER
+EXTERNAL_E3_ISSUER = runtime.EXTERNAL_E3_ISSUER
 _FRESHNESS_SECONDS = 300
 _PUBLIC_ERROR_CODES = {
     "PASSED",
@@ -62,6 +65,13 @@ _REGISTERED_INPUTS = {
     "schema": "contracts/forgeops-sandbox-contract/1.0/schema.json",
     "suite": "fixtures/forgeops-sandbox-security/suite.json",
     "runtime_profile": "artifacts/runtime/sandbox-runtime-profile.json",
+}
+ATTESTED_OBSERVATIONS = "artifacts/runtime/sandbox-runtime-observations.json"
+ATTESTED_RECEIPT = "artifacts/runtime/sandbox-e3-import-receipt.json"
+_COMMAND_CATALOGS = {
+    "image-provenance-negative": ("image_cases",),
+    "containment-egress-negative": ("containment_cases", "egress_cases", "quota_cases"),
+    "teardown-negative": ("teardown_cases",),
 }
 _FULL_INPUT_HASH_KEYS = frozenset({"schema_sha256", "suite_sha256", "runtime_profile_sha256"})
 _MISSING_RUNTIME_PROFILE_HASH_KEYS = frozenset({"schema_sha256", "suite_sha256"})
@@ -135,7 +145,7 @@ def _is_known(value: object) -> bool:
     return isinstance(value, str) and value not in {"", "unavailable"}
 
 
-def validate_runtime_profile(profile: dict, validation_at: str) -> None:
+def validate_runtime_profile(profile: dict, validation_at: str, *, expected_issuer: str = TRUSTED_ISSUER) -> None:
     """Deny an unavailable, uncontained, or unprovenanced runtime profile."""
 
     checked = _validate_schema(profile, "RuntimeProfile", "SANDBOX_RUNTIME_UNAVAILABLE")
@@ -154,7 +164,7 @@ def validate_runtime_profile(profile: dict, validation_at: str) -> None:
         or checked["image_ref"].rsplit("@", 1)[-1] != image_digest
         or not checked["signature_verified"]
         or not _is_known(checked["issuer"])
-        or checked["issuer"] != TRUSTED_ISSUER
+        or checked["issuer"] != expected_issuer
         or not _is_known(checked["provenance_ref"])
     ):
         raise SandboxError("SANDBOX_IMAGE_PROVENANCE_INVALID")
@@ -290,22 +300,38 @@ def run_cases(
         _parse_utc(validation_at)
     except (TypeError, ValueError):
         raise SandboxError("SANDBOX_RUNTIME_UNAVAILABLE") from None
-    trusted_runtime_observer = _HAS_E3_CONSTRUCTION(observer)
+    local_e3 = _HAS_E3_CONSTRUCTION(observer)
+    # Imported E3 authority is intentionally not accepted on this public,
+    # injectable API.  The isolated consumer owns that trust boundary.
+    imported_e3 = False
+    trusted_runtime_observer = local_e3 or imported_e3
+    imported_profile = observer.runtime_profile() if imported_e3 else None
     results: list[dict] = []
     for catalog in _CATALOGS:
         for case in checked_suite[catalog]:
             observation: object = {
-                "evidence_kind": "unknown",
+                "evidence_kind": "runtime" if imported_e3 and case["case_kind"] == "image_provenance" else "unknown",
                 "provision_calls": 0,
                 "network_calls": 0,
                 "write_calls": 0,
             }
             try:
                 if case["case_kind"] == "image_provenance":
-                    validate_runtime_profile(case["runtime_profile"], validation_at)
+                    profile = case["runtime_profile"]
+                    issuer = TRUSTED_ISSUER
+                    if imported_e3:
+                        profile = dict(imported_profile)
+                        if case["id"] == "negative-tag-only":
+                            profile["image_ref"] = profile["image_ref"].split("@", 1)[0] + ":latest"
+                        elif case["id"] == "negative-signature-unverified":
+                            profile["signature_verified"] = False
+                        elif case["id"] == "negative-issuer-mismatch":
+                            profile["issuer"] = "untrusted-issuer"
+                        issuer = EXTERNAL_E3_ISSUER
+                    validate_runtime_profile(profile, validation_at, expected_issuer=issuer)
                 observation = (
                     _OBSERVE_E3(observer, case)
-                    if trusted_runtime_observer
+                    if local_e3
                     else observer.observe(case)
                 )
                 evaluate_observation(case, observation, validation_at)
@@ -422,27 +448,8 @@ def _atomic_write_json(path: Path, value: Mapping[str, Any]) -> None:
             temporary_path.unlink()
 
 
-def run_cli(
-    *,
-    schema: str,
-    suite: str,
-    runtime_profile: str,
-    runtime: str,
-    result: str,
-    command_id: str,
-    project_root: Path = _ROOT,
-) -> int:
-    """Emit only the capability-gap result; this function never invokes Docker."""
-
-    schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
-        schema=schema,
-        suite=suite,
-        runtime_profile=runtime_profile,
-        runtime=runtime,
-        result=result,
-        command_id=command_id,
-        project_root=project_root,
-    )
+def _write_admitted_not_run(command_id: str, schema_path: Path, suite_path: Path, runtime_profile_path: Path, output: Path) -> int:
+    """Write the only public parent result; this path never evaluates imported E3."""
     try:
         input_hashes = {
             "schema_sha256": _input_sha256(schema_path),
@@ -452,39 +459,66 @@ def run_cli(
         raise SandboxError("SANDBOX_PUBLIC_RESULT_UNSAFE") from error
     try:
         input_hashes["runtime_profile_sha256"] = _input_sha256(runtime_profile_path)
-        json.loads(runtime_profile_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
+    except OSError:
         pass
-    _atomic_write_json(
-        output,
-        safe_not_run(command_id, "SANDBOX_RUNTIME_UNAVAILABLE", input_hashes=input_hashes),
+    _atomic_write_json(output, safe_not_run(command_id, "SANDBOX_RUNTIME_UNAVAILABLE", input_hashes=input_hashes))
+    return 2
+
+
+def run_cli(
+    *, schema: str, suite: str, runtime_profile: str, runtime: str, result: str,
+    command_id: str, project_root: Path = _ROOT,
+) -> int:
+    """Public callable: only write a closed capability-gap result, never consume E3."""
+    schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
+        schema=schema, suite=suite, runtime_profile=runtime_profile, runtime=runtime,
+        result=result, command_id=command_id, project_root=project_root,
     )
-    return 2
+    return _write_admitted_not_run(command_id, schema_path, suite_path, runtime_profile_path, output)
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Parse the registered command surface and emit a truthful non-success result."""
+def _install_cli_main():
+    """Keep exec capability and consumer path out of the public callable surface."""
+    execv = os.execv
+    platform_name = os.name
+    interpreter = str(Path(sys.executable).resolve(strict=True))
+    project_root = _ROOT.resolve(strict=True)
+    consumer_path = Path(__file__).with_name("e3_consumer.py").resolve()
 
-    parser = argparse.ArgumentParser(description="ForgeOps VG-008 sandbox verifier")
-    parser.add_argument("--schema", required=True)
-    parser.add_argument("--suite", required=True)
-    parser.add_argument("--runtime-profile", required=True)
-    parser.add_argument("--runtime", required=True, choices=("docker",))
-    parser.add_argument("--result", required=True)
-    parser.add_argument("--command-id", required=True, choices=tuple(TRUSTED_RESULTS))
-    arguments = parser.parse_args(argv)
-    try:
-        return run_cli(
-            schema=arguments.schema,
-            suite=arguments.suite,
-            runtime_profile=arguments.runtime_profile,
-            runtime=arguments.runtime,
-            result=arguments.result,
-            command_id=arguments.command_id,
-        )
-    except SandboxError as error:
-        parser.error(error.code)
-    return 2
+    def consumer_argv(command_id: str) -> list[str]:
+        return [
+            interpreter, "-I", str(consumer_path), "--project-root",
+            str(project_root), "--command-id", command_id,
+        ]
+
+    def cli_main(argv: list[str] | None = None) -> int:
+        """Replace this process with the only authority allowed to consume E3."""
+        parser = argparse.ArgumentParser(description="ForgeOps VG-008 sandbox verifier")
+        parser.add_argument("--schema", required=True)
+        parser.add_argument("--suite", required=True)
+        parser.add_argument("--runtime-profile", required=True)
+        parser.add_argument("--runtime", required=True, choices=("docker",))
+        parser.add_argument("--result", required=True)
+        parser.add_argument("--command-id", required=True, choices=tuple(TRUSTED_RESULTS))
+        arguments = parser.parse_args(argv)
+        try:
+            schema_path, suite_path, runtime_profile_path, output = _admit_registered_cli_literals(
+                schema=arguments.schema, suite=arguments.suite, runtime_profile=arguments.runtime_profile,
+                runtime=arguments.runtime, result=arguments.result, command_id=arguments.command_id,
+                project_root=project_root,
+            )
+            if platform_name == "posix":
+                execv(interpreter, consumer_argv(arguments.command_id))
+        except SandboxError as error:
+            parser.error(error.code)
+        except OSError:
+            pass
+        return _write_admitted_not_run(arguments.command_id, schema_path, suite_path, runtime_profile_path, output)
+
+    return consumer_argv, cli_main
+
+
+consumer_argv, main = _install_cli_main()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,260 @@
+name: VG-008 E3 Verification
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: vg-008-e3-${{ github.repository_id }}
+  cancel-in-progress: false
+
+jobs:
+  build-sign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      image_ref: ${{ steps.identity.outputs.image_ref }}
+      image_digest: ${{ steps.identity.outputs.image_digest }}
+      source_sha: ${{ steps.identity.outputs.source_sha }}
+      workflow_ref: ${{ steps.identity.outputs.workflow_ref }}
+      workflow_sha: ${{ steps.identity.outputs.workflow_sha }}
+    steps:
+      - name: Assert protected default branch
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REF_ALLOWED: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.ref_protected == true }}
+        run: |
+          set -euo pipefail
+          test "$REF_ALLOWED" = "true"
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+
+      - name: Check out exact source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Compute fixed image package
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          repository_lower="${GITHUB_REPOSITORY,,}"
+          image_name="ghcr.io/${repository_lower}-e3"
+          test "$image_name" = "${image_name,,}"
+          echo "image_name=$image_name" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
+
+      - name: Build and push fixed probe image
+        id: build
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
+        with:
+          context: .
+          file: tools/sandbox_security/e3_image/Dockerfile
+          push: true
+          tags: ${{ steps.package.outputs.image_name }}:${{ github.sha }}
+          provenance: false
+
+      - name: Seal build outputs
+        id: identity
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ steps.package.outputs.image_name }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          image_ref="$IMAGE_NAME@$IMAGE_DIGEST"
+          [[ "$image_ref" =~ ^ghcr\.io/[a-z0-9][a-z0-9._/-]*-e3@sha256:[0-9a-f]{64}$ ]]
+          echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
+          echo "image_digest=$IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "workflow_ref=refs/heads/$DEFAULT_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "workflow_sha=$GITHUB_WORKFLOW_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+        with:
+          cosign-release: 'v3.0.6'
+
+      - name: Sign exact digest
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.identity.outputs.image_ref }}
+        run: |
+          set -euo pipefail
+          cosign sign --yes "$IMAGE_REF"
+
+  verify-e3:
+    needs: build-sign
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    env:
+      GITHUB_EVENT_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      FORGEOPS_E3_IMAGE_REF: ${{ needs.build-sign.outputs.image_ref }}
+      FORGEOPS_E3_IMAGE_DIGEST: ${{ needs.build-sign.outputs.image_digest }}
+    steps:
+      - name: Assert protected run and sealed outputs
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REF_ALLOWED: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.ref_protected == true }}
+          SOURCE_SHA: ${{ needs.build-sign.outputs.source_sha }}
+          WORKFLOW_REF: ${{ needs.build-sign.outputs.workflow_ref }}
+          WORKFLOW_SHA: ${{ needs.build-sign.outputs.workflow_sha }}
+        run: |
+          set -euo pipefail
+          test "$REF_ALLOWED" = "true"
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+          test "$WORKFLOW_REF" = "$GITHUB_REF"
+          test "$SOURCE_SHA" = "$GITHUB_SHA"
+          test "$WORKFLOW_SHA" = "$GITHUB_WORKFLOW_SHA"
+          test "$WORKFLOW_SHA" = "$SOURCE_SHA"
+          [[ "$GITHUB_REPOSITORY" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
+          [[ "$GITHUB_REPOSITORY_ID" =~ ^[0-9]+$ ]]
+          [[ "$FORGEOPS_E3_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          expected_image="ghcr.io/${GITHUB_REPOSITORY,,}-e3@$FORGEOPS_E3_IMAGE_DIGEST"
+          test "$FORGEOPS_E3_IMAGE_REF" = "$expected_image"
+
+      - name: Check out signed source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ needs.build-sign.outputs.source_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+        with:
+          cosign-release: 'v3.0.6'
+
+      - name: Log in to GHCR read-only
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Verify digest identity before provisioning
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          certificate_identity="https://github.com/$GITHUB_REPOSITORY/.github/workflows/vg-008-e3.yml@refs/heads/$DEFAULT_BRANCH"
+          cosign verify --certificate-identity "$certificate_identity" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" "$FORGEOPS_E3_IMAGE_REF"
+
+      - name: Configure rootless Docker
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/sandbox_security/setup_rootless.sh
+          export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/docker.sock"
+          docker info --format '{{json .SecurityOptions}}' | grep -q rootless
+          test "$(docker info --format '{{.CgroupVersion}} {{.CgroupDriver}}')" = "2 systemd"
+
+      - name: Pull exact digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/docker.sock"
+          docker pull "$FORGEOPS_E3_IMAGE_REF"
+          docker image inspect "$FORGEOPS_E3_IMAGE_REF" --format '{{json .RepoDigests}}' | grep -Fq "$FORGEOPS_E3_IMAGE_REF"
+
+      - name: Collect fixed runtime evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/docker.sock"
+          python tools/sandbox_security/e3_helper.py
+
+      - name: Sign public attestation blob
+        shell: bash
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes --bundle artifacts/runtime/e3-attestation.bundle.json artifacts/runtime/e3-attestation.json
+
+      - name: Verify and import signed attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/sandbox_security/e3_attestation.py import
+
+      - name: Run all Phase 0 registered gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/foundation_conformance/verify.py --manifest fixtures/forgeops-foundation/source-manifest.json --suite fixtures/forgeops-foundation/suite.json --result artifacts/verification/vg-001-protocol-conformance-result.json --command-id protocol-conformance
+          python tools/foundation_conformance/verify.py --manifest fixtures/forgeops-foundation/source-manifest.json --suite fixtures/forgeops-foundation/suite.json --result artifacts/verification/vg-001-sample-fixture-result.json --command-id sample-fixture
+          python tools/contract_bridge/verify.py --schema contracts/product-task-contract/1.0/schema.json --suite fixtures/product-task-contract-bridge/suite.json --result artifacts/verification/vg-002-contract-bridge-result.json --report artifacts/reviews/w1-contract-bridge-checkpoint.html
+          python tools/state_contract/verify.py --schema contracts/forgeops-state-contract/1.0/schema.json --suite fixtures/forgeops-state-contract/state-suite.json --result artifacts/verification/vg-003-state-transition-result.json --command-id state-transition-fixture
+          python tools/state_contract/verify.py --schema contracts/forgeops-state-contract/1.0/schema.json --suite fixtures/forgeops-state-contract/state-suite.json --result artifacts/verification/vg-003-event-order-result.json --command-id event-order-fixture
+          python tools/replay_contract/verify.py --schema contracts/forgeops-replay-contract/1.0/schema.json --suite fixtures/forgeops-replay-contract/suite.json --result artifacts/verification/vg-003-replay-contract-result.json
+          python tools/interface_contract/verify.py --openapi contracts/forgeops-api/1.0/openapi.yaml --event-schema contracts/forgeops-event/1.0/schema.json --manifest-schema contracts/forgeops-run-manifest/1.0/schema.json --api-version-suite fixtures/forgeops-api/version-envelope-suite.json --api-boundary-suite fixtures/forgeops-api/data-control-suite.json --event-suite fixtures/forgeops-event-contract/suite.json --manifest-suite fixtures/forgeops-run-manifest/suite.json --result artifacts/verification/vg-004-interface-contract-result.json --command-id interface-contract-fixture
+          python tools/policy_contract/verify.py resource --schema contracts/forgeops-authority-policy/1.0/schema.json --suite fixtures/forgeops-authority-resource/suite.json --result artifacts/verification/vg-005-resource-authority-result.json --command-id resource-authority-negative
+          python tools/policy_contract/verify.py resource --schema contracts/forgeops-authority-policy/1.0/schema.json --suite fixtures/forgeops-authority-resource/suite.json --result artifacts/verification/vg-005-protected-read-result.json --command-id protected-read-negative
+          python tools/policy_contract/verify.py command-network --schema contracts/forgeops-authority-policy/1.0/schema.json --suite fixtures/forgeops-authority-command-network/suite.json --result artifacts/verification/vg-006-command-network-result.json --command-id command-network-negative
+          python tools/policy_contract/verify.py approval --schema contracts/forgeops-authority-policy/1.0/schema.json --suite fixtures/forgeops-approval-policy/suite.json --result artifacts/verification/vg-007-approval-policy-result.json --command-id approval-negative-fixture
+          python tools/sandbox_security/verify.py --schema contracts/forgeops-sandbox-contract/1.0/schema.json --suite fixtures/forgeops-sandbox-security/suite.json --runtime-profile artifacts/runtime/sandbox-runtime-profile.json --runtime docker --result artifacts/verification/vg-008-image-provenance-result.json --command-id image-provenance-negative
+          python tools/sandbox_security/verify.py --schema contracts/forgeops-sandbox-contract/1.0/schema.json --suite fixtures/forgeops-sandbox-security/suite.json --runtime-profile artifacts/runtime/sandbox-runtime-profile.json --runtime docker --result artifacts/verification/vg-008-containment-egress-result.json --command-id containment-egress-negative
+          python tools/sandbox_security/verify.py --schema contracts/forgeops-sandbox-contract/1.0/schema.json --suite fixtures/forgeops-sandbox-security/suite.json --runtime-profile artifacts/runtime/sandbox-runtime-profile.json --runtime docker --result artifacts/verification/vg-008-teardown-result.json --command-id teardown-negative
+          python tools/secret_artifact_security/verify.py --schema contracts/forgeops-secret-artifact-contract/1.0/schema.json --suite fixtures/forgeops-secret-artifact-security/suite.json --result artifacts/verification/vg-009-secret-surface-result.json --command-id secret-surface-negative
+          python tools/secret_artifact_security/verify.py --schema contracts/forgeops-secret-artifact-contract/1.0/schema.json --suite fixtures/forgeops-secret-artifact-security/suite.json --result artifacts/verification/vg-009-artifact-isolation-result.json --command-id artifact-isolation-negative
+          python tools/evidence_contract/verify.py --schema contracts/forgeops-evidence-contract/1.0/schema.json --suite fixtures/forgeops-evidence-contract/suite.json --result artifacts/verification/vg-023-evidence-contract-result.json --command-id evidence-positive-negative
+          python tools/evidence_contract/verify.py --schema contracts/forgeops-evidence-contract/1.0/schema.json --suite fixtures/forgeops-evidence-contract/suite.json --result artifacts/verification/vg-023-extension-provenance-result.json --command-id extension-provenance
+          python tools/phase_exit/verify.py --schema contracts/forgeops-phase-exit-contract/1.0/schema.json --suite fixtures/forgeops-phase-exit/phase-0-suite.json --result artifacts/verification/phase-0-exit-result.json --report artifacts/reviews/phase-0-exit-report.md --command-id phase0-exit-gate
+
+      - name: Require 18 of 18 READY
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("artifacts/verification/phase-0-exit-result.json").read_text(encoding="utf-8"))
+          expected = {"required": 18, "passed": 18, "failed": 0, "not_run": 0, "blocked": 0}
+          if result.get("status") != "READY" or result.get("summary") != expected or result.get("blockers") != []:
+              raise SystemExit(2)
+          PY
+
+      - name: Build closed public manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/sandbox_security/e3_artifact.py build
+
+      - name: Stage exact public artifact tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/sandbox_security/e3_artifact.py stage-upload
+
+      - name: Upload public E3 evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: forgeops-e3-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: e3-upload
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 7

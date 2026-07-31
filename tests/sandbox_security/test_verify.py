@@ -1517,6 +1517,20 @@ class SandboxCliTests(unittest.TestCase):
                 self.assertNotEqual(case["expected"], actual)
                 self.assertEqual(observation, returned)
 
+    def test_consumer_diagnostics_are_fixed_codes_without_exception_text(self):
+        from tools.sandbox_security import e3_consumer, runtime
+
+        for code in e3_consumer._SAFE_DIAGNOSTICS:
+            with self.subTest(code=code), mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+                e3_consumer._report_safe_diagnostic(runtime.RuntimeUnavailable(code))
+                self.assertEqual(code + "\n", stderr.getvalue())
+        with mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            e3_consumer._report_safe_diagnostic(
+                runtime.RuntimeUnavailable(r"C:\private\secret.txt")
+            )
+            e3_consumer._report_safe_diagnostic(RuntimeError("token=private"))
+            self.assertEqual("", stderr.getvalue())
+
     def test_registered_commands_have_exact_result_paths(self):
         from tools.sandbox_security import verify
 

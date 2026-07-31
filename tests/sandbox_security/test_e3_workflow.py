@@ -287,6 +287,70 @@ class E3ArtifactTests(unittest.TestCase):
             self.assertEqual("READY", manifest["status"])
             self.assertEqual("1001", manifest["run_id"])
 
+    def test_builder_requires_the_canonical_phase_schema_id(self):
+        from tools.sandbox_security import e3_artifact
+
+        with tempfile.TemporaryDirectory() as source_directory, tempfile.TemporaryDirectory() as schema_directory:
+            root = self._source(Path(source_directory))
+            schema_root = Path(schema_directory)
+            schema_path = schema_root / "contracts/forgeops-phase-exit-contract/1.0/schema.json"
+            schema = json.loads((ROOT / "contracts/forgeops-phase-exit-contract/1.0/schema.json").read_text(encoding="utf-8"))
+            schema["$id"] = "contracts/forgeops-phase-exit-contract/1.0/near-miss.json"
+            self._write(schema_path, schema)
+
+            with mock.patch.object(e3_artifact, "_ROOT", schema_root):
+                with self.assertRaises(e3_artifact.ArtifactError):
+                    e3_artifact.build_manifest(
+                        root,
+                        root / e3_artifact.E3_MANIFEST_FILE,
+                        runner=self.runner,
+                        validation_at=VALIDATION_AT,
+                    )
+
+    def test_phase_validator_receives_an_absolute_file_schema_uri(self):
+        from tools.sandbox_security import e3_artifact
+
+        observed_ids: list[object] = []
+        real_validator = e3_artifact.Draft202012Validator
+
+        def recording_validator(schema, *args, **kwargs):
+            observed_ids.append(schema.get("$id"))
+            return real_validator(schema, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = self._source(Path(directory))
+            with mock.patch.object(e3_artifact, "Draft202012Validator", side_effect=recording_validator):
+                e3_artifact.build_manifest(
+                    root,
+                    root / e3_artifact.E3_MANIFEST_FILE,
+                    runner=self.runner,
+                    validation_at=VALIDATION_AT,
+                )
+
+        expected = (ROOT / "contracts/forgeops-phase-exit-contract/1.0/schema.json").resolve().as_uri()
+        self.assertEqual([expected], observed_ids)
+
+    def test_builder_maps_phase_schema_resolution_failure_to_artifact_error(self):
+        from tools.sandbox_security import e3_artifact
+
+        class LegacyResolverFailure(Exception):
+            pass
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = self._source(Path(directory))
+            with mock.patch.object(
+                e3_artifact,
+                "Draft202012Validator",
+                side_effect=LegacyResolverFailure("#/$defs/decision"),
+            ):
+                with self.assertRaisesRegex(e3_artifact.ArtifactError, "^E3_ARTIFACT_INVALID$"):
+                    e3_artifact.build_manifest(
+                        root,
+                        root / e3_artifact.E3_MANIFEST_FILE,
+                        runner=self.runner,
+                        validation_at=VALIDATION_AT,
+                    )
+
     def test_staging_contains_only_the_exact_artifacts_tree(self):
         from tools.sandbox_security.e3_artifact import E3_ARTIFACT_FILES, E3_MANIFEST_FILE, E3_STAGING_ROOT, build_manifest, stage_upload_artifact
 

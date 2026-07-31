@@ -16,7 +16,6 @@ import tempfile
 from typing import Any, Mapping
 
 from jsonschema import Draft202012Validator
-from jsonschema.exceptions import ValidationError
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -50,6 +49,7 @@ MAX_ARTIFACT_BYTES = 4_194_304
 _ROOT = Path(__file__).resolve().parents[2]
 _TIMESTAMP = "%Y-%m-%dT%H:%M:%SZ"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_PHASE_SCHEMA_ID = "contracts/forgeops-phase-exit-contract/1.0/schema.json"
 _FORBIDDEN_KEYS = frozenset({
     "token", "secret", "credential", "environment", "stdout", "stderr", "log",
     "private_path", "certificate_pem", "certificate_chain", "raw_docker_output",
@@ -170,9 +170,15 @@ def _read_payload(root: Path, relative: str) -> bytes:
 def _ready_phase(root: Path) -> dict[str, Any]:
     phase = _load_json(root / "artifacts/verification/phase-0-exit-result.json")
     try:
-        schema = json.loads((_ROOT / "contracts/forgeops-phase-exit-contract/1.0/schema.json").read_text(encoding="utf-8"))
+        schema_path = _ROOT / _PHASE_SCHEMA_ID
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        if type(schema) is not dict or schema.get("$id") != _PHASE_SCHEMA_ID:
+            raise ArtifactError("E3_ARTIFACT_INVALID")
+        schema["$id"] = schema_path.resolve(strict=True).as_uri()
         Draft202012Validator(schema).validate(phase)
-    except (OSError, UnicodeError, json.JSONDecodeError, ValidationError) as error:
+    except ArtifactError:
+        raise
+    except Exception as error:
         raise ArtifactError("E3_ARTIFACT_INVALID") from error
     if not (
         phase.get("status") == "READY"

@@ -67,6 +67,7 @@ class RuntimeObservation:
     redirects: int
     quota_exceeded: bool
     residue: Residue
+    observation_mode: str = "RUNTIME_EXECUTED"
 
 
 class RuntimeObserver(Protocol):

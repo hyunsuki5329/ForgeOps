@@ -197,7 +197,7 @@ class SandboxCatalogTests(unittest.TestCase):
                 {"expected_provision_calls", "expected_network_calls", "expected_write_calls"},
                 {key for key in case if key.startswith("expected_") and key.endswith("_calls")},
             )
-            if case["kind"] == "negative" and case["case_kind"] == "image_provenance":
+            if case.get("observation_mode") == "PREPROVISION_DENIED":
                 self.assertEqual(
                     (0, 0, 0),
                     (

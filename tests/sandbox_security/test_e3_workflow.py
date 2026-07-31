@@ -18,16 +18,34 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/vg-008-e3.yml"
 VALIDATION_AT = datetime(2026, 7, 30, tzinfo=timezone.utc)
-E3_EXACT_BYTE_INPUTS = (
-    "contracts/forgeops-sandbox-contract/1.0/schema.json",
-    "fixtures/forgeops-sandbox-security/suite.json",
+PHASE0_SUITE = ROOT / "fixtures/forgeops-phase-exit/phase-0-suite.json"
+PHASE0_ARTIFACT_REFS = tuple(
+    registration["artifact_ref"]
+    for registration in json.loads(PHASE0_SUITE.read_text(encoding="utf-8"))["registrations"]
+)
+E3_ATTESTATION_FILE = "artifacts/runtime/e3-attestation.json"
+PHASE0_EXIT_RESULT_FILE = "artifacts/verification/phase-0-exit-result.json"
+PHASE0_REPORT_FILE = "artifacts/reviews/phase-0-exit-report.md"
+SAMPLE_PHASE0_ARTIFACT_FILE = PHASE0_ARTIFACT_REFS[0]
+E3_HELPER_INPUTS = {
     "tools/sandbox_security/e3_helper.py",
     "tools/sandbox_security/e3_probe.py",
-)
+}
 
 
 class E3WorkflowPolicyTests(unittest.TestCase):
-    def test_exact_e3_byte_inputs_are_lf_without_a_repository_wide_policy(self):
+    def test_exact_phase0_byte_inputs_are_lf_without_a_repository_wide_policy(self):
+        suite = json.loads(PHASE0_SUITE.read_text(encoding="utf-8"))
+        exact_byte_inputs = tuple(
+            sorted(
+                E3_HELPER_INPUTS
+                | {
+                    input_ref
+                    for registration in suite["registrations"]
+                    for input_ref in registration["input_refs"]
+                }
+            )
+        )
         attributes_path = ROOT / ".gitattributes"
         active_lines = [
             line.strip()
@@ -35,12 +53,12 @@ class E3WorkflowPolicyTests(unittest.TestCase):
             if line.strip() and not line.lstrip().startswith("#")
         ]
         self.assertEqual(
-            [f"{path} text eol=lf" for path in E3_EXACT_BYTE_INPUTS],
+            [f"{path} text eol=lf" for path in exact_byte_inputs],
             active_lines,
         )
 
         completed = subprocess.run(
-            ["git", "check-attr", "text", "eol", "--", *E3_EXACT_BYTE_INPUTS],
+            ["git", "check-attr", "text", "eol", "--", *exact_byte_inputs],
             cwd=ROOT,
             check=True,
             capture_output=True,
@@ -49,7 +67,7 @@ class E3WorkflowPolicyTests(unittest.TestCase):
         self.assertEqual(
             [
                 f"{path}: {attribute}: {value}"
-                for path in E3_EXACT_BYTE_INPUTS
+                for path in exact_byte_inputs
                 for attribute, value in (("text", "set"), ("eol", "lf"))
             ],
             completed.stdout.splitlines(),
@@ -293,20 +311,57 @@ class E3ArtifactTests(unittest.TestCase):
             gate["status"] = "PASSED" if status == "READY" else gate["status"]
             gate["observed_at"] = "2026-07-30T00:00:00Z"
         values: dict[str, object] = {
-            E3_PAYLOAD_FILES[0]: self.attestation,
-            E3_PAYLOAD_FILES[1]: b"bundle",
-            E3_PAYLOAD_FILES[2]: {"runtime": "docker", "available": True},
-            E3_PAYLOAD_FILES[3]: {"observations_version": "1.0", "observations": []},
-            E3_PAYLOAD_FILES[4]: {"receipt_version": "1.0"},
-            E3_PAYLOAD_FILES[5]: {"status": "PASSED"},
-            E3_PAYLOAD_FILES[6]: {"status": "PASSED"},
-            E3_PAYLOAD_FILES[7]: {"status": "PASSED"},
-            E3_PAYLOAD_FILES[8]: phase,
-            E3_PAYLOAD_FILES[9]: "# Phase 0\n\nREADY\n",
+            E3_ATTESTATION_FILE: self.attestation,
+            "artifacts/runtime/e3-attestation.bundle.json": b"bundle",
+            "artifacts/runtime/sandbox-runtime-profile.json": {"runtime": "docker", "available": True},
+            "artifacts/runtime/sandbox-runtime-observations.json": {"observations_version": "1.0", "observations": []},
+            "artifacts/runtime/sandbox-e3-import-receipt.json": {"receipt_version": "1.0"},
+            PHASE0_EXIT_RESULT_FILE: phase,
+            PHASE0_REPORT_FILE: "# Phase 0\n\nREADY\n",
         }
+        values.update({path: {"status": "PASSED"} for path in PHASE0_ARTIFACT_REFS})
         for path in E3_PAYLOAD_FILES:
             self._write(root / path, values[path])
         return root
+
+    def test_payload_allowlist_tracks_every_phase0_registration_in_suite_order(self):
+        from tools.sandbox_security.e3_artifact import E3_PAYLOAD_FILES
+
+        expected = (
+            "artifacts/runtime/e3-attestation.json",
+            "artifacts/runtime/e3-attestation.bundle.json",
+            "artifacts/runtime/sandbox-runtime-profile.json",
+            "artifacts/runtime/sandbox-runtime-observations.json",
+            "artifacts/runtime/sandbox-e3-import-receipt.json",
+            *PHASE0_ARTIFACT_REFS,
+            "artifacts/verification/phase-0-exit-result.json",
+            "artifacts/reviews/phase-0-exit-report.md",
+        )
+
+        self.assertEqual(expected, E3_PAYLOAD_FILES)
+
+    def test_import_replaces_every_stale_phase0_registration_artifact(self):
+        from tools.sandbox_security.e3_artifact import E3_MANIFEST_FILE, build_manifest, import_downloaded_artifact
+
+        with tempfile.TemporaryDirectory() as source_directory, tempfile.TemporaryDirectory() as target_directory:
+            source = self._source(Path(source_directory))
+            target = Path(target_directory)
+            for index, artifact_ref in enumerate(PHASE0_ARTIFACT_REFS):
+                self._write(source / artifact_ref, {"status": "PASSED", "source_marker": index})
+                self._write(target / artifact_ref, {"status": "STALE", "target_marker": index})
+            build_manifest(source, source / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
+
+            import_downloaded_artifact(
+                source,
+                target,
+                self.identity,
+                runner=self.runner,
+                validation_at=VALIDATION_AT,
+            )
+
+            for artifact_ref in PHASE0_ARTIFACT_REFS:
+                with self.subTest(artifact_ref=artifact_ref):
+                    self.assertEqual((source / artifact_ref).read_bytes(), (target / artifact_ref).read_bytes())
 
     def test_manifest_hashes_exact_payload_and_never_itself(self):
         from tools.sandbox_security.e3_artifact import E3_MANIFEST_FILE, E3_PAYLOAD_FILES, build_manifest
@@ -420,15 +475,15 @@ class E3ArtifactTests(unittest.TestCase):
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
                 root = self._source(Path(directory), status="NOT_READY" if mutation == "not-ready" else "READY")
                 if mutation == "missing":
-                    (root / E3_PAYLOAD_FILES[5]).unlink()
+                    (root / SAMPLE_PHASE0_ARTIFACT_FILE).unlink()
                 elif mutation == "secret":
-                    self._write(root / E3_PAYLOAD_FILES[5], {"status": "PASSED", "secret": "redacted"})
+                    self._write(root / SAMPLE_PHASE0_ARTIFACT_FILE, {"status": "PASSED", "secret": "redacted"})
                 elif mutation == "oversized":
-                    (root / E3_PAYLOAD_FILES[9]).write_bytes(b"x" * (MAX_FILE_BYTES + 1))
+                    (root / SAMPLE_PHASE0_ARTIFACT_FILE).write_bytes(b"x" * (MAX_FILE_BYTES + 1))
                 elif mutation == "phase-extra":
-                    phase = json.loads((root / E3_PAYLOAD_FILES[8]).read_text(encoding="utf-8"))
+                    phase = json.loads((root / PHASE0_EXIT_RESULT_FILE).read_text(encoding="utf-8"))
                     phase["unexpected"] = True
-                    self._write(root / E3_PAYLOAD_FILES[8], phase)
+                    self._write(root / PHASE0_EXIT_RESULT_FILE, phase)
                 with self.assertRaises(ArtifactError):
                     build_manifest(root, root / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
                 self.assertFalse((root / E3_MANIFEST_FILE).exists())
@@ -445,9 +500,9 @@ class E3ArtifactTests(unittest.TestCase):
         for name, changes in mutations.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
                 root = self._source(Path(directory))
-                attestation = json.loads((root / E3_PAYLOAD_FILES[0]).read_text(encoding="utf-8"))
+                attestation = json.loads((root / E3_ATTESTATION_FILE).read_text(encoding="utf-8"))
                 attestation.update(changes)
-                self._write(root / E3_PAYLOAD_FILES[0], attestation)
+                self._write(root / E3_ATTESTATION_FILE, attestation)
                 with self.assertRaises(ArtifactError):
                     build_manifest(root, root / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
                 self.assertFalse((root / E3_MANIFEST_FILE).exists())
@@ -464,10 +519,10 @@ class E3ArtifactTests(unittest.TestCase):
                     self._write(root / "unexpected.json", {})
                 elif mutation == "absolute":
                     manifest = json.loads((root / E3_MANIFEST_FILE).read_text(encoding="utf-8"))
-                    manifest["files"][0]["path"] = str((root / E3_PAYLOAD_FILES[0]).resolve())
+                    manifest["files"][0]["path"] = str((root / E3_ATTESTATION_FILE).resolve())
                     self._write(root / E3_MANIFEST_FILE, manifest)
                 elif mutation == "symlink":
-                    with mock.patch("pathlib.Path.is_symlink", autospec=True, side_effect=lambda value: value.as_posix().endswith(E3_PAYLOAD_FILES[5])):
+                    with mock.patch("pathlib.Path.is_symlink", autospec=True, side_effect=lambda value: value.as_posix().endswith(SAMPLE_PHASE0_ARTIFACT_FILE)):
                         with self.assertRaises(ArtifactError):
                             verify_downloaded_artifact(root, self.identity.repository, self.identity.repository_id, self.identity.default_branch, self.identity.run_id, self.identity.run_attempt, self.identity.source_sha, runner=self.runner, validation_at=VALIDATION_AT)
                     continue
@@ -491,13 +546,13 @@ class E3ArtifactTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = self._source(Path(directory))
             build_manifest(root, root / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
-            attestation = json.loads((root / E3_PAYLOAD_FILES[0]).read_text(encoding="utf-8"))
+            attestation = json.loads((root / E3_ATTESTATION_FILE).read_text(encoding="utf-8"))
             attestation["workflow_sha"] = "b" * 40
-            self._write(root / E3_PAYLOAD_FILES[0], attestation)
+            self._write(root / E3_ATTESTATION_FILE, attestation)
             manifest = json.loads((root / E3_MANIFEST_FILE).read_text(encoding="utf-8"))
             manifest["workflow_sha"] = "b" * 40
-            manifest["files"][0]["sha256"] = hashlib.sha256((root / E3_PAYLOAD_FILES[0]).read_bytes()).hexdigest()
-            manifest["files"][0]["size"] = (root / E3_PAYLOAD_FILES[0]).stat().st_size
+            manifest["files"][0]["sha256"] = hashlib.sha256((root / E3_ATTESTATION_FILE).read_bytes()).hexdigest()
+            manifest["files"][0]["size"] = (root / E3_ATTESTATION_FILE).stat().st_size
             self._write(root / E3_MANIFEST_FILE, manifest)
             with self.assertRaises(ArtifactError):
                 verify_downloaded_artifact(root, self.identity.repository, self.identity.repository_id, self.identity.default_branch, self.identity.run_id, self.identity.run_attempt, self.identity.source_sha, runner=self.runner, validation_at=VALIDATION_AT)
@@ -519,16 +574,16 @@ class E3ArtifactTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as source_directory, tempfile.TemporaryDirectory() as target_directory:
             source = self._source(Path(source_directory))
             build_manifest(source, source / E3_MANIFEST_FILE, runner=self.runner, validation_at=VALIDATION_AT)
-            original = (source / E3_PAYLOAD_FILES[5]).read_bytes()
+            original = (source / SAMPLE_PHASE0_ARTIFACT_FILE).read_bytes()
 
             def mutating_runner(arguments, **kwargs):
                 result = self.runner(arguments, **kwargs)
-                self._write(source / E3_PAYLOAD_FILES[5], {"status": "ATTACKER_REPLACEMENT"})
+                self._write(source / SAMPLE_PHASE0_ARTIFACT_FILE, {"status": "ATTACKER_REPLACEMENT"})
                 return result
 
             target = Path(target_directory)
             import_downloaded_artifact(source, target, self.identity, runner=mutating_runner, validation_at=VALIDATION_AT)
-            self.assertEqual(original, (target / E3_PAYLOAD_FILES[5]).read_bytes())
+            self.assertEqual(original, (target / SAMPLE_PHASE0_ARTIFACT_FILE).read_bytes())
 
     def test_import_invalidates_manifest_and_prestages_before_mid_replace_failure(self):
         from tools.sandbox_security.e3_artifact import ArtifactError, E3_MANIFEST_FILE, E3_PAYLOAD_FILES, build_manifest, import_downloaded_artifact

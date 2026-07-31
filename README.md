@@ -26,7 +26,8 @@ ForgeOps는 AI 에이전트가 소프트웨어 작업을 수행할 때 필요한
 - **W1:** Product Contract와 TaskPacket bridge, 계약 검증 fixture를 구현했습니다.
 - **W2:** 상태 전이, replay, resource/command/network authority, approval/effect policy 검증을 구현했습니다.
 - **W3:** versioned OpenAPI, data/control boundary, durable event, run manifest, VG-004 인터페이스 계약 검증을 구현했습니다.
-- **남은 게이트:** [WBS](docs/project/wbs.md)의 WBS-008은 VG-004 증빙이 있어도 별도 Phase 4 VG-023 evidence/provenance 게이트가 남아 있으므로 `WBS_IN_PROGRESS`입니다. 이는 Phase 0 Exit 완료를 의미하지 않습니다.
+- **W4:** Foundation conformance, attested sandbox containment·egress·teardown, secret surface와 artifact isolation 검증을 구현했습니다.
+- **Phase 0:** 등록된 18개 필수 결과가 모두 `PASSED`이고 blockers 0으로 `READY`입니다. W1~W4는 완료됐으며, Phase 1 이후의 제품 runtime·통합·배포 작업은 아직 완료되지 않았습니다.
 
 ## 검증 실행
 

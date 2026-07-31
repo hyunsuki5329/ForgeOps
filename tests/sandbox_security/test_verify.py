@@ -7,6 +7,7 @@ import hashlib
 import io
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -71,6 +72,24 @@ def load_json(path: Path) -> dict:
 
 def load_schema() -> dict:
     return load_json(SCHEMA_PATH)
+
+
+def copy_direct_cli_fixture(root: Path) -> None:
+    """Copy the real CLI and its registered inputs into an isolated project root."""
+    shutil.copytree(
+        ROOT / "tools/sandbox_security",
+        root / "tools/sandbox_security",
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
+    for relative_path in (
+        "contracts/forgeops-sandbox-contract/1.0/schema.json",
+        "fixtures/forgeops-sandbox-security/suite.json",
+        "artifacts/runtime/sandbox-runtime-profile.json",
+    ):
+        source = ROOT / relative_path
+        target = root / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
 
 
 def walk(value: object):
@@ -1941,9 +1960,10 @@ class SandboxCliTests(unittest.TestCase):
             )
 
     def test_direct_script_cli_writes_the_registered_closed_result(self):
-        result = ROOT / "artifacts/verification/vg-008-image-provenance-result.json"
-        original = result.read_bytes()
-        try:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            copy_direct_cli_fixture(root)
+            result = root / "artifacts/verification/vg-008-image-provenance-result.json"
             completed_process = subprocess.run(
                 [
                     sys.executable,
@@ -1957,56 +1977,67 @@ class SandboxCliTests(unittest.TestCase):
                     "--runtime",
                     "docker",
                     "--result",
-                    str(result.relative_to(ROOT)),
+                    "artifacts/verification/vg-008-image-provenance-result.json",
                     "--command-id",
                     "image-provenance-negative",
                 ],
-                cwd=ROOT,
+                cwd=root,
                 capture_output=True,
                 text=True,
                 check=False,
             )
 
             self.assertEqual(2, completed_process.returncode, completed_process.stderr)
-            self.assertEqual("NOT_RUN", load_json(result)["status"])
-        finally:
-            result.write_bytes(original)
+            public_result = load_json(result)
+
+        self.assertEqual(
+            {
+                "result_version", "command_id", "runtime", "status", "category", "time",
+                "input_hashes", "counts", "e3_runtime_assertion", "effect_counters",
+                "residue_counters",
+            },
+            set(public_result),
+        )
+        self.assertEqual("NOT_RUN", public_result["status"])
+        self.assertEqual("SANDBOX_RUNTIME_UNAVAILABLE", public_result["category"])
+        self.assertFalse(public_result["e3_runtime_assertion"])
 
     @unittest.skipUnless(os.name == "nt", "Windows process replacement behavior")
     def test_windows_direct_subprocess_returns_two_with_all_registered_input_hashes(self):
         """Windows direct execution must keep NOT_RUN and its exit code consistent."""
-        result = ROOT / "artifacts/verification/vg-008-image-provenance-result.json"
-        original = result.read_bytes()
-        arguments = [
-            sys.executable,
-            "tools/sandbox_security/verify.py",
-            "--schema",
-            "contracts/forgeops-sandbox-contract/1.0/schema.json",
-            "--suite",
-            "fixtures/forgeops-sandbox-security/suite.json",
-            "--runtime-profile",
-            "artifacts/runtime/sandbox-runtime-profile.json",
-            "--runtime",
-            "docker",
-            "--result",
-            str(result.relative_to(ROOT)),
-            "--command-id",
-            "image-provenance-negative",
-        ]
-        try:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            copy_direct_cli_fixture(root)
+            result = root / "artifacts/verification/vg-008-image-provenance-result.json"
+            arguments = [
+                sys.executable,
+                "tools/sandbox_security/verify.py",
+                "--schema",
+                "contracts/forgeops-sandbox-contract/1.0/schema.json",
+                "--suite",
+                "fixtures/forgeops-sandbox-security/suite.json",
+                "--runtime-profile",
+                "artifacts/runtime/sandbox-runtime-profile.json",
+                "--runtime",
+                "docker",
+                "--result",
+                "artifacts/verification/vg-008-image-provenance-result.json",
+                "--command-id",
+                "image-provenance-negative",
+            ]
             completed_process = subprocess.run(
                 arguments,
-                cwd=ROOT,
+                cwd=root,
                 capture_output=True,
                 text=True,
                 check=False,
             )
+            self.assertEqual(2, completed_process.returncode, completed_process.stderr)
             public_result = load_json(result)
-        finally:
-            result.write_bytes(original)
 
-        self.assertEqual(2, completed_process.returncode, completed_process.stderr)
         self.assertEqual("NOT_RUN", public_result["status"])
+        self.assertEqual("SANDBOX_RUNTIME_UNAVAILABLE", public_result["category"])
+        self.assertFalse(public_result["e3_runtime_assertion"])
         self.assertEqual(
             {"schema_sha256", "suite_sha256", "runtime_profile_sha256"},
             set(public_result["input_hashes"]),

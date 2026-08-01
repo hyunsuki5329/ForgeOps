@@ -140,6 +140,26 @@ project_profile:
       cwd: "."
       evidence_tier: E3
       required: true
+    - id: snapshot-identity
+      command: python tools/snapshot_context/verify.py snapshot-baseline --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-snapshot-baseline/suite.json --result artifacts/verification/vg-010-snapshot-identity-result.json --command-id snapshot-identity
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: baseline-retrieval-repeat
+      command: python tools/snapshot_context/verify.py snapshot-baseline --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-snapshot-baseline/suite.json --result artifacts/verification/vg-010-baseline-retrieval-result.json --command-id baseline-retrieval-repeat
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: context-provenance
+      command: python tools/snapshot_context/verify.py context --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-context-security/suite.json --result artifacts/verification/vg-011-context-provenance-result.json --command-id context-provenance
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: injection-negative
+      command: python tools/snapshot_context/verify.py context --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-context-security/suite.json --result artifacts/verification/vg-011-injection-negative-result.json --command-id injection-negative
+      cwd: "."
+      evidence_tier: E2
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -197,6 +217,14 @@ project_profile:
             - image-provenance-negative
             - containment-egress-negative
             - teardown-negative
+        - id: forgeops-snapshot-baseline
+          command_ids:
+            - snapshot-identity
+            - baseline-retrieval-repeat
+        - id: forgeops-context-security
+          command_ids:
+            - context-provenance
+            - injection-negative
       validation_discovery:
         - pyproject.toml
         - uv.lock

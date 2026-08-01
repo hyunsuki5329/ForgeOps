@@ -279,8 +279,9 @@ def run_baseline(
     popen_factory: Callable = subprocess.Popen,
     clock: Callable[[], datetime] = utc_now,
 ) -> dict[str, object]:
-    workspace_root = Path(workspace_root).resolve()
+    workspace_root = Path(workspace_root)
     verify_snapshot(workspace_root, manifest)
+    workspace_root = Path(os.path.abspath(workspace_root))
     commands = validate_profile(profile)
     started_at = clock()
     results: list[dict[str, object]] = []

@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
+import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import stat
 import subprocess
 import tempfile
 from typing import Callable, Mapping
+
+from jsonschema import Draft202012Validator
 
 from .model import (
     SnapshotBundle,
@@ -21,6 +26,18 @@ from .model import (
 
 ProcessRunner = Callable[..., object]
 STATE_ORDER = ("tracked", "staged", "modified", "untracked")
+_READ_OBSERVER: ContextVar[Callable[[Path], None] | None] = ContextVar(
+    "snapshot_read_observer", default=None
+)
+
+
+@contextmanager
+def observe_reads(observer: Callable[[Path], None]):
+    token = _READ_OBSERVER.set(observer)
+    try:
+        yield
+    finally:
+        _READ_OBSERVER.reset(token)
 
 
 def _run_git(
@@ -139,12 +156,69 @@ def _same_file(before: os.stat_result, after: os.stat_result) -> bool:
     return all(getattr(before, key, None) == getattr(after, key, None) for key in keys)
 
 
+def _read_stable_regular_file(
+    source_root: Path, relative: Path
+) -> tuple[bytes, os.stat_result]:
+    before = _ensure_regular_file(source_root, relative)
+    file_path = source_root / relative
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(file_path, flags)
+        opened = os.fstat(descriptor)
+        attributes = getattr(opened, "st_file_attributes", 0)
+        reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        if (
+            not _same_file(before, opened)
+            or not stat.S_ISREG(opened.st_mode)
+            or (reparse and attributes & reparse)
+        ):
+            raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
+        observer = _READ_OBSERVER.get()
+        if observer is not None:
+            observer(file_path)
+        with os.fdopen(descriptor, "rb") as stream:
+            descriptor = None
+            content = stream.read()
+            after = os.fstat(stream.fileno())
+        if not _same_file(opened, after) or len(content) != opened.st_size:
+            raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
+        return content, opened
+    except SnapshotError:
+        raise
+    except OSError as exc:
+        raise SnapshotError("SNAPSHOT_CONTENT_CHANGED") from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
 def _manifest_digest_body(manifest: Mapping[str, object]) -> dict[str, object]:
     return {
         key: value
         for key, value in manifest.items()
         if key not in ("snapshot_id", "manifest_sha256")
     }
+
+
+def _validated_root_path(raw: Path) -> Path:
+    absolute = Path(os.path.abspath(raw))
+    chain = [absolute]
+    chain.extend(parent for parent in absolute.parents if parent != absolute)
+    reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    for node in reversed(chain):
+        try:
+            info = os.lstat(node)
+        except OSError as exc:
+            raise SnapshotError("SNAPSHOT_CONTENT_CHANGED") from exc
+        attributes = getattr(info, "st_file_attributes", 0)
+        if (
+            stat.S_ISLNK(info.st_mode)
+            or not stat.S_ISDIR(info.st_mode)
+            or (reparse and attributes & reparse)
+        ):
+            raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
+    return absolute
 
 
 def create_snapshot(
@@ -159,6 +233,12 @@ def create_snapshot(
     if not isinstance(repository_label, str) or not repository_label.strip():
         raise SnapshotError("SNAPSHOT_SOURCE_INVALID")
     if destination_root.exists():
+        raise SnapshotError("SNAPSHOT_DESTINATION_INVALID")
+    try:
+        destination_root.relative_to(source_root)
+    except ValueError:
+        pass
+    else:
         raise SnapshotError("SNAPSHOT_DESTINATION_INVALID")
     destination_root.parent.mkdir(parents=True, exist_ok=True)
 
@@ -213,16 +293,9 @@ def create_snapshot(
             if path_text in deleted or not source_path.exists():
                 deleted.add(path_text)
                 continue
-            before = _ensure_regular_file(source_root, relative)
             if modes.get(path_text) == "120000":
                 raise SnapshotError("SNAPSHOT_FILE_TYPE_FORBIDDEN")
-            try:
-                content = source_path.read_bytes()
-                after = os.lstat(source_path)
-            except OSError as exc:
-                raise SnapshotError("SNAPSHOT_CONTENT_CHANGED") from exc
-            if not _same_file(before, after) or len(content) != before.st_size:
-                raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
+            content, before = _read_stable_regular_file(source_root, relative)
             target = snapshot_tree / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(content)
@@ -265,8 +338,18 @@ def create_snapshot(
 
 
 def verify_snapshot(snapshot_root: Path, manifest: Mapping[str, object]) -> None:
-    snapshot_root = Path(snapshot_root).resolve()
+    snapshot_root = _validated_root_path(Path(snapshot_root))
     try:
+        schema_path = (
+            Path(__file__).resolve().parents[2]
+            / "contracts"
+            / "forgeops-snapshot-contract"
+            / "1.0"
+            / "schema.json"
+        )
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        if list(Draft202012Validator(schema).iter_errors(manifest)):
+            raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
         body = _manifest_digest_body(manifest)
         digest = sha256_bytes(canonical_json_bytes(body))
         if manifest.get("snapshot_id") != f"sha256:{digest}":
@@ -288,19 +371,53 @@ def verify_snapshot(snapshot_root: Path, manifest: Mapping[str, object]) -> None
                 raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
             expected_paths.add(path_text)
             relative = Path(*relative_posix.parts)
-            file_path = snapshot_root / relative
-            info = _ensure_regular_file(snapshot_root, relative)
-            content = file_path.read_bytes()
+            content, info = _read_stable_regular_file(snapshot_root, relative)
             if info.st_size != raw_entry.get("size") or sha256_bytes(content) != raw_entry.get("sha256"):
                 raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
-        actual_paths = {
-            path.relative_to(snapshot_root).as_posix()
-            for path in snapshot_root.rglob("*")
-            if path.is_file()
-        }
+        expected_directories = {"."}
+        for path_text in expected_paths:
+            parent = PurePosixPath(path_text).parent
+            while str(parent) != ".":
+                expected_directories.add(str(parent))
+                parent = parent.parent
+        actual_paths: set[str] = set()
+        actual_directories = {"."}
+        root_info = os.lstat(snapshot_root)
+        root_attributes = getattr(root_info, "st_file_attributes", 0)
+        reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        if not stat.S_ISDIR(root_info.st_mode) or (reparse and root_attributes & reparse):
+            raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
+        for current_root, directory_names, file_names in os.walk(
+            snapshot_root, topdown=True, followlinks=False
+        ):
+            current = Path(current_root)
+            for name in directory_names:
+                node = current / name
+                info = os.lstat(node)
+                attributes = getattr(info, "st_file_attributes", 0)
+                if (
+                    stat.S_ISLNK(info.st_mode)
+                    or not stat.S_ISDIR(info.st_mode)
+                    or (reparse and attributes & reparse)
+                ):
+                    raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
+                actual_directories.add(node.relative_to(snapshot_root).as_posix())
+            for name in file_names:
+                node = current / name
+                info = os.lstat(node)
+                attributes = getattr(info, "st_file_attributes", 0)
+                if (
+                    stat.S_ISLNK(info.st_mode)
+                    or not stat.S_ISREG(info.st_mode)
+                    or (reparse and attributes & reparse)
+                ):
+                    raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
+                actual_paths.add(node.relative_to(snapshot_root).as_posix())
         if actual_paths != expected_paths:
+            raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
+        if actual_directories != expected_directories:
             raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
     except SnapshotError:
         raise
-    except (KeyError, OSError, TypeError, ValueError) as exc:
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
         raise SnapshotError("SNAPSHOT_CONTENT_CHANGED") from exc

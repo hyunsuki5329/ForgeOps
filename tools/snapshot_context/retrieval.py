@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 from pathlib import Path, PurePosixPath
 import re
 from typing import Mapping, Sequence
@@ -9,7 +10,7 @@ from typing import Mapping, Sequence
 from jsonschema import Draft202012Validator
 
 from .model import SnapshotError, sha256_bytes
-from .snapshot import verify_snapshot
+from .snapshot import _read_stable_regular_file, verify_snapshot
 
 
 MAX_QUERY_TOKENS = 32
@@ -70,11 +71,12 @@ def build_context_pack(
     if type(top_k) is not int or not 1 <= top_k <= MAX_TOP_K:
         raise SnapshotError("CONTEXT_QUERY_INVALID")
     tokens = tokenize_query(query)
-    snapshot_root = Path(snapshot_root).resolve()
+    snapshot_root = Path(snapshot_root)
     try:
         verify_snapshot(snapshot_root, manifest)
     except SnapshotError as exc:
         raise SnapshotError("CONTEXT_PROVENANCE_INVALID") from exc
+    snapshot_root = Path(os.path.abspath(snapshot_root))
     raw_entries = manifest.get("entries")
     if not isinstance(raw_entries, list):
         raise SnapshotError("CONTEXT_PROVENANCE_INVALID")
@@ -92,10 +94,10 @@ def build_context_pack(
             raise SnapshotError("CONTEXT_PROVENANCE_INVALID")
         if type(expected_size) is not int:
             raise SnapshotError("CONTEXT_PROVENANCE_INVALID")
-        file_path = snapshot_root / Path(*PurePosixPath(path_text).parts)
+        relative = Path(*PurePosixPath(path_text).parts)
         try:
-            content = file_path.read_bytes()
-        except OSError as exc:
+            content, _ = _read_stable_regular_file(snapshot_root, relative)
+        except SnapshotError as exc:
             raise SnapshotError("CONTEXT_PROVENANCE_INVALID") from exc
         if len(content) != expected_size or sha256_bytes(content) != expected_hash:
             raise SnapshotError("CONTEXT_PROVENANCE_INVALID")

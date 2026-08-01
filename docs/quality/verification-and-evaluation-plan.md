@@ -2,7 +2,7 @@
 
 **문서 상태:** 초안
 
-**최종 검토일:** 2026-07-31
+**최종 검토일:** 2026-08-01
 
 **대상 독자:** 1인 개발자, 포트폴리오 검토자
 
@@ -12,7 +12,7 @@
 
 **VG-001 evidence update (current artifact observation):** The registered `forgeops-foundation-conformance` profile produced fresh E2 `PASSED` results at `artifact-observed_at` for `protocol-conformance` (`artifacts/verification/vg-001-protocol-conformance-result.json`) and `sample-fixture` (`artifacts/verification/vg-001-sample-fixture-result.json`). Each result has seven passed cases, zero failed cases, and zero negative effects. This is Foundation evidence only and does not declare Phase 0 Exit.
 
-**현재 상태:** Foundation과 W1~W4 executable contract·security 산출물의 current Result와 fresh evidence는 RTM이 소유한다. Phase 0 aggregation은 18/18 `PASSED`, blockers 0, `READY`이며, 아직 구현되지 않은 Phase 1 이후 gate와 제품 runtime은 `NOT_RUN`·`PLANNED`다.
+**현재 상태:** Foundation과 W1~W5 executable contract·security 산출물의 current Result와 fresh evidence는 RTM이 소유한다. Phase 0 aggregation은 18/18 `PASSED`, blockers 0, `READY`다. W5의 VG-010 두 명령은 24/24, VG-011 두 명령은 20/20 사례가 fresh E2 `PASSED`지만 WBS-014 완료에 필요한 VG-013, WBS-016 이후 gate와 Phase 1 Exit는 `NOT_RUN`·`PLANNED`다.
 
 **기준 출처:** [제품 요구사항](../product/prd.md), [시스템 아키텍처](../architecture/system-architecture.md), [위협 모델](../security/threat-model.md), [승인된 문서 체계 설계](../superpowers/specs/2026-07-14-forgeops-product-documentation-design.md)
 **관련 문서:** [11. 관련 문서](#11-관련-문서)
@@ -207,7 +207,7 @@ RTM에서 `COVERED`이고, 모든 phase-blocking VG가 요구 floor의 fresh
 | --- | --- | --- |
 | Foundation | VG-001로 현행 Protocol 계약과 fixture 보존을 확인한다. 이 결과는 제품 Phase gate를 대체하지 않는다. | PASSED — `protocol-conformance`와 `sample-fixture`가 `artifact-observed_at`에 fresh E2 `PASSED` (각 7 cases, failed 0, negative effects 0) |
 | Phase 0 | VG-001~VG-009, VG-023. example schema와 Harness conformance 통과, 비신뢰 field의 control 승격과 replay mode·identity·effect 계약 위반, invalid transition·authority 및 approval deny·expiry·nonce reuse가 fail-closed하고 sandbox containment와 secret fixture가 100% 통과 | READY — registered `phase0-exit-gate` recorded 18/18 `PASSED`, zero `FAILED`/`NOT_RUN`, and blockers 0. The three VG-008 commands carry active attested E3 evidence from isolated GitHub Actions run 30617938636; WBS-010 and WBS-012 are `WBS_DONE`. This result is limited to Phase 0. |
-| Phase 1 | VG-008~VG-015, VG-023, VG-024. 모든 필수 criterion E2 이상, unauthorized execution 0, cleanup failure 0, external write 0, immutable source·ephemeral workspace·trusted verification·trace와 public-safe package 통과 | NOT_RUN — local vertical slice runtime 없음 |
+| Phase 1 | VG-008~VG-015, VG-023, VG-024. 모든 필수 criterion E2 이상, unauthorized execution 0, cleanup failure 0, external write 0, immutable source·ephemeral workspace·trusted verification·trace와 public-safe package 통과 | NOT_RUN — W5 VG-010/VG-011 E2는 PASSED지만 VG-013, WBS-016 이후 local vertical slice와 Exit gate가 없음 |
 | Phase 2 | VG-016~VG-018 및 누적 보안 gate. 최소 5회 반복과 사전 고정 평가 계약, unauthorized action 0, raw secret 0, critical injection escape 0, task-success paired 95% CI 하한 > 0, regression-rate paired 95% CI 상한 < 0 | NOT_RUN — recovery/evaluation runtime과 반복 evidence 없음 |
 | Phase 3 | VG-019~VG-020 및 누적 보안 gate. idempotency, expired approval, duplicate webhook, unauthorized external write 시험 통과와 effect별 approval·nonce, tenant RBAC/audit, Publisher 단일 write 경계 확인 | NOT_RUN — controlled integration runtime 없음 |
 | Phase 4 | VG-021~VG-023 및 누적 보안 gate. rolling 30-day SLO 충족, stronger isolation·retention/deletion 검증, 모든 zero-event security invariant 0 | NOT_RUN — multi-tenant runtime과 운영 window 없음 |

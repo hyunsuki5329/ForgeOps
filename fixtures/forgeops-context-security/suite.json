@@ -1,0 +1,18 @@
+{
+  "suite_id": "forgeops-context-security",
+  "suite_version": "1.0",
+  "snapshot_schema_ref": "contracts/forgeops-snapshot-contract/1.0/schema.json",
+  "context_schema_ref": "contracts/forgeops-context-pack/1.0/schema.json",
+  "cases": [
+    {"id": "POSITIVE_PATH_SELECTION", "kind": "positive", "mutation": "PATH_MATCH", "expected_result": "PASSED"},
+    {"id": "POSITIVE_CONTENT_SELECTION", "kind": "positive", "mutation": "CONTENT_MATCH", "expected_result": "PASSED"},
+    {"id": "POSITIVE_REPEATABLE_PACK", "kind": "positive", "mutation": "REPEAT", "expected_result": "PASSED"},
+    {"id": "NEGATIVE_EMPTY_QUERY", "kind": "negative", "mutation": "EMPTY_QUERY", "expected_error": "CONTEXT_QUERY_INVALID"},
+    {"id": "NEGATIVE_TOP_K_RANGE", "kind": "negative", "mutation": "TOP_K_RANGE", "expected_error": "CONTEXT_QUERY_INVALID"},
+    {"id": "NEGATIVE_MANIFEST_HASH_MISMATCH", "kind": "negative", "mutation": "MANIFEST_HASH_MISMATCH", "expected_error": "CONTEXT_PROVENANCE_INVALID"},
+    {"id": "NEGATIVE_BINARY_EXCLUDED", "kind": "negative", "mutation": "BINARY", "expected_result": "PASSED"},
+    {"id": "NEGATIVE_OVERSIZED_EXCLUDED", "kind": "negative", "mutation": "OVERSIZED", "expected_result": "PASSED"},
+    {"id": "NEGATIVE_REPOSITORY_INSTRUCTION", "kind": "negative", "mutation": "REPOSITORY_INSTRUCTION", "expected_result": "PASSED"},
+    {"id": "NEGATIVE_CONTROL_FIELD_INJECTION", "kind": "negative", "mutation": "CONTROL_FIELD_INJECTION", "expected_result": "PASSED"}
+  ]
+}

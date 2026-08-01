@@ -1,0 +1,33 @@
+{
+  "suite_id": "forgeops-snapshot-baseline",
+  "suite_version": "1.0",
+  "snapshot_schema_ref": "contracts/forgeops-snapshot-contract/1.0/schema.json",
+  "context_schema_ref": "contracts/forgeops-context-pack/1.0/schema.json",
+  "trusted_profile": {
+    "profile_id": "forgeops-w5-fixture-baseline",
+    "profile_version": "1.0",
+    "commands": [
+      {
+        "command_id": "fixture-pass",
+        "argv": ["python", "-c", "raise SystemExit(0)"],
+        "cwd": ".",
+        "timeout_seconds": 10,
+        "max_output_bytes": 4096
+      }
+    ]
+  },
+  "cases": [
+    {"id": "POSITIVE_CLEAN_REPEAT", "kind": "positive", "mutation": "NONE_CLEAN", "expected_result": "PASSED"},
+    {"id": "POSITIVE_DIRTY_STAGED_MODIFIED_UNTRACKED", "kind": "positive", "mutation": "DIRTY_STATES", "expected_result": "PASSED"},
+    {"id": "POSITIVE_WORKSPACE_SEPARATION", "kind": "positive", "mutation": "WORKSPACE_CHANGE", "expected_result": "PASSED"},
+    {"id": "NEGATIVE_SOURCE_NOT_GIT", "kind": "negative", "mutation": "SOURCE_NOT_GIT", "expected_error": "SNAPSHOT_SOURCE_INVALID"},
+    {"id": "NEGATIVE_PATH_TRAVERSAL", "kind": "negative", "mutation": "PATH_TRAVERSAL", "expected_error": "SNAPSHOT_PATH_INVALID"},
+    {"id": "NEGATIVE_SYMLINK", "kind": "negative", "mutation": "SYMLINK", "expected_error": "SNAPSHOT_FILE_TYPE_FORBIDDEN"},
+    {"id": "NEGATIVE_PROTECTED_PATH", "kind": "negative", "mutation": "PROTECTED_PATH", "expected_error": "SNAPSHOT_PATH_INVALID"},
+    {"id": "NEGATIVE_CONTENT_CHANGED", "kind": "negative", "mutation": "CONTENT_CHANGED", "expected_error": "SNAPSHOT_CONTENT_CHANGED"},
+    {"id": "NEGATIVE_PROFILE_RAW_SHELL", "kind": "negative", "mutation": "PROFILE_RAW_SHELL", "expected_error": "BASELINE_PROFILE_INVALID"},
+    {"id": "NEGATIVE_PROFILE_CWD_ESCAPE", "kind": "negative", "mutation": "PROFILE_CWD_ESCAPE", "expected_error": "BASELINE_PROFILE_INVALID"},
+    {"id": "NEGATIVE_BASELINE_NONZERO", "kind": "negative", "mutation": "BASELINE_NONZERO", "expected_error": "BASELINE_UNHEALTHY"},
+    {"id": "NEGATIVE_BASELINE_TIMEOUT", "kind": "negative", "mutation": "BASELINE_TIMEOUT", "expected_error": "BASELINE_TIMEOUT"}
+  ]
+}

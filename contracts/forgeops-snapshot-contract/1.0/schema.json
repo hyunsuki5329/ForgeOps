@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/forgeops-snapshot-contract/1.0/schema.json",
+  "title": "ForgeOps Local Snapshot Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "snapshot_version",
+    "snapshot_id",
+    "source",
+    "dirty",
+    "entries",
+    "deleted_paths",
+    "manifest_sha256"
+  ],
+  "properties": {
+    "snapshot_version": {"const": "1.0"},
+    "snapshot_id": {"$ref": "#/$defs/snapshot_id"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository_label", "head_sha", "git_state_sha256"],
+      "properties": {
+        "repository_label": {"type": "string", "minLength": 1, "maxLength": 200},
+        "head_sha": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|UNBORN)$"},
+        "git_state_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "dirty": {"type": "boolean"},
+    "entries": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/entry"}
+    },
+    "deleted_paths": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/canonical_path"}
+    },
+    "manifest_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "snapshot_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "canonical_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)(?!.*//)[^\\u0000]+$"
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size", "sha256", "mode", "source_states"],
+      "properties": {
+        "path": {"$ref": "#/$defs/canonical_path"},
+        "size": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "mode": {"enum": ["100644", "100755"]},
+        "source_states": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["tracked", "staged", "modified", "untracked"]}
+        }
+      }
+    },
+    "baseline_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "$defs": {
+        "snapshot_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "canonical_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)(?!.*//)[^\\u0000]+$"
+        },
+        "baseline_status": {
+          "enum": ["PASSED", "BASELINE_UNHEALTHY", "BASELINE_TIMEOUT", "BASELINE_RUNNER_ERROR", "NOT_RUN"]
+        },
+        "baseline_command_result": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "command_id",
+            "argv",
+            "cwd",
+            "status",
+            "exit_code",
+            "stdout_bytes_seen",
+            "stderr_bytes_seen",
+            "output_truncated",
+            "result_fingerprint"
+          ],
+          "properties": {
+            "command_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "argv": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"type": "string", "minLength": 1, "maxLength": 4096}
+            },
+            "cwd": {"$ref": "#/$defs/canonical_path"},
+            "status": {"$ref": "#/$defs/baseline_status"},
+            "exit_code": {"type": ["integer", "null"]},
+            "stdout_bytes_seen": {"type": "integer", "minimum": 0},
+            "stderr_bytes_seen": {"type": "integer", "minimum": 0},
+            "output_truncated": {"type": "boolean"},
+            "result_fingerprint": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      },
+      "required": [
+        "baseline_version",
+        "snapshot_id",
+        "profile_id",
+        "profile_version",
+        "status",
+        "started_at",
+        "completed_at",
+        "commands",
+        "summary"
+      ],
+      "properties": {
+        "baseline_version": {"const": "1.0"},
+        "snapshot_id": {"$ref": "#/$defs/snapshot_id"},
+        "profile_id": {"type": "string", "minLength": 1, "maxLength": 200},
+        "profile_version": {"type": "string", "minLength": 1, "maxLength": 50},
+        "status": {"$ref": "#/$defs/baseline_status"},
+        "started_at": {"type": "string", "format": "date-time"},
+        "completed_at": {"type": "string", "format": "date-time"},
+        "commands": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/baseline_command_result"}
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total", "passed", "failed", "not_run"],
+          "properties": {
+            "total": {"type": "integer", "minimum": 0},
+            "passed": {"type": "integer", "minimum": 0},
+            "failed": {"type": "integer", "minimum": 0},
+            "not_run": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "baseline_status": {
+      "enum": ["PASSED", "BASELINE_UNHEALTHY", "BASELINE_TIMEOUT", "BASELINE_RUNNER_ERROR", "NOT_RUN"]
+    },
+    "baseline_command_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command_id",
+        "argv",
+        "cwd",
+        "status",
+        "exit_code",
+        "stdout_bytes_seen",
+        "stderr_bytes_seen",
+        "output_truncated",
+        "result_fingerprint"
+      ],
+      "properties": {
+        "command_id": {"type": "string", "minLength": 1, "maxLength": 200},
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1, "maxLength": 4096}
+        },
+        "cwd": {"$ref": "#/$defs/canonical_path"},
+        "status": {"$ref": "#/$defs/baseline_status"},
+        "exit_code": {"type": ["integer", "null"]},
+        "stdout_bytes_seen": {"type": "integer", "minimum": 0},
+        "stderr_bytes_seen": {"type": "integer", "minimum": 0},
+        "output_truncated": {"type": "boolean"},
+        "result_fingerprint": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

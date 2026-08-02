@@ -32,6 +32,15 @@ W6는 한 로컬 실행에서 Product Task를 canonical TaskPacket으로 정규�
 
 이 정정은 VG-013을 삭제하거나 완화하지 않는다. 책임 시점을 W7 deliverable에 맞게 이동해 W6가 자기 범위에서 종료 가능하도록 한다.
 
+최종 WBS row 의미는 다음과 같이 닫는다.
+
+| ID | Status | person-day | Predecessor | PRD/NFR | Deliverable | Definition of Done | VG |
+| --- | --- | ---: | --- | --- | --- | --- | --- |
+| WBS-014 | `WBS_DONE` | 1.5 | WBS-013 | PRD-FR-008, PRD-NFR-001 | snapshot-bound baseline runner and health artifact | 같은 snapshot과 exact baseline profile에 묶인 반복 가능한 artifact를 만들고 baseline health/runner failure를 구분하며 VG-010 fresh E2를 충족한다. 변경 뒤 task/regression 판정은 주장하지 않는다. | VG-010 |
+| WBS-018 | 구현 전 `WBS_NOT_STARTED`, 완료 뒤 `WBS_DONE` | 1.0 | WBS-017 | PRD-FR-010, PRD-NFR-002, PRD-NFR-003 | bounded Work preflight, fixture execution and WorkResult | approved candidate, current revision, exact authority와 separated fixture workspace를 재검증하고 complete WorkResult evidence를 제출해 VG-005·006 회귀와 VG-012 fresh E2를 충족한다. | VG-005, VG-006, VG-012 |
+
+변경 사유는 cross-week completion cycle 제거다. 영향 주차는 W5의 WBS-014 완료 상태, W6의 WBS-018 범위와 W7의 WBS-021/022 책임이다. W5 4.0 person-day와 W6 4.0 person-day는 변하지 않는다. trusted task/regression/lint/typecheck 및 변경 회귀 판정은 기존 W7 WBS-021/022의 2.5 person-day 안에 유지하므로 W7의 계획 4.0 person-day도 늘리지 않는다. 이 scope/link 변경과 capacity 재계산 결과를 WBS acceptance note에 기록한다.
+
 ## 3. 선택한 구현 방식
 
 ### 3.1 역할별 모듈 + 단일 로컬 runner
@@ -45,14 +54,28 @@ Product Task
   -> Part.propose
   -> CandidatePacket(revision N)
   -> Main.approve_candidates
-  -> ApprovedExecutionContext(revision N)
+  -> Main/runtime trusted execution context(revision N, not a protocol packet)
   -> Work.preflight_execute_verify
   -> WorkResult(revision N)
   -> Main.validate_and_decide
-  -> MainDecision(revision N+1, seq+1)
+  -> MainDecision(revision N+1, contiguous authoritative event seq)
 ```
 
 단일 프로세스는 W6의 E2 로컬 계약 검증에 충분하며 fixture 실행을 빠르고 결정론적으로 유지한다. 역할별 모듈은 서로의 내부 상태를 직접 수정하지 않고 JSON-compatible closed packet만 교환한다. 별도 프로세스 격리와 일반 실행 gateway는 후속 runtime 범위로 남긴다.
+
+Main과 runtime이 Work validator에 제공하는 실행 문맥은 새로운 protocol packet이 아니며 Part 또는 Work가 생산하는 payload도 아니다. 이 문맥은 다음 closed fields만 가진 immutable trusted input이다.
+
+- canonical TaskPacket reference 또는 runtime-captured immutable copy
+- validated CandidatePacket reference와 exact approved candidate records
+- current accepted revision
+- ordinal-unique `approved_candidate_ids`
+- candidate별 exact action identity와 authority snapshot
+- `candidate_evidence_floor`
+- complete required acceptance criteria와 criterion별 evidence floor
+- runtime validator가 한 번 캡처한 `validationAt`
+- gate가 실제로 필요할 때만 Main이 검증한 `human_review_result`
+
+CandidatePacket이나 WorkResult가 이 값을 공급, shadow 또는 변경할 수 없다. packet 값과 trusted context가 다르면 Work는 mutation 전에 stable contract/state error로 종료한다. 승인 사실은 exact authority를 대신하지 않으며 human approval도 누락된 RESOURCE·COMMAND·NETWORK authority를 새로 부여하지 않는다.
 
 ### 3.2 거부한 대안
 
@@ -90,10 +113,11 @@ artifacts/verification/vg-012-local-vertical-result.json
 **대상:** cross-document contract baseline
 
 - WBS-014/VG-013 및 WBS-018/VG-013 순환을 승인된 정책대로 정정한다.
+- WBS-014와 WBS-018을 §2의 exact PRD·DoD·VG row로 갱신하고 변경 사유, 영향 주차와 capacity 재계산을 기록한다.
 - local vertical suite와 result의 closed schema를 정의한다.
 - fixture catalog는 case ID, input packet, expected outcome/error, expected effects를 명시한다.
 - verification profile `forgeops-local-vertical`과 command ID `main-part-work-main`을 AGENTS adapter에 등록한다.
-- 기존 VG-002·003·005·006·011·023 결과를 W6 회귀 기준선으로 연결한다.
+- WBS-014 완료 근거인 VG-010과 기존 VG-002·003·005·006·011·023 결과를 W6 회귀 기준선으로 연결한다.
 
 **완료 기준:** W6 계약 파일과 등록 명령이 닫혀 있고 W7 VG-013 책임이 보존되며 문서 orphan이 없다.
 
@@ -165,11 +189,11 @@ Main은 WorkResult를 trusted execution context와 비교해 다음을 검증한
 - candidate decision, acceptance status, summary count와 proposed transition 일관성
 - Part/Work payload가 accepted state, revision, canonical seq를 소유하려 하지 않는지 여부
 
-모든 필수 검증이 성공한 경우에만 MainDecision이 accepted status를 확정하고 revision과 seq를 각각 한 번 증가시킨다. 실패, partial, blocked 결과는 성공으로 승격하지 않으며 stale result는 mutation 없이 거부한다.
+모든 필수 검증이 성공한 경우에만 MainDecision이 canonical transition을 수용한다. 수용 시 current base와 expected next sequence를 검증하고 accepted revision을 정확히 한 번 증가시키며, 수용한 authoritative event 각각에 연속 seq를 부여한다. 실패, partial, blocked 결과는 성공으로 승격하지 않으며 malformed 또는 stale result는 acceptance 전 effect 없이 거부한다.
 
 통합 verifier는 전체 흐름의 positive case와 각 경계의 negative case를 실행하고 public-safe result를 원자적으로 기록한다.
 
-**완료 기준:** `main-part-work-main`이 전체 catalog를 E2 `PASSED`로 기록하고 기존 회귀 명령도 통과한다. 이후 evidence에 근거해 WBS-016~019, PRD-FR-010, ARC-004와 RTM 상태를 갱신한다.
+**완료 기준:** `main-part-work-main`이 전체 catalog를 E2 `PASSED`로 기록하고 기존 회귀 명령도 통과한다. 이후 evidence에 근거해 WBS-016~019, PRD-FR-010과 RTM 상태를 갱신한다. ARC-004에는 local orchestration kernel subset이 구현됐다는 note와 evidence를 추가하되, ARC-004가 함께 추적하는 PRD-FR-013 및 후속 runtime 책임이 남아 있으므로 전체 maturity는 `PLANNED`로 유지한다. 전체 `IMPLEMENTED` 전환이 필요하면 ARC를 별도 ID로 분할하는 versioned architecture 결정을 먼저 둔다.
 
 ## 6. Packet 및 상태 소유권
 
@@ -177,11 +201,11 @@ Main은 WorkResult를 trusted execution context와 비교해 다음을 검증한
 | --- | --- | --- | --- |
 | normalize/route | Main | TaskPacket | current accepted revision을 읽고 route 지정 |
 | discover/propose | Part | CandidatePacket | proposed_transition만 제안 |
-| approve | Main | trusted execution context | candidate ID와 current revision 고정 |
+| approve | Main/runtime | 비-protocol trusted execution context | approved records, authority, current revision, floors, criteria, validationAt 고정 |
 | execute/verify | Work | WorkResult | observed result와 proposed_transition만 제안 |
 | accept/reject | Main | MainDecision | accepted state, revision, canonical seq 독점 |
 
-CandidatePacket과 WorkResult의 envelope status는 packet 생산 상태일 뿐 accepted task status가 아니다. Part 또는 Work가 final state, incremented revision, authoritative seq를 포함하면 contract error로 거부한다.
+CandidatePacket과 WorkResult의 envelope status는 packet 생산 상태일 뿐 accepted task status가 아니다. Part 또는 Work가 final state, incremented revision, authoritative seq를 포함하면 contract error로 거부한다. MainDecision이 canonical transition을 수용하면 current base와 expected next sequence를 검증한 뒤 accepted revision을 정확히 한 번 증가시키고, 수용한 각 authoritative event에 이전 seq 다음부터 끊김 없는 ordinal seq를 부여한다. malformed·stale packet 또는 acceptance 전에 validation에서 거부된 result만 accepted state, revision과 authoritative seq effect가 0이다. GATE나 REJECT도 canonical `WAITING_FOR_HUMAN` 또는 `BLOCKED` transition을 수용하면 정상적인 authoritative state/effect를 가질 수 있다.
 
 ## 7. Evidence와 freshness
 
@@ -208,9 +232,16 @@ VG-012의 evidence floor는 E2다. E0/E1 observation만으로 MainDecision 성�
 ### Negative
 
 - unknown/malformed product protocol과 implicit authority expansion
+- Part/Work의 protocol, packet_type, actor, task_id, correlation_id 또는 base_revision mismatch
+- Work의 operation_mode가 `EXECUTE`가 아니거나 필요한 capability가 `UNKNOWN`/`UNAVAILABLE`인 경우
+- read_scope `NONE`/`UNKNOWN`, Context Pack snapshot/hash mismatch와 비정규 source reference
 - Part write 또는 protected read 시도
+- protected target의 human approval 누락·위조와 approval만으로 authority를 만들려는 시도
 - Part의 accepted state/revision/seq 소유 시도
 - hybrid/noncanonical identity와 scope/list 불일치
+- trusted context의 approved ID, authority, revision, floor, criteria 또는 `validationAt` 주입·shadow 시도
+- PROJECT execute/network, wildcard, case folding, traversal, duplicate companion과 prefix/suffix inference
+- W6 adapter가 지원하지 않는 COMMAND/NETWORK candidate의 zero-effect 거부
 - unapproved candidate, stale base revision과 source-tree target
 - Work의 accepted state/revision/seq 소유 시도
 - missing/duplicate/dangling evidence, wrong freshness mode, stale/future evidence와 E1 floor
@@ -226,6 +257,7 @@ VG-012의 evidence floor는 E2다. E0/E1 observation만으로 MainDecision 성�
 - 실행 뒤 검증 실패는 observed changed resource와 residual risk를 숨기지 않으며 rollback을 주장하지 않는다.
 - fixture temp workspace는 verifier가 소유하고 성공·실패 경로에서 정리한다. 정리 실패는 성공을 차단한다.
 - result output은 registered path에 atomic replace하고 기존 valid result를 partial write로 손상하지 않는다.
+- E2 result의 effect counters는 runner가 직접 관찰한 surface만 사용한다. `source_tree_hash_unchanged`, `unauthorized_fixture_effects=0`, `result_artifact_raw_secret_occurrences=0`은 직접 관찰하되 OS-level protected read, network call과 전체 external write는 `null`/`not_observed`로 기록한다.
 
 ## 10. 검증 계획
 
@@ -252,9 +284,9 @@ VG-012의 evidence floor는 E2다. E0/E1 observation만으로 MainDecision 성�
 - 연결된 기존 VG 회귀 통과
 - WBS-014와 WBS-016~019 상태가 evidence와 일치
 - PRD-FR-010과 ARC-004 상태 및 RTM evidence reference가 fresh result와 일치
-- source repository write, unauthorized execution, external write와 raw secret exposure 0
+- before/after source tree hash 동일, runner-controlled fixture surface의 unauthorized effect 0, public result artifact의 raw secret-pattern occurrence 0
 
-W6 완료는 VG-013, WBS-020~022, Phase 1 safety gate 또는 Phase 1 Exit 완료를 의미하지 않는다. 이 항목은 계속 `NOT_RUN` 또는 `WBS_NOT_STARTED`로 유지한다.
+W6 완료는 OS-level protected read/network/external write 전체 surface의 부재를 증명하지 않는다. 관찰하지 못한 값은 `null`/`not_observed`로 남긴다. VG-009, VG-013, VG-015, WBS-020~022, Phase 1 safety gate와 Phase 1 Exit를 W6 결과로 새로 `PASSED` 또는 완료 처리하지 않는다.
 
 ## 12. 승인 경계
 

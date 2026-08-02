@@ -582,7 +582,7 @@ Expected: FAIL because trusted context and Work actor are not implemented.
 Add to `common.py`:
 
 ```python
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class TrustedExecutionContext:
     task_packet: object
     candidate_packet: object
@@ -596,9 +596,9 @@ class TrustedExecutionContext:
     human_review_result: object | None
 ```
 
-Every JSON field is passed through `freeze_json`; callers can inspect only with `thaw_json`. Validate UTC `validation_at` once in Main. This class has no `protocol_version`, `packet_type`, `actor`, or `status` and must never serialize as a fifth packet.
+Every JSON field is passed through `freeze_json`; callers can inspect only with `thaw_json`. Validate UTC `validation_at` once in Main. This class has no `protocol_version`, `packet_type`, `actor`, or `status` and must never serialize as a fifth packet. Its ten public data fields remain exact, but direct public construction is unavailable.
 
-Implement `approve_candidates` to validate CandidatePacket envelope/base revision, exact candidate coverage and evidence refs, ordinal approved IDs, exact action identity/authority, and current accepted revision. It creates a Work-scoped TaskPacket copy with `route=WORK_ONLY`, `operation_mode=EXECUTE` and otherwise preserves canonical fields.
+Implement `approve_candidates` as the only issuance path. It validates CandidatePacket envelope/base revision, exact candidate coverage and evidence refs, ordinal approved IDs, exact action identity/authority, and current accepted revision. It creates a Work-scoped TaskPacket copy with `route=WORK_ONLY`, `operation_mode=EXECUTE` and otherwise preserves canonical fields. Main records each issued object in a module-private identity registry with a canonical digest of all ten fields and exposes only read-only provenance validation to Work. Work must reject direct construction, unregistered `object.__new__` instances, digest mismatch, or any context whose trusted authority is not exactly equal to the embedded Work TaskPacket authority before any effect. This is an in-process W6 reference-kernel boundary, not an OS/process isolation claim.
 
 - [ ] **Step 4: Implement Work preflight in stable order**
 
@@ -606,9 +606,11 @@ In `work_actor.py`, perform these checks before opening the target:
 
 ```python
 def preflight_execute_verify(context, *, workspace_root, source_root, clock):
+    validate_main_issued_context(context)
     task = thaw_json(context.task_packet)
     candidate_packet = thaw_json(context.candidate_packet)
     validate_work_task(task, context.current_revision)
+    require_exact_authority(task, context)
     candidates = validate_approved_coverage(candidate_packet, context)
     candidate = candidates[0]
     validate_action_identity(candidate)
@@ -622,7 +624,7 @@ def preflight_execute_verify(context, *, workspace_root, source_root, clock):
 
 - [ ] **Step 5: Implement bounded effect and canonical WorkResult**
 
-Write `after\n` through a sibling temporary file followed by `os.replace`. Verify exact bytes immediately. Build one E2 test evidence record with runtime-supplied UTC `observed_at`; reference it from the accepted candidate result and passed `AC-W6-1`. Set `validation_summary={"passed":1,"failed":0,"not_run":0}` and `proposed_transition="SUCCEEDED"`.
+Before opening the target, capture `observed_at` from the injected clock after provenance and contract validation, parse both timestamps as strict UTC, and require `0 <= observed_at - context.validation_at <= 300` seconds. Reject future or stale observations with zero effect. Then write `after\n` through a sibling temporary file followed by `os.replace`. Verify exact bytes immediately. Build one E2 test evidence record with that validated `observed_at`; reference it from the accepted candidate result and passed `AC-W6-1`. Set `validation_summary={"passed":1,"failed":0,"not_run":0}` and `proposed_transition="SUCCEEDED"`.
 
 The WorkResult must contain no `accepted_state`, `revision`, authoritative `events`, or event `seq`; only `event_suggestions` are allowed. A successful WorkResult contains exactly one suggestion with actor=`work`, phase=`VERIFY`, code=`WORK_VERIFICATION_PASSED`. On any preflight error, target/source bytes remain unchanged.
 
@@ -638,7 +640,7 @@ Expected: PASS; optional Windows symlink tests may retain their existing skip be
 
 - [ ] **Step 7: Independently review Task 4 and commit**
 
-Reviewer checks context is non-packet and immutable, Work mode/capability/authority/current revision are exact, source containment is enforced before effect, unsupported action types are zero-effect, evidence is fresh E2, and Work owns no accepted state/seq.
+Reviewer checks context is non-packet, immutable, direct-construction-disabled, and Main-issued; Work mode/capability/authority/current revision are exact; unregistered/forged contexts, authority mismatch, stale/future evidence, source escape, and unsupported action types are zero-effect; evidence is fresh E2; and Work owns no accepted state/seq.
 
 ```powershell
 git add tools/local_vertical/__init__.py tools/local_vertical/common.py tools/local_vertical/main_actor.py tools/local_vertical/work_actor.py tests/local_vertical/test_main_actor.py tests/local_vertical/test_work_actor.py

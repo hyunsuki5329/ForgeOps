@@ -77,6 +77,8 @@ Main과 runtime이 Work validator에 제공하는 실행 문맥은 새로운 pro
 
 CandidatePacket이나 WorkResult가 이 값을 공급, shadow 또는 변경할 수 없다. packet 값과 trusted context가 다르면 Work는 mutation 전에 stable contract/state error로 종료한다. 승인 사실은 exact authority를 대신하지 않으며 human approval도 누락된 RESOURCE·COMMAND·NETWORK authority를 새로 부여하지 않는다.
 
+2026-08-02 보안 검토 결정: trusted execution context는 열 개의 공개 데이터 필드를 유지하는 비-protocol immutable value이지만 일반 호출자가 직접 생성할 수 없다. `Main.approve_candidates`만 컨텍스트를 발급하고 Main 모듈 내부의 발급 기록과 canonical digest로 provenance를 검증한다. Work는 effect 전에 Main 발급 여부, digest 불변성, `context.authority`와 Work TaskPacket authority의 exact equality를 모두 검증한다. 직접 생성, `object.__new__` 기반 미등록 객체, 발급 후 변조는 zero-effect로 거부한다. 이는 W6 동일 프로세스 reference kernel의 API 경계이며 별도 프로세스 보안 경계는 W8 이후 범위다.
+
 ### 3.2 거부한 대안
 
 - 단일 거대 verifier는 구현량은 작지만 actor boundary와 state ownership을 독립적으로 검증하기 어렵다.

@@ -337,6 +337,16 @@ class MainDecisionTests(unittest.TestCase):
             self.accepted_state,
         )
 
+    def blocked_packet(self):
+        task = common.thaw_json(self.context.task_packet)
+        task["payload"]["control"]["route"] = "PART_THEN_WORK"
+        task["payload"]["control"]["operation_mode"] = "EXPLORE"
+        task["payload"]["authority"]["read_scope"] = "NONE"
+        task["payload"]["authority"]["read_resources"] = []
+        return part_actor.propose_candidates(
+            task, self.fixture["snapshot_manifest"], self.fixture["context_pack"]
+        )
+
     def test_fresh_complete_work_result_is_the_only_success_path(self):
         decision = self.decide()
         self.assertEqual("main_decision", decision["packet_type"])
@@ -358,20 +368,65 @@ class MainDecisionTests(unittest.TestCase):
         self.assertEqual(before, common.canonical_json_bytes(self.accepted_state))
 
     def test_blocked_part_proposal_can_gate_waiting_for_human(self):
-        task = common.thaw_json(self.context.task_packet)
-        task["payload"]["control"]["route"] = "PART_THEN_WORK"
-        task["payload"]["control"]["operation_mode"] = "EXPLORE"
-        task["payload"]["authority"]["read_scope"] = "NONE"
-        task["payload"]["authority"]["read_resources"] = []
-        blocked = part_actor.propose_candidates(
-            task, self.fixture["snapshot_manifest"], self.fixture["context_pack"]
-        )
+        blocked = self.blocked_packet()
         decision = main_actor.decide_candidate_gate(blocked, self.accepted_state)
         self.assertEqual("GATE", decision["payload"]["decision"])
         self.assertEqual("WAITING_FOR_HUMAN", decision["payload"]["accepted_state"]["status"])
         self.assertEqual(2, decision["payload"]["accepted_state"]["revision"])
         self.assertEqual([7], [event["seq"] for event in decision["payload"]["events"]])
         self.assertEqual(1, self.accepted_state["revision"])
+
+    def test_candidate_result_action_and_acceptance_notes_are_bound_to_trusted_context(self):
+        cases = (
+            ("action type", lambda p: p["candidate_results"][0].update(action_type="DELETE_RESOURCE"), "MAIN_CANDIDATE_RESULT_INVALID"),
+            ("action identity", lambda p: p["candidate_results"][0]["action_identity"].update(resource_ref="fixture/other.txt"), "MAIN_CANDIDATE_RESULT_INVALID"),
+            ("notes mapping", lambda p: p["acceptance_results"][0].update(notes={"credential": "raw"}), "MAIN_ACCEPTANCE_RESULT_INVALID"),
+            ("notes secret", lambda p: p["acceptance_results"][0].update(notes="token=raw"), "MAIN_ACCEPTANCE_RESULT_INVALID"),
+        )
+        before = common.canonical_json_bytes(self.accepted_state)
+        for name, mutate, code in cases:
+            with self.subTest(name=name):
+                result = copy.deepcopy(self.work_result)
+                mutate(result["payload"])
+                with self.assertRaisesRegex(common.VerticalFlowError, code):
+                    self.decide(result)
+                self.assertEqual(before, common.canonical_json_bytes(self.accepted_state))
+
+    def test_work_event_suggestion_must_be_the_exact_canonical_verified_event(self):
+        cases = (
+            ("actor", {"actor": "part", "phase": "VERIFY", "code": "WORK_VERIFICATION_PASSED"}),
+            ("phase", {"actor": "work", "phase": "EXECUTE", "code": "WORK_VERIFICATION_PASSED"}),
+            ("code", {"actor": "work", "phase": "VERIFY", "code": "FORGED"}),
+            ("open", {"actor": "work", "phase": "VERIFY", "code": "WORK_VERIFICATION_PASSED", "seq": 99}),
+        )
+        before = common.canonical_json_bytes(self.accepted_state)
+        for name, event in cases:
+            with self.subTest(name=name):
+                result = copy.deepcopy(self.work_result)
+                result["payload"]["event_suggestions"] = [event]
+                with self.assertRaisesRegex(common.VerticalFlowError, "MAIN_EVENT_SUGGESTION_INVALID"):
+                    self.decide(result)
+                self.assertEqual(before, common.canonical_json_bytes(self.accepted_state))
+
+    def test_gate_rejects_forged_identity_and_event_with_zero_effect(self):
+        cases = []
+        packet = self.blocked_packet()
+        packet["task_id"] = None
+        state = copy.deepcopy(self.accepted_state)
+        state["task_id"] = None
+        cases.append(("none identity", packet, state))
+        packet = self.blocked_packet()
+        packet["payload"]["event_suggestions"][0]["code"] = "FORGED"
+        cases.append(("forged event", packet, copy.deepcopy(self.accepted_state)))
+        packet = self.blocked_packet()
+        packet["payload"]["event_suggestions"][0]["seq"] = 7
+        cases.append(("event seq", packet, copy.deepcopy(self.accepted_state)))
+        before = common.canonical_json_bytes(self.accepted_state)
+        for name, forged, state in cases:
+            with self.subTest(name=name):
+                with self.assertRaises(common.VerticalFlowError):
+                    main_actor.decide_candidate_gate(forged, state)
+                self.assertEqual(before, common.canonical_json_bytes(self.accepted_state))
 
     def test_envelope_identity_and_work_state_ownership_are_closed(self):
         for field, value, code in (
@@ -426,3 +481,12 @@ class MainDecisionTests(unittest.TestCase):
                 mutate(result["payload"])
                 with self.assertRaisesRegex(common.VerticalFlowError, code):
                     self.decide(result)
+
+    def test_dangling_reference_precedes_low_tier_rejection(self):
+        result = copy.deepcopy(self.work_result)
+        result["payload"]["candidate_results"][0]["evidence_refs"] = ["UNKNOWN"]
+        result["payload"]["evidence"][0]["tier"] = "E1"
+        before = common.canonical_json_bytes(self.accepted_state)
+        with self.assertRaisesRegex(common.VerticalFlowError, "MAIN_EVIDENCE_REFERENCE_INVALID"):
+            self.decide(result)
+        self.assertEqual(before, common.canonical_json_bytes(self.accepted_state))

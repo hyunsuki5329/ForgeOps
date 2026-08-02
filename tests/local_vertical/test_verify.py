@@ -6,6 +6,7 @@ import shutil
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from tools.local_vertical import verify
 
@@ -109,3 +110,17 @@ class LocalVerticalVerifierTests(unittest.TestCase):
         with self.assertRaisesRegex(verify.VerificationError, "VERIFIER_RESULT_INVALID"):
             verify.run(namespace(), repository_root=self.repository)
         self.assertEqual("preserved", result_path.read_text(encoding="utf-8"))
+
+    def test_observed_safety_invariant_failure_cannot_emit_false_pass(self):
+        scenarios = (
+            ("source changed", patch.object(verify, "_tree_hash", side_effect=("before", "after"))),
+            ("fixture effect", patch.object(verify, "_fixture_effect_count", return_value=1)),
+            ("secret pattern", patch.object(verify, "_result_secret_occurrences", return_value=1)),
+        )
+        for name, mocked in scenarios:
+            with self.subTest(name=name), mocked:
+                self.assertEqual(1, verify.run(namespace(), repository_root=self.repository))
+                result = json.loads(self.result_path().read_text(encoding="utf-8"))
+                self.assertEqual("FAILED", result["status"])
+                self.assertGreater(result["summary"]["failed"], 0)
+                self.assertFalse(all(case["expected"] == case["actual"] for case in result["cases"]))

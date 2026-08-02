@@ -588,6 +588,11 @@ def _accepted_state_copy(
     if not isinstance(accepted_state, Mapping):
         raise VerticalFlowError("MAIN_ACCEPTED_STATE_INVALID")
     state = copy.deepcopy(dict(accepted_state))
+    try:
+        require_id(state.get("task_id"), code="MAIN_ACCEPTED_STATE_INVALID")
+        require_id(state.get("correlation_id"), code="MAIN_ACCEPTED_STATE_INVALID")
+    except VerticalFlowError as exc:
+        raise VerticalFlowError("MAIN_ACCEPTED_STATE_INVALID") from exc
     if (
         set(state) != _ACCEPTED_STATE_FIELDS
         or state.get("task_id") != task_id
@@ -751,6 +756,16 @@ def validate_and_decide(
     work_events = _require_raw_array(payload, "event_suggestions", "MAIN_EVENT_SUGGESTION_INVALID")
 
     expected_ids = list(context.approved_candidate_ids)
+    approved_candidates = thaw_json(context.approved_candidates)
+    if not isinstance(approved_candidates, list) or len(approved_candidates) != len(expected_ids):
+        raise VerticalFlowError("MAIN_CANDIDATE_RESULT_INVALID")
+    approved_by_id = {
+        candidate.get("candidate_id"): candidate
+        for candidate in approved_candidates
+        if isinstance(candidate, dict)
+    }
+    if set(approved_by_id) != set(expected_ids):
+        raise VerticalFlowError("MAIN_CANDIDATE_RESULT_INVALID")
     if approved_ids != expected_ids or len(approved_ids) != len(set(approved_ids)):
         raise VerticalFlowError("MAIN_CANDIDATE_COVERAGE_INVALID")
     if len(candidate_results) != len(expected_ids):
@@ -764,6 +779,12 @@ def validate_and_decide(
             or record.get("decision") != "ACCEPTED"
         ):
             raise VerticalFlowError("MAIN_CANDIDATE_COVERAGE_INVALID")
+        approved = approved_by_id[expected_id]
+        if (
+            record.get("action_type") != approved.get("action_type")
+            or record.get("action_identity") != approved.get("action_identity")
+        ):
+            raise VerticalFlowError("MAIN_CANDIDATE_RESULT_INVALID")
         candidate_refs.append(_require_unique_refs(record.get("evidence_refs")))
 
     expected_criteria = [item["criterion_id"] for item in thaw_json(context.acceptance_criteria)]
@@ -778,12 +799,12 @@ def validate_and_decide(
             or record.get("status") != "PASSED"
         ):
             raise VerticalFlowError("MAIN_CRITERION_COVERAGE_INVALID")
+        if record.get("notes") != "exact fixture bytes were verified after atomic replacement":
+            raise VerticalFlowError("MAIN_ACCEPTANCE_RESULT_INVALID")
         criterion_refs.append(_require_unique_refs(record.get("evidence_refs")))
 
     evidence_ids: list[str] = []
-    validation_time = require_strict_utc(
-        context.validation_at, code="MAIN_EVIDENCE_FRESHNESS_INVALID"
-    )
+    parsed_evidence: list[tuple[dict[str, object], object]] = []
     for record in evidence:
         if not isinstance(record, dict):
             raise VerticalFlowError("MAIN_EVIDENCE_CATALOG_INVALID")
@@ -807,9 +828,17 @@ def validate_and_decide(
             evidence_ids.append(require_id(record["id"], code="MAIN_EVIDENCE_CATALOG_INVALID"))
         except VerticalFlowError as exc:
             raise VerticalFlowError("MAIN_EVIDENCE_CATALOG_INVALID") from exc
-        tier = record.get("tier")
-        if not isinstance(tier, str) or _TIER_RANK.get(tier, -1) < _TIER_RANK[context.candidate_evidence_floor]:
-            raise VerticalFlowError("MAIN_EVIDENCE_TIER_INVALID")
+        parsed_evidence.append((record, evidence_type))
+    if not evidence_ids or len(evidence_ids) != len(set(evidence_ids)):
+        raise VerticalFlowError("MAIN_EVIDENCE_CATALOG_INVALID")
+    known_evidence = set(evidence_ids)
+    for refs in candidate_refs + criterion_refs:
+        _require_unique_refs(refs, known=known_evidence)
+
+    validation_time = require_strict_utc(
+        context.validation_at, code="MAIN_EVIDENCE_FRESHNESS_INVALID"
+    )
+    for record, evidence_type in parsed_evidence:
         if evidence_type in _TIME_EVIDENCE_TYPES:
             observed = require_strict_utc(
                 record.get("observed_at"), code="MAIN_EVIDENCE_FRESHNESS_INVALID"
@@ -821,11 +850,9 @@ def validate_and_decide(
             observed_revision = record.get("observed_revision")
             if isinstance(observed_revision, bool) or observed_revision != context.current_revision:
                 raise VerticalFlowError("MAIN_EVIDENCE_FRESHNESS_INVALID")
-    if not evidence_ids or len(evidence_ids) != len(set(evidence_ids)):
-        raise VerticalFlowError("MAIN_EVIDENCE_CATALOG_INVALID")
-    known_evidence = set(evidence_ids)
-    for refs in candidate_refs + criterion_refs:
-        _require_unique_refs(refs, known=known_evidence)
+        tier = record.get("tier")
+        if not isinstance(tier, str) or _TIER_RANK.get(tier, -1) < _TIER_RANK[context.candidate_evidence_floor]:
+            raise VerticalFlowError("MAIN_EVIDENCE_TIER_INVALID")
 
     summary = payload.get("validation_summary")
     if (
@@ -834,6 +861,13 @@ def validate_and_decide(
         or summary != {"passed": len(acceptance_results), "failed": 0, "not_run": 0}
     ):
         raise VerticalFlowError("MAIN_SUMMARY_INVALID")
+    canonical_work_event = {
+        "actor": "work",
+        "phase": "VERIFY",
+        "code": "WORK_VERIFICATION_PASSED",
+    }
+    if work_events != [canonical_work_event]:
+        raise VerticalFlowError("MAIN_EVENT_SUGGESTION_INVALID")
     if changed_resources != [
         {
             "resource_ref": "fixture/work-item.txt",
@@ -846,7 +880,12 @@ def validate_and_decide(
         raise VerticalFlowError("WORK_STATE_OWNERSHIP_FORBIDDEN")
 
     part_events = candidate_packet.get("payload", {}).get("event_suggestions")
-    if not isinstance(part_events, list) or len(part_events) != 1:
+    canonical_part_event = {
+        "actor": "part",
+        "phase": "DISCOVER",
+        "code": "PART_CANDIDATE_PROPOSED",
+    }
+    if part_events != [canonical_part_event]:
         raise VerticalFlowError("MAIN_EVENT_SUGGESTION_INVALID")
     return _main_decision(
         result,
@@ -866,6 +905,11 @@ def decide_candidate_gate(
     if not isinstance(candidate_packet, Mapping):
         raise VerticalFlowError("MAIN_GATE_PACKET_INVALID")
     packet = copy.deepcopy(dict(candidate_packet))
+    try:
+        require_id(packet.get("task_id"), code="MAIN_GATE_PACKET_INVALID")
+        require_id(packet.get("correlation_id"), code="MAIN_GATE_PACKET_INVALID")
+    except VerticalFlowError as exc:
+        raise VerticalFlowError("MAIN_GATE_PACKET_INVALID") from exc
     if set(packet) != _CANDIDATE_PACKET_FIELDS or (
         packet.get("protocol_version") != "2.0"
         or packet.get("packet_type") != "candidate_proposal"
@@ -896,8 +940,7 @@ def decide_candidate_gate(
         or payload.get("task_breakdown") != []
         or payload.get("evidence") != []
         or payload.get("candidates") != []
-        or not isinstance(payload.get("missing_authority"), str)
-        or not payload["missing_authority"]
+        or payload.get("missing_authority") != "PART_READ_AUTHORITY_DENIED"
         or payload.get("recommended_next_action") != "ASK_USER"
         or payload.get("assertion_suggestions") != []
         or payload.get("proposed_transition") != "WAITING_FOR_HUMAN"
@@ -905,6 +948,10 @@ def decide_candidate_gate(
         or len(payload["event_suggestions"]) != 1
     ):
         raise VerticalFlowError("MAIN_GATE_PACKET_INVALID")
+    if payload["event_suggestions"] != [
+        {"actor": "part", "phase": "DISCOVER", "code": "PART_PROPOSAL_BLOCKED"}
+    ]:
+        raise VerticalFlowError("MAIN_EVENT_SUGGESTION_INVALID")
     if _contains_authoritative_output(payload):
         raise VerticalFlowError("MAIN_ACTOR_OWNERSHIP_FORBIDDEN")
     return _main_decision(

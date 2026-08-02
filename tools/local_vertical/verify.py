@@ -476,21 +476,20 @@ def run(args: argparse.Namespace, *, repository_root: Path = REPOSITORY_ROOT) ->
     cases = [case for case, _ in evaluated]
     unauthorized_effects = sum(count for _, count in evaluated)
     source_after = _tree_hash(repository_root)
-    failed = sum(case["expected"] != case["actual"] for case in cases)
     observed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     result: dict[str, object] = {
         "result_version": "1.0",
         "gate_id": "VG-012",
         "profile_id": PROFILE_ID,
         "command_id": COMMAND_ID,
-        "status": "PASSED" if failed == 0 else "FAILED",
+        "status": "PASSED",
         "evidence_tier": "E2",
         "observed_at": observed_at,
         "input_hashes": {
             name: hashlib.sha256(path.read_bytes()).hexdigest()
             for name, path in paths.items()
         },
-        "summary": {"total": len(cases), "passed": len(cases) - failed, "failed": failed},
+        "summary": {"total": len(cases), "passed": len(cases), "failed": 0},
         "effect_counters": {
             "source_tree_hash_unchanged": source_before == source_after,
             "unauthorized_fixture_effects": unauthorized_effects,
@@ -502,6 +501,22 @@ def run(args: argparse.Namespace, *, repository_root: Path = REPOSITORY_ROOT) ->
         "cases": cases,
     }
     result["effect_counters"]["result_artifact_raw_secret_occurrences"] = _result_secret_occurrences(result)
+    audit_error = None
+    if not result["effect_counters"]["source_tree_hash_unchanged"]:
+        audit_error = "VERIFIER_SOURCE_TREE_CHANGED"
+    elif result["effect_counters"]["unauthorized_fixture_effects"] != 0:
+        audit_error = "VERIFIER_EFFECT_DETECTED"
+    elif result["effect_counters"]["result_artifact_raw_secret_occurrences"] != 0:
+        audit_error = "VERIFIER_RESULT_SECRET_DETECTED"
+    if audit_error is not None and cases:
+        cases[0] = {**cases[0], "actual": audit_error}
+    failed = sum(case["expected"] != case["actual"] for case in cases)
+    result["status"] = "PASSED" if failed == 0 else "FAILED"
+    result["summary"] = {
+        "total": len(cases),
+        "passed": len(cases) - failed,
+        "failed": failed,
+    }
     public_schema = {"$ref": "#/$defs/public_result", "$defs": loaded["schema"]["$defs"]}
     if list(Draft202012Validator(public_schema).iter_errors(result)):
         raise VerificationError("VERIFIER_RESULT_INVALID")

@@ -63,7 +63,9 @@ def validate_task_envelope(task_packet: object, *, required_mode: str) -> dict[s
         raise VerticalFlowError("PART_ENVELOPE_INVALID") from exc
     payload = _require_exact_fields(task["payload"], _TASK_PAYLOAD_FIELDS, code="PART_ENVELOPE_INVALID")
     control = payload["control"]
-    if not isinstance(control, dict) or control.get("operation_mode") != required_mode:
+    if not isinstance(control, dict) or control.get("route") != "PART_THEN_WORK":
+        raise VerticalFlowError("PART_ROUTE_INVALID")
+    if control.get("operation_mode") != required_mode:
         raise VerticalFlowError("PART_OPERATION_MODE_INVALID")
     return task
 

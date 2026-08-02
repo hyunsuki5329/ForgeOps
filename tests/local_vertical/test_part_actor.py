@@ -116,6 +116,17 @@ class PartActorTests(unittest.TestCase):
         with self.assertRaisesRegex(common.VerticalFlowError, "PART_CONTEXT_PROVENANCE_INVALID"):
             self.propose()
 
+    def test_non_part_routes_are_rejected_without_context_effects(self):
+        """Break caught: letting Part propose a candidate from a TaskPacket routed to another actor path."""
+        before = common.canonical_json_bytes(self.context_pack)
+        for route in ("DIRECT", "PART_ONLY", "WORK_ONLY", "FORK_JOIN"):
+            with self.subTest(route=route):
+                self.task_packet["payload"]["control"]["route"] = route
+                with self.assertRaisesRegex(common.VerticalFlowError, "PART_ROUTE_INVALID"):
+                    self.propose()
+                self.assertEqual(before, common.canonical_json_bytes(self.context_pack))
+        self.task_packet["payload"]["control"]["route"] = "PART_THEN_WORK"
+
     def test_non_list_items_and_forged_context_approval_are_rejected(self):
         """Break caught: accepting a scalar item catalog or untrusted Context Pack approval claim."""
         self.context_pack["items"] = self.context_pack["items"][0]

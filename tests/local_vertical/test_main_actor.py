@@ -1,10 +1,11 @@
 import copy
+from dataclasses import fields
 import json
 from pathlib import Path
 from types import MappingProxyType
 import unittest
 
-from tools.local_vertical import common, main_actor
+from tools.local_vertical import common, main_actor, part_actor
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -191,3 +192,76 @@ class MainNormalizationTests(unittest.TestCase):
         thawed = common.thaw_json(frozen)
         thawed["items"][0]["id"] = "B"
         self.assertEqual("A", frozen["items"][0]["id"])
+
+    def test_approval_builds_an_immutable_non_packet_work_context(self):
+        """Break caught: letting packet fields or caller-owned values become Work authority."""
+        self.assertTrue(
+            hasattr(main_actor, "approve_candidates"),
+            "Main approval API is not implemented",
+        )
+        task = self.packet()
+        fixture = json.loads(SUITE.read_text(encoding="utf-8"))["base_fixture"]
+        candidate = part_actor.propose_candidates(
+            main_actor.build_part_task(task),
+            fixture["snapshot_manifest"],
+            fixture["context_pack"],
+        )
+
+        context = main_actor.approve_candidates(
+            task,
+            candidate,
+            approved_candidate_ids=["CAND-W6-UPDATE"],
+            validation_at="2026-08-02T00:05:00Z",
+            human_review_result=None,
+        )
+
+        self.assertEqual(
+            {
+                "task_packet",
+                "candidate_packet",
+                "current_revision",
+                "approved_candidate_ids",
+                "approved_candidates",
+                "authority",
+                "candidate_evidence_floor",
+                "acceptance_criteria",
+                "validation_at",
+                "human_review_result",
+            },
+            {field.name for field in fields(context)},
+        )
+        self.assertFalse(
+            any(
+                hasattr(context, field)
+                for field in ("protocol_version", "packet_type", "actor", "status")
+            )
+        )
+        routed = common.thaw_json(context.task_packet)
+        self.assertEqual("WORK_ONLY", routed["payload"]["control"]["route"])
+        self.assertEqual("EXECUTE", routed["payload"]["control"]["operation_mode"])
+        self.assertEqual(("CAND-W6-UPDATE",), context.approved_candidate_ids)
+        with self.assertRaises(TypeError):
+            context.approved_candidates[0]["candidate_id"] = "CAND-INJECTED"
+
+    def test_approval_rejects_invalid_runtime_timestamp(self):
+        """Break caught: freezing a non-UTC or normalized validator time into trusted context."""
+        task = self.packet()
+        fixture = json.loads(SUITE.read_text(encoding="utf-8"))["base_fixture"]
+        candidate = part_actor.propose_candidates(
+            main_actor.build_part_task(task),
+            fixture["snapshot_manifest"],
+            fixture["context_pack"],
+        )
+
+        for value in ("2026-08-02T00:05:00+00:00", "2026-08-02 00:05:00Z", "invalid"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(
+                    common.VerticalFlowError, "MAIN_VALIDATION_AT_INVALID"
+                ):
+                    main_actor.approve_candidates(
+                        task,
+                        candidate,
+                        approved_candidate_ids=["CAND-W6-UPDATE"],
+                        validation_at=value,
+                        human_review_result=None,
+                    )

@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import PurePosixPath
 from types import MappingProxyType
 
@@ -18,9 +20,9 @@ class VerticalFlowError(Exception):
 
 
 def freeze_json(value: object) -> object:
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         return MappingProxyType({key: freeze_json(child) for key, child in value.items()})
-    if isinstance(value, list):
+    if isinstance(value, (list, tuple)):
         return tuple(freeze_json(child) for child in value)
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
@@ -33,6 +35,49 @@ def thaw_json(value: object) -> object:
     if isinstance(value, tuple):
         return [thaw_json(child) for child in value]
     return value
+
+
+def require_strict_utc(raw: object, *, code: str) -> datetime:
+    """Require the closed UTC timestamp spelling used by trusted runtime context."""
+    if not isinstance(raw, str):
+        raise VerticalFlowError(code)
+    try:
+        parsed = datetime.strptime(raw, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError as exc:
+        raise VerticalFlowError(code) from exc
+    if parsed.strftime("%Y-%m-%dT%H:%M:%SZ") != raw:
+        raise VerticalFlowError(code)
+    return parsed
+
+
+@dataclass(frozen=True)
+class TrustedExecutionContext:
+    """Main/runtime-owned immutable execution input; deliberately not a packet."""
+
+    task_packet: object
+    candidate_packet: object
+    current_revision: int
+    approved_candidate_ids: tuple[str, ...]
+    approved_candidates: object
+    authority: object
+    candidate_evidence_floor: str
+    acceptance_criteria: object
+    validation_at: str
+    human_review_result: object | None
+
+    def __post_init__(self) -> None:
+        for name in (
+            "task_packet",
+            "candidate_packet",
+            "approved_candidate_ids",
+            "approved_candidates",
+            "authority",
+            "acceptance_criteria",
+            "human_review_result",
+        ):
+            object.__setattr__(self, name, freeze_json(getattr(self, name)))
 
 
 def canonical_json_bytes(value: object) -> bytes:

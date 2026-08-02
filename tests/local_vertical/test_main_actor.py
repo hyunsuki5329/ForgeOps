@@ -120,6 +120,15 @@ class MainNormalizationTests(unittest.TestCase):
         authority["network_hosts"] = ["api.example.com:443"]
         self.assertEqual(["api.example.com:443"], common.validate_authority(authority)["network_hosts"])
 
+    def test_overlong_numeric_network_port_is_a_closed_authority_error(self):
+        """Break caught: letting a numeric conversion exception escape host authority validation."""
+        authority = copy.deepcopy(self.bridge_context["canonical_control"]["authority"])
+        authority["network_scope"] = "NAMED_HOSTS"
+        authority["network_hosts"] = ["api.example.com:" + "9" * 5000]
+
+        with self.assertRaisesRegex(common.VerticalFlowError, "AUTHORITY_NETWORK_VALUE_INVALID"):
+            common.validate_authority(authority)
+
     def test_non_string_effect_flags_are_closed_errors(self):
         """Break caught: leaking a runtime TypeError from an unhashable effect flag."""
         for field in ("destructive_actions", "external_side_effects"):

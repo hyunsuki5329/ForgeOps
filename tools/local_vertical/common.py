@@ -92,7 +92,12 @@ def canonical_network_host(raw: object) -> str:
     hostname = raw
     if ":" in raw:
         hostname, port = raw.split(":", 1)
-        if not port or not port.isdecimal() or not 1 <= int(port) <= 65535:
+        if (
+            not port
+            or not port.isdecimal()
+            or len(port) > 5
+            or not 1 <= int(port) <= 65535
+        ):
             raise VerticalFlowError("NETWORK_IDENTITY_NONCANONICAL")
     if not 1 <= len(hostname) <= 253:
         raise VerticalFlowError("NETWORK_IDENTITY_NONCANONICAL")

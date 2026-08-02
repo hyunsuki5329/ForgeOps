@@ -128,6 +128,37 @@ class LocalVerticalContractTests(unittest.TestCase):
         suite["base_fixture"]["context_pack"]["items"][0]["media_type"] = "a" * 201
         self.assertTrue(list(Draft202012Validator(schema).iter_errors(suite)))
 
+    def test_suite_rejects_undeclared_trusted_control_claims(self):
+        schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
+        for field in ("project_profile", "capabilities", "control", "budgets", "tool_schema"):
+            with self.subTest(field=field):
+                suite = json.loads(SUITE.read_text(encoding="utf-8"))
+                controls = suite["base_fixture"]["trusted_bridge_context"]["canonical_control"]
+                controls[field]["undeclared_claim"] = "ALLOWED"
+                self.assertTrue(list(Draft202012Validator(schema).iter_errors(suite)))
+
+    def test_public_result_requires_unobserved_external_surfaces_to_be_null(self):
+        schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
+        public_result_schema = {"$ref": "#/$defs/public_result", "$defs": schema["$defs"]}
+        result = {
+            "result_version": "1.0", "gate_id": "VG-012",
+            "profile_id": "forgeops-local-vertical", "command_id": "main-part-work-main",
+            "status": "PASSED", "evidence_tier": "E2", "observed_at": "2026-08-02T00:05:00Z",
+            "input_hashes": {key: "a" * 64 for key in ("schema", "product_schema", "snapshot_schema", "context_schema", "suite")},
+            "summary": {"total": 30, "passed": 30, "failed": 0},
+            "effect_counters": {
+                "source_tree_hash_unchanged": True, "unauthorized_fixture_effects": 0,
+                "result_artifact_raw_secret_occurrences": 0, "protected_reads": None,
+                "network_calls": None, "external_writes": None,
+            },
+            "cases": [],
+        }
+        for field in ("protected_reads", "network_calls", "external_writes"):
+            with self.subTest(field=field):
+                invalid = json.loads(json.dumps(result))
+                invalid["effect_counters"][field] = 0
+                self.assertTrue(list(Draft202012Validator(public_result_schema).iter_errors(invalid)))
+
     def test_wbs_rows_reassign_exact_contract_ownership_to_w6_and_w7(self):
         rows = parse_wbs_rows()
         self.assertEqual("WBS_DONE", rows["WBS-014"]["status"])

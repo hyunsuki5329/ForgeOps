@@ -45,13 +45,66 @@
         "external_side_effects": {"enum": ["ALLOWED", "DENIED", "UNKNOWN"]}
       }
     },
+    "project_profile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["root", "profile_type", "profile_status", "source_of_truth", "protected_resources", "risk_rules"],
+      "properties": {
+        "root": {"const": "."},
+        "profile_type": {"enum": ["generic", "software", "custom"]},
+        "profile_status": {"enum": ["LOADED", "DISCOVERED", "MISSING"]},
+        "source_of_truth": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "protected_resources": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "risk_rules": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "instruction_files": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "validation_commands": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "command", "cwd", "evidence_tier", "required"], "properties": {"id": {"$ref": "#/$defs/id"}, "command": {"$ref": "#/$defs/id"}, "cwd": {"const": "."}, "evidence_tier": {"enum": ["E0", "E1", "E2", "E3"]}, "required": {"type": "boolean"}}}},
+        "extensions": {"type": "object", "additionalProperties": false}
+      }
+    },
+    "capabilities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["filesystem_read", "filesystem_write", "command_execute", "delegation", "network", "external_side_effects"],
+      "properties": {
+        "filesystem_read": {"enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"]},
+        "filesystem_write": {"enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"]},
+        "command_execute": {"enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"]},
+        "delegation": {"enum": ["NONE", "SEQUENTIAL", "PARALLEL", "UNKNOWN"]},
+        "network": {"enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"]},
+        "external_side_effects": {"enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"]}
+      }
+    },
+    "control": {
+      "type": "object", "additionalProperties": false,
+      "required": ["route", "operation_mode", "response_phase", "risk_level", "evidence_floor", "trace_level"],
+      "properties": {
+        "route": {"enum": ["PART_THEN_WORK", "WORK_ONLY", "MAIN_ONLY"]},
+        "operation_mode": {"enum": ["EXPLORE", "EXECUTE"]},
+        "response_phase": {"enum": ["PLAN", "REPORT"]},
+        "risk_level": {"enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+        "evidence_floor": {"enum": ["E0", "E1", "E2", "E3"]},
+        "trace_level": {"enum": ["QUIET", "SUMMARY", "DEBUG"]}
+      }
+    },
+    "budgets": {
+      "type": "object", "additionalProperties": false,
+      "required": ["format_repairs", "part_attempts", "work_attempts"],
+      "properties": {
+        "format_repairs": {"type": "integer", "minimum": 0},
+        "part_attempts": {"type": "integer", "minimum": 0},
+        "work_attempts": {"type": "integer", "minimum": 0}
+      }
+    },
+    "tool_schema": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source"],
+      "properties": {"source": {"const": "trusted-profile-only"}}
+    },
     "trusted_bridge_context": {
       "type": "object", "additionalProperties": false,
       "required": ["intent_mapping", "validation_profile", "canonical_control", "approval_policy_verified", "trusted_approval_policy"],
       "properties": {
         "intent_mapping": {"type": "object", "additionalProperties": {"type": "string"}},
         "validation_profile": {"type": "object", "additionalProperties": false, "required": ["id", "commands"], "properties": {"id": {"$ref": "#/$defs/id"}, "commands": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "command", "cwd"], "properties": {"id": {"$ref": "#/$defs/id"}, "command": {"$ref": "#/$defs/id"}, "cwd": {"const": "."}}}}}},
-        "canonical_control": {"type": "object", "additionalProperties": false, "required": ["project_profile", "capabilities", "authority", "control", "budgets", "accepted_state", "tool_schema"], "properties": {"project_profile": {"type": "object", "additionalProperties": true}, "capabilities": {"type": "object", "additionalProperties": true}, "authority": {"$ref": "#/$defs/authority"}, "control": {"type": "object", "additionalProperties": true}, "budgets": {"type": "object", "additionalProperties": true}, "accepted_state": {"$ref": "#/$defs/accepted_state"}, "tool_schema": {"type": "object", "additionalProperties": true}}},
+        "canonical_control": {"type": "object", "additionalProperties": false, "required": ["project_profile", "capabilities", "authority", "control", "budgets", "accepted_state", "tool_schema"], "properties": {"project_profile": {"$ref": "#/$defs/project_profile"}, "capabilities": {"$ref": "#/$defs/capabilities"}, "authority": {"$ref": "#/$defs/authority"}, "control": {"$ref": "#/$defs/control"}, "budgets": {"$ref": "#/$defs/budgets"}, "accepted_state": {"$ref": "#/$defs/accepted_state"}, "tool_schema": {"$ref": "#/$defs/tool_schema"}}},
         "approval_policy_verified": {"type": "boolean"},
         "trusted_approval_policy": {"type": "object", "additionalProperties": true}
       }
@@ -83,6 +136,6 @@
     "approval_requirement": {"enum": ["not_required", "required", "never_without_explicit_high_risk_approval"]},
     "base_fixture": {"type": "object", "additionalProperties": false, "required": ["product_contract", "trusted_bridge_context", "accepted_state", "snapshot_manifest", "context_pack", "fixture_resource", "validation_at", "candidate_evidence_floor", "human_review_result"], "properties": {"product_contract": {"$ref": "#/$defs/product_contract"}, "trusted_bridge_context": {"$ref": "#/$defs/trusted_bridge_context"}, "accepted_state": {"$ref": "#/$defs/accepted_state"}, "snapshot_manifest": {"$ref": "#/$defs/snapshot_manifest"}, "context_pack": {"$ref": "#/$defs/context_pack"}, "fixture_resource": {"$ref": "#/$defs/fixture_resource"}, "validation_at": {"const": "2026-08-02T00:05:00Z"}, "candidate_evidence_floor": {"const": "E2"}, "human_review_result": {"type": "null"}}},
     "case": {"type": "object", "additionalProperties": false, "required": ["id", "kind", "mutation"], "properties": {"id": {"$ref": "#/$defs/id"}, "kind": {"enum": ["positive", "negative"]}, "mutation": {"$ref": "#/$defs/id"}, "expected_result": {"const": "PASSED"}, "expected_error": {"$ref": "#/$defs/id"}}, "oneOf": [{"required": ["expected_result"], "not": {"required": ["expected_error"]}}, {"required": ["expected_error"], "not": {"required": ["expected_result"]}}]},
-    "public_result": {"type": "object", "additionalProperties": false, "required": ["result_version", "gate_id", "profile_id", "command_id", "status", "evidence_tier", "observed_at", "input_hashes", "summary", "effect_counters", "cases"], "properties": {"result_version": {"const": "1.0"}, "gate_id": {"const": "VG-012"}, "profile_id": {"const": "forgeops-local-vertical"}, "command_id": {"const": "main-part-work-main"}, "status": {"enum": ["PASSED", "FAILED"]}, "evidence_tier": {"const": "E2"}, "observed_at": {"type": "string", "format": "date-time"}, "input_hashes": {"type": "object", "additionalProperties": false, "properties": {"schema": {"$ref": "#/$defs/sha256"}, "product_schema": {"$ref": "#/$defs/sha256"}, "snapshot_schema": {"$ref": "#/$defs/sha256"}, "context_schema": {"$ref": "#/$defs/sha256"}, "suite": {"$ref": "#/$defs/sha256"}}, "required": ["schema", "product_schema", "snapshot_schema", "context_schema", "suite"]}, "summary": {"type": "object", "additionalProperties": false, "required": ["total", "passed", "failed"], "properties": {"total": {"type": "integer", "minimum": 0}, "passed": {"type": "integer", "minimum": 0}, "failed": {"type": "integer", "minimum": 0}}}, "effect_counters": {"type": "object", "additionalProperties": false, "required": ["source_tree_hash_unchanged", "unauthorized_fixture_effects", "result_artifact_raw_secret_occurrences", "protected_reads", "network_calls", "external_writes"], "properties": {"source_tree_hash_unchanged": {"type": "boolean"}, "unauthorized_fixture_effects": {"type": "integer", "minimum": 0}, "result_artifact_raw_secret_occurrences": {"type": "integer", "minimum": 0}, "protected_reads": {"type": ["integer", "null"]}, "network_calls": {"type": ["integer", "null"]}, "external_writes": {"type": ["integer", "null"]}}}, "cases": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "kind", "expected", "actual"], "properties": {"id": {"$ref": "#/$defs/id"}, "kind": {"enum": ["positive", "negative"]}, "expected": {"$ref": "#/$defs/id"}, "actual": {"$ref": "#/$defs/id"}}}}}}
+    "public_result": {"type": "object", "additionalProperties": false, "required": ["result_version", "gate_id", "profile_id", "command_id", "status", "evidence_tier", "observed_at", "input_hashes", "summary", "effect_counters", "cases"], "properties": {"result_version": {"const": "1.0"}, "gate_id": {"const": "VG-012"}, "profile_id": {"const": "forgeops-local-vertical"}, "command_id": {"const": "main-part-work-main"}, "status": {"enum": ["PASSED", "FAILED"]}, "evidence_tier": {"const": "E2"}, "observed_at": {"type": "string", "format": "date-time"}, "input_hashes": {"type": "object", "additionalProperties": false, "properties": {"schema": {"$ref": "#/$defs/sha256"}, "product_schema": {"$ref": "#/$defs/sha256"}, "snapshot_schema": {"$ref": "#/$defs/sha256"}, "context_schema": {"$ref": "#/$defs/sha256"}, "suite": {"$ref": "#/$defs/sha256"}}, "required": ["schema", "product_schema", "snapshot_schema", "context_schema", "suite"]}, "summary": {"type": "object", "additionalProperties": false, "required": ["total", "passed", "failed"], "properties": {"total": {"type": "integer", "minimum": 0}, "passed": {"type": "integer", "minimum": 0}, "failed": {"type": "integer", "minimum": 0}}}, "effect_counters": {"type": "object", "additionalProperties": false, "required": ["source_tree_hash_unchanged", "unauthorized_fixture_effects", "result_artifact_raw_secret_occurrences", "protected_reads", "network_calls", "external_writes"], "properties": {"source_tree_hash_unchanged": {"type": "boolean"}, "unauthorized_fixture_effects": {"type": "integer", "minimum": 0}, "result_artifact_raw_secret_occurrences": {"type": "integer", "minimum": 0}, "protected_reads": {"type": "null"}, "network_calls": {"type": "null"}, "external_writes": {"type": "null"}}}, "cases": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "kind", "expected", "actual"], "properties": {"id": {"$ref": "#/$defs/id"}, "kind": {"enum": ["positive", "negative"]}, "expected": {"$ref": "#/$defs/id"}, "actual": {"$ref": "#/$defs/id"}}}}}}
   }
 }

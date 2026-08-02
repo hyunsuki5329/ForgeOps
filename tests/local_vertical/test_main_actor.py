@@ -355,7 +355,35 @@ class MainDecisionTests(unittest.TestCase):
         self.assertEqual(2, accepted["revision"])
         self.assertEqual("SUCCEEDED", accepted["status"])
         self.assertEqual(9, accepted["next_seq"])
-        self.assertEqual([7, 8], [event["seq"] for event in decision["payload"]["events"]])
+        self.assertEqual(
+            [
+                {
+                    "seq": 7,
+                    "task_id": "TASK-W6-FIXTURE",
+                    "correlation_id": "CORR-W6-FIXTURE",
+                    "actor": "part",
+                    "phase": "DISCOVER",
+                    "attempt": 1,
+                    "severity": "INFO",
+                    "code": "PART_CANDIDATE_PROPOSED",
+                    "action": "EXECUTE_APPROVED_CANDIDATE",
+                    "evidence_refs": ["EVID-PART-CONTEXT"],
+                },
+                {
+                    "seq": 8,
+                    "task_id": "TASK-W6-FIXTURE",
+                    "correlation_id": "CORR-W6-FIXTURE",
+                    "actor": "work",
+                    "phase": "VERIFY",
+                    "attempt": 1,
+                    "severity": "INFO",
+                    "code": "WORK_VERIFICATION_PASSED",
+                    "action": "ACCEPT_RESULT",
+                    "evidence_refs": ["EVID-WORK-FIXTURE-TEST"],
+                },
+            ],
+            decision["payload"]["events"],
+        )
         self.assertEqual("ACCEPT", decision["payload"]["decision"])
         self.assertTrue(accepted["accepted_payload_ref"].startswith("sha256:"))
         self.assertEqual(1, self.accepted_state["revision"])
@@ -373,7 +401,21 @@ class MainDecisionTests(unittest.TestCase):
         self.assertEqual("GATE", decision["payload"]["decision"])
         self.assertEqual("WAITING_FOR_HUMAN", decision["payload"]["accepted_state"]["status"])
         self.assertEqual(2, decision["payload"]["accepted_state"]["revision"])
-        self.assertEqual([7], [event["seq"] for event in decision["payload"]["events"]])
+        self.assertEqual(
+            [{
+                "seq": 7,
+                "task_id": "TASK-W6-FIXTURE",
+                "correlation_id": "CORR-W6-FIXTURE",
+                "actor": "part",
+                "phase": "DISCOVER",
+                "attempt": 1,
+                "severity": "INFO",
+                "code": "PART_PROPOSAL_BLOCKED",
+                "action": "ASK_USER",
+                "evidence_refs": [],
+            }],
+            decision["payload"]["events"],
+        )
         self.assertEqual(1, self.accepted_state["revision"])
 
     def test_candidate_result_action_and_acceptance_notes_are_bound_to_trusted_context(self):
@@ -473,6 +515,7 @@ class MainDecisionTests(unittest.TestCase):
             ("before-anchor", lambda p: p["evidence"][0].update(observed_at="2026-08-02T00:04:59Z"), "MAIN_EVIDENCE_FRESHNESS_INVALID"),
             ("stale", lambda p: p["evidence"][0].update(observed_at="2026-08-02T00:10:01Z"), "MAIN_EVIDENCE_FRESHNESS_INVALID"),
             ("tier", lambda p: p["evidence"][0].update(tier="E1"), "MAIN_EVIDENCE_TIER_INVALID"),
+            ("noncanonical elevated tier", lambda p: p["evidence"][0].update(tier="E3"), "MAIN_EVIDENCE_TIER_INVALID"),
             ("summary", lambda p: p.update(validation_summary={"passed": 0, "failed": 0, "not_run": 0}), "MAIN_SUMMARY_INVALID"),
         )
         for name, mutate, code in mutations:
@@ -490,3 +533,38 @@ class MainDecisionTests(unittest.TestCase):
         with self.assertRaisesRegex(common.VerticalFlowError, "MAIN_EVIDENCE_REFERENCE_INVALID"):
             self.decide(result)
         self.assertEqual(before, common.canonical_json_bytes(self.accepted_state))
+
+    def test_work_evidence_reason_compensation_and_summary_are_exact(self):
+        evidence_mutations = (
+            ("id", lambda e: e.update(id="EVID-OTHER")),
+            ("type", lambda e: e.update(type="runtime")),
+            ("source other", lambda e: e.update(source="fixture/other.txt")),
+            ("source mapping", lambda e: e.update(source={"credential": "raw"})),
+            ("source secret", lambda e: e.update(source="token=raw")),
+            ("observation other", lambda e: e.update(observation="passed")),
+            ("observation list", lambda e: e.update(observation=["raw"])),
+            ("observation secret", lambda e: e.update(observation="credential=raw")),
+            ("open", lambda e: e.update(raw_log="secret")),
+        )
+        before = common.canonical_json_bytes(self.accepted_state)
+        for name, mutate in evidence_mutations:
+            with self.subTest(name=name):
+                result = copy.deepcopy(self.work_result)
+                mutate(result["payload"]["evidence"][0])
+                with self.assertRaises(common.VerticalFlowError):
+                    self.decide(result)
+                self.assertEqual(before, common.canonical_json_bytes(self.accepted_state))
+        payload_mutations = (
+            ("reason", lambda p: p["candidate_results"][0].update(reason="token=raw")),
+            ("compensation scalar", lambda p: p.update(compensation_options="none")),
+            ("compensation entry", lambda p: p.update(compensation_options=[{"credential": "raw"}])),
+            ("summary bool", lambda p: p.update(validation_summary={"passed": True, "failed": 0, "not_run": 0})),
+            ("summary negative", lambda p: p.update(validation_summary={"passed": 1, "failed": -1, "not_run": 0})),
+        )
+        for name, mutate in payload_mutations:
+            with self.subTest(name=name):
+                result = copy.deepcopy(self.work_result)
+                mutate(result["payload"])
+                with self.assertRaises(common.VerticalFlowError):
+                    self.decide(result)
+                self.assertEqual(before, common.canonical_json_bytes(self.accepted_state))

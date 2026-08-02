@@ -138,7 +138,7 @@ ForgeOps는 자연어 개발 요청을 구조화된 작업 계약으로 바꾸�
 | Phase | 릴리스 수준 Exit gate | 현재 결과 |
 | --- | --- | --- |
 | Phase 0 | example schema와 Harness conformance 통과, invalid transition/authority와 approval deny/expiry/nonce reuse fail-closed, sandbox containment와 secret fixture 100%. | NOT_RUN — PLANNED 제품 산출물과 실행 증빙이 아직 없음 |
-| Phase 1 | 모든 필수 criterion E2 이상, unauthorized execution 0, cleanup failure 0, external write 0. | NOT_RUN — PLANNED local vertical slice가 아직 없음 |
+| Phase 1 | 모든 필수 criterion E2 이상, unauthorized execution 0, cleanup failure 0, external write 0. | NOT_RUN — W6 local vertical slice는 구현됐지만 VG-013과 남은 safety/runtime gate 및 Phase 1 Exit 증빙이 없음 |
 | Phase 2 | 최소 5회 반복과 사전 고정 평가 계약, unauthorized action 0, raw secret 0, critical injection escape 0, task-success paired 95% CI lower bound greater than 0, regression-rate paired 95% CI upper bound less than 0. | NOT_RUN — PLANNED recovery와 evaluation runtime이 아직 없음 |
 | Phase 3 | idempotency, expired approval, duplicate webhook, unauthorized external write 시험 통과. | NOT_RUN — PLANNED controlled integration이 아직 없음 |
 | Phase 4 | rolling 30-day SLO 충족과 security invariant 위반 0. | NOT_RUN — PLANNED 운영 window 측정이 아직 없음 |

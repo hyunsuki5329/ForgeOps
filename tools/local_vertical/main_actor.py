@@ -280,6 +280,20 @@ def _require_work_approval_task(task_packet: object) -> dict[str, object]:
         or control.get("operation_mode") != "EXPLORE"
     ):
         raise VerticalFlowError("WORK_ENVELOPE_INVALID")
+    project_profile = payload["project_profile"]
+    if not isinstance(project_profile, dict) or project_profile.get("profile_status") != "LOADED":
+        raise VerticalFlowError("WORK_PROFILE_NOT_LOADED")
+    capabilities = payload["capabilities"]
+    if (
+        not isinstance(capabilities, dict)
+        or capabilities.get("filesystem_read") != "AVAILABLE"
+        or capabilities.get("filesystem_write") != "AVAILABLE"
+    ):
+        raise VerticalFlowError("WORK_CAPABILITY_DENIED")
+    budgets = payload["budgets"]
+    work_attempts = budgets.get("work_attempts") if isinstance(budgets, dict) else None
+    if isinstance(work_attempts, bool) or not isinstance(work_attempts, int) or work_attempts < 1:
+        raise VerticalFlowError("WORK_BUDGET_EXHAUSTED")
     return task
 
 
@@ -402,6 +416,13 @@ def _validate_approved_candidate(
         != ["sha256:c0cde77fa8fef97d3b55e18e9a5f8f08c4f19b67b6dd8a19a0163aa1f8a5a7ab"]
         or candidate["proposed_verification"]
         != ["fixture content equals UTF-8 after newline"]
+        or candidate["rationale"]
+        != "direct Context Pack evidence identifies the fixture item and its snapshot hash"
+        or not isinstance(candidate["confidence"], float)
+        or candidate["confidence"] != 1.0
+        or candidate["confidence_basis"] != "DIRECT"
+        or candidate["dependencies"] != []
+        or candidate["risk_notes"] != []
     ):
         raise VerticalFlowError("WORK_ACTION_IDENTITY_INVALID")
     if authority["write_scope"] == "PROJECT":
@@ -577,6 +598,17 @@ _ACCEPTED_STATE_FIELDS = frozenset(
     {"task_id", "correlation_id", "revision", "status", "next_seq"}
 )
 _EVENT_FIELDS = frozenset({"actor", "phase", "code"})
+_CANONICAL_EVENTS = {
+    ("part", "DISCOVER", "PART_CANDIDATE_PROPOSED"): (
+        "EXECUTE_APPROVED_CANDIDATE",
+        ["EVID-PART-CONTEXT"],
+    ),
+    ("work", "VERIFY", "WORK_VERIFICATION_PASSED"): (
+        "ACCEPT_RESULT",
+        ["EVID-WORK-FIXTURE-TEST"],
+    ),
+    ("part", "DISCOVER", "PART_PROPOSAL_BLOCKED"): ("ASK_USER", []),
+}
 _TIME_EVIDENCE_TYPES = frozenset({"command", "test", "render", "runtime", "approval"})
 _REVISION_EVIDENCE_TYPES = frozenset({"file", "diff"})
 _TIER_RANK = {"E0": 0, "E1": 1, "E2": 2, "E3": 3}
@@ -638,7 +670,9 @@ def _require_unique_refs(refs: object, *, known: set[str] | None = None) -> list
     return refs
 
 
-def _normalize_event(suggestion: object) -> dict[str, object]:
+def _normalize_event(
+    suggestion: object, state: Mapping[str, object], seq: int
+) -> dict[str, object]:
     if (
         not isinstance(suggestion, dict)
         or set(suggestion) != _EVENT_FIELDS
@@ -646,7 +680,27 @@ def _normalize_event(suggestion: object) -> dict[str, object]:
         or not all(isinstance(suggestion.get(name), str) and suggestion[name] for name in _EVENT_FIELDS)
     ):
         raise VerticalFlowError("MAIN_EVENT_SUGGESTION_INVALID")
-    return copy.deepcopy(suggestion)
+    identity = (
+        suggestion["actor"],
+        suggestion["phase"],
+        suggestion["code"],
+    )
+    canonical = _CANONICAL_EVENTS.get(identity)
+    if canonical is None:
+        raise VerticalFlowError("MAIN_EVENT_SUGGESTION_INVALID")
+    action, evidence_refs = canonical
+    return {
+        "task_id": state["task_id"],
+        "correlation_id": state["correlation_id"],
+        "actor": suggestion["actor"],
+        "phase": suggestion["phase"],
+        "code": suggestion["code"],
+        "attempt": 1,
+        "severity": "INFO",
+        "action": action,
+        "evidence_refs": list(evidence_refs),
+        "seq": seq,
+    }
 
 
 def _main_decision(
@@ -661,8 +715,7 @@ def _main_decision(
 ) -> dict[str, object]:
     events: list[dict[str, object]] = []
     for offset, suggestion in enumerate(event_suggestions):
-        event = _normalize_event(suggestion)
-        event["seq"] = state["next_seq"] + offset
+        event = _normalize_event(suggestion, state, state["next_seq"] + offset)
         events.append(event)
     accepted_payload_ref = "sha256:" + canonical_sha256(source_packet)
     accepted = {
@@ -751,7 +804,9 @@ def validate_and_decide(
     acceptance_results = _require_raw_array(payload, "acceptance_results", "MAIN_CRITERION_COVERAGE_INVALID")
     evidence = _require_raw_array(payload, "evidence", "MAIN_EVIDENCE_CATALOG_INVALID")
     residual_risks = _require_raw_array(payload, "residual_risks", "MAIN_WORK_PAYLOAD_INVALID")
-    _require_raw_array(payload, "compensation_options", "MAIN_WORK_PAYLOAD_INVALID")
+    compensation_options = _require_raw_array(
+        payload, "compensation_options", "MAIN_WORK_PAYLOAD_INVALID"
+    )
     assertions = _require_raw_array(payload, "assertion_suggestions", "MAIN_WORK_PAYLOAD_INVALID")
     work_events = _require_raw_array(payload, "event_suggestions", "MAIN_EVENT_SUGGESTION_INVALID")
 
@@ -783,6 +838,8 @@ def validate_and_decide(
         if (
             record.get("action_type") != approved.get("action_type")
             or record.get("action_identity") != approved.get("action_identity")
+            or record.get("reason")
+            != "current evidence and exact authority support the bounded fixture update"
         ):
             raise VerticalFlowError("MAIN_CANDIDATE_RESULT_INVALID")
         candidate_refs.append(_require_unique_refs(record.get("evidence_refs")))
@@ -818,12 +875,16 @@ def validate_and_decide(
             expected_fields.add("observed_revision")
         else:
             raise VerticalFlowError("MAIN_EVIDENCE_FRESHNESS_INVALID")
-        # W6 Work currently carries exit_code on test evidence; tolerate it as a
-        # legacy local adapter field while all freshness semantics remain closed.
-        if evidence_type == "test" and "exit_code" in record:
-            expected_fields.add("exit_code")
         if set(record) != expected_fields:
             raise VerticalFlowError("MAIN_EVIDENCE_FRESHNESS_INVALID")
+        if (
+            record.get("id") != "EVID-WORK-FIXTURE-TEST"
+            or record.get("type") != "test"
+            or record.get("source") != "fixture/work-item.txt"
+            or record.get("observation")
+            != "fixture workspace content equals exact UTF-8 after newline"
+        ):
+            raise VerticalFlowError("MAIN_EVIDENCE_CATALOG_INVALID")
         try:
             evidence_ids.append(require_id(record["id"], code="MAIN_EVIDENCE_CATALOG_INVALID"))
         except VerticalFlowError as exc:
@@ -851,13 +912,23 @@ def validate_and_decide(
             if isinstance(observed_revision, bool) or observed_revision != context.current_revision:
                 raise VerticalFlowError("MAIN_EVIDENCE_FRESHNESS_INVALID")
         tier = record.get("tier")
-        if not isinstance(tier, str) or _TIER_RANK.get(tier, -1) < _TIER_RANK[context.candidate_evidence_floor]:
+        if (
+            tier != "E2"
+            or _TIER_RANK.get(tier, -1)
+            < _TIER_RANK[context.candidate_evidence_floor]
+        ):
             raise VerticalFlowError("MAIN_EVIDENCE_TIER_INVALID")
 
     summary = payload.get("validation_summary")
     if (
         not isinstance(summary, dict)
         or set(summary) != {"passed", "failed", "not_run"}
+        or any(
+            isinstance(summary[name], bool)
+            or not isinstance(summary[name], int)
+            or summary[name] < 0
+            for name in ("passed", "failed", "not_run")
+        )
         or summary != {"passed": len(acceptance_results), "failed": 0, "not_run": 0}
     ):
         raise VerticalFlowError("MAIN_SUMMARY_INVALID")
@@ -874,7 +945,7 @@ def validate_and_decide(
             "operation": "update",
             "scope": "verifier-owned fixture workspace",
         }
-    ] or residual_risks != [] or assertions != [] or len(work_events) != 1:
+    ] or residual_risks != [] or compensation_options != [] or assertions != [] or len(work_events) != 1:
         raise VerticalFlowError("MAIN_WORK_SUCCESS_INVALID")
     if _contains_authoritative_output(payload):
         raise VerticalFlowError("WORK_STATE_OWNERSHIP_FORBIDDEN")

@@ -138,8 +138,8 @@ class WorkActorTests(unittest.TestCase):
                     )
                 self.assert_trees_unchanged()
 
-    def test_preflight_rejects_explore_mode_unknown_write_capability_or_stale_context(self):
-        """Break caught: Work mutating without EXECUTE, AVAILABLE write capability, and current revision."""
+    def test_preflight_rejects_explore_mode_or_stale_context_and_approval_denies_unknown_write(self):
+        """Break caught: Work mutating without EXECUTE, current revision, and approved capabilities."""
         context = self.approved_context()
         explore_task = common.thaw_json(context.task_packet)
         explore_task["payload"]["control"]["operation_mode"] = "EXPLORE"
@@ -153,19 +153,13 @@ class WorkActorTests(unittest.TestCase):
 
         unknown_task = copy.deepcopy(self.task_packet)
         unknown_task["payload"]["capabilities"]["filesystem_write"] = "UNKNOWN"
-        unknown_context = main_actor.approve_candidates(
-            unknown_task,
-            self.candidate_packet,
-            approved_candidate_ids=["CAND-W6-UPDATE"],
-            validation_at="2026-08-02T00:05:00Z",
-            human_review_result=None,
-        )
         with self.assertRaisesRegex(common.VerticalFlowError, "WORK_CAPABILITY_DENIED"):
-            work_actor.preflight_execute_verify(
-                unknown_context,
-                workspace_root=self.workspace,
-                source_root=self.source,
-                clock=lambda: "2026-08-02T00:05:00Z",
+            main_actor.approve_candidates(
+                unknown_task,
+                self.candidate_packet,
+                approved_candidate_ids=["CAND-W6-UPDATE"],
+                validation_at="2026-08-02T00:05:00Z",
+                human_review_result=None,
             )
         self.assert_trees_unchanged()
 
@@ -383,8 +377,8 @@ class WorkActorTests(unittest.TestCase):
     def test_approval_rejects_unsupported_command_or_network_candidate(self):
         """Break caught: the bounded W6 adapter executing command or network candidates."""
         for action_type, identity in (
-            ("RUN_COMMAND", {"identity_kind": "COMMAND", "command_id": "main-part-work-main"}),
-            ("NETWORK_REQUEST", {"identity_kind": "NETWORK", "network_host": "api.example.com"}),
+            ("EXECUTE_COMMAND", {"identity_kind": "COMMAND", "command_id": "main-part-work-main"}),
+            ("CALL_NETWORK", {"identity_kind": "NETWORK", "network_host": "api.example.com"}),
         ):
             with self.subTest(action_type=action_type):
                 candidate = copy.deepcopy(self.candidate_packet)
@@ -401,6 +395,66 @@ class WorkActorTests(unittest.TestCase):
                         human_review_result=None,
                     )
                 self.assert_trees_unchanged()
+
+    def test_approval_rejects_shadowed_candidate_semantics(self):
+        cases = (
+            ("rationale", lambda c: c.update(rationale="token=raw")),
+            ("confidence bool", lambda c: c.update(confidence=True)),
+            ("confidence value", lambda c: c.update(confidence=0.5)),
+            ("confidence basis", lambda c: c.update(confidence_basis="INFERRED")),
+            ("dependencies", lambda c: c.update(dependencies=["CAND-OTHER"])),
+            ("risk notes", lambda c: c.update(risk_notes=["credential=raw"])),
+        )
+        for name, mutate in cases:
+            with self.subTest(name=name):
+                candidate = copy.deepcopy(self.candidate_packet)
+                mutate(candidate["payload"]["candidates"][0])
+                with self.assertRaises(common.VerticalFlowError):
+                    main_actor.approve_candidates(
+                        self.task_packet,
+                        candidate,
+                        approved_candidate_ids=["CAND-W6-UPDATE"],
+                        validation_at="2026-08-02T00:05:00Z",
+                        human_review_result=None,
+                    )
+                self.assert_trees_unchanged()
+
+    def test_approval_and_work_preflight_require_loaded_profile_read_write_and_budget(self):
+        cases = (
+            ("profile", lambda t: t["payload"]["project_profile"].update(profile_status="MISSING"), "WORK_PROFILE_NOT_LOADED"),
+            ("read", lambda t: t["payload"]["capabilities"].update(filesystem_read="UNKNOWN"), "WORK_CAPABILITY_DENIED"),
+            ("budget zero", lambda t: t["payload"]["budgets"].update(work_attempts=0), "WORK_BUDGET_EXHAUSTED"),
+            ("budget bool", lambda t: t["payload"]["budgets"].update(work_attempts=True), "WORK_BUDGET_EXHAUSTED"),
+        )
+        for name, mutate, code in cases:
+            with self.subTest(name=name):
+                task = copy.deepcopy(self.task_packet)
+                mutate(task)
+                with self.assertRaisesRegex(common.VerticalFlowError, code):
+                    main_actor.approve_candidates(
+                        task,
+                        self.candidate_packet,
+                        approved_candidate_ids=["CAND-W6-UPDATE"],
+                        validation_at="2026-08-02T00:05:00Z",
+                        human_review_result=None,
+                    )
+                routed = copy.deepcopy(task)
+                routed["payload"]["control"]["route"] = "WORK_ONLY"
+                routed["payload"]["control"]["operation_mode"] = "EXECUTE"
+                with self.assertRaisesRegex(common.VerticalFlowError, code):
+                    work_actor.validate_work_task(routed, routed["base_revision"])
+                self.assert_trees_unchanged()
+
+    def test_test_evidence_never_contains_command_exit_code(self):
+        result = work_actor.preflight_execute_verify(
+            self.approved_context(),
+            workspace_root=self.workspace,
+            source_root=self.source,
+            clock=lambda: "2026-08-02T00:05:00Z",
+        )
+        evidence = result["payload"]["evidence"][0]
+        self.assertEqual("test", evidence["type"])
+        self.assertNotIn("exit_code", evidence)
 
     def test_approval_rejects_untrusted_control_and_candidate_state_ownership(self):
         """Break caught: Part injecting trusted approval/time or authoritative state and sequence fields."""

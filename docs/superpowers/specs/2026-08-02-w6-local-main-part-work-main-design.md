@@ -1,8 +1,8 @@
 # W6 Local Main→Part→Work→Main 설계
 
-**상태:** APPROVED DESIGN  
-**작성일:** 2026-08-02  
-**범위:** WBS-016~WBS-019, VG-012  
+**상태:** APPROVED DESIGN
+**작성일:** 2026-08-02
+**범위:** WBS-016~WBS-019, VG-012
 **선행 기준선:** `main` a4d20d0, W5 VG-010/VG-011 E2 PASSED
 
 ## 1. 목적

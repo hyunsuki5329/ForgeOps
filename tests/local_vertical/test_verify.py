@@ -124,3 +124,60 @@ class LocalVerticalVerifierTests(unittest.TestCase):
                 self.assertEqual("FAILED", result["status"])
                 self.assertGreater(result["summary"]["failed"], 0)
                 self.assertFalse(all(case["expected"] == case["actual"] for case in result["cases"]))
+
+    def test_deleted_fixture_during_expected_negative_is_an_effect_failure(self):
+        original = verify._negative_case
+
+        def deleting_negative(mutation, fixture, product_schema, root):
+            if mutation == "MAIN_PROTOCOL":
+                (root / "workspace/fixture/work-item.txt").unlink()
+                raise verify.common.VerticalFlowError("MAIN_CONTRACT_VERSION_UNSUPPORTED")
+            return original(mutation, fixture, product_schema, root)
+
+        with patch.object(verify, "_negative_case", side_effect=deleting_negative):
+            self.assertEqual(1, verify.run(namespace(), repository_root=self.repository))
+        result = json.loads(self.result_path().read_text(encoding="utf-8"))
+        self.assertEqual("FAILED", result["status"])
+        self.assertGreater(result["effect_counters"]["unauthorized_fixture_effects"], 0)
+        self.assertGreater(result["summary"]["failed"], 0)
+
+    def test_negative_case_cannot_hide_a_mutation_to_success_bytes(self):
+        original = verify._negative_case
+
+        def mutating_negative(mutation, fixture, product_schema, root):
+            if mutation == "MAIN_PROTOCOL":
+                (root / "workspace/fixture/work-item.txt").write_bytes(b"after\n")
+                raise verify.common.VerticalFlowError("MAIN_CONTRACT_VERSION_UNSUPPORTED")
+            return original(mutation, fixture, product_schema, root)
+
+        with patch.object(verify, "_negative_case", side_effect=mutating_negative):
+            self.assertEqual(1, verify.run(namespace(), repository_root=self.repository))
+        result = json.loads(self.result_path().read_text(encoding="utf-8"))
+        self.assertEqual("FAILED", result["status"])
+        self.assertGreater(result["effect_counters"]["unauthorized_fixture_effects"], 0)
+
+    def test_fixture_audit_rejects_symlink_without_dereferencing_it(self):
+        audit_root = self.repository / "audit"
+        source = audit_root / "source/fixture/work-item.txt"
+        workspace = audit_root / "workspace/fixture/work-item.txt"
+        for path in (source, workspace):
+            path.parent.mkdir(parents=True)
+            path.write_bytes(b"before\n")
+        original_is_symlink = Path.is_symlink
+        original_read_bytes = Path.read_bytes
+        dereferenced_workspace = False
+
+        def fake_is_symlink(path):
+            return path == workspace or original_is_symlink(path)
+
+        def observed_read_bytes(path):
+            nonlocal dereferenced_workspace
+            if path == workspace:
+                dereferenced_workspace = True
+            return original_read_bytes(path)
+
+        with patch.object(Path, "is_symlink", new=fake_is_symlink), patch.object(
+            Path, "read_bytes", new=observed_read_bytes
+        ):
+            self.assertEqual(1, verify._fixture_effect_count(audit_root))
+        self.assertFalse(dereferenced_workspace)

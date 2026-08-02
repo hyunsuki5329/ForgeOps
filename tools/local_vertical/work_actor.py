@@ -97,9 +97,24 @@ def validate_work_task(task: object, current_revision: object) -> dict[str, obje
     capabilities = payload["capabilities"]
     if (
         not isinstance(capabilities, dict)
+        or capabilities.get("filesystem_read") != "AVAILABLE"
         or capabilities.get("filesystem_write") != "AVAILABLE"
     ):
         raise VerticalFlowError("WORK_CAPABILITY_DENIED")
+    project_profile = payload["project_profile"]
+    if (
+        not isinstance(project_profile, dict)
+        or project_profile.get("profile_status") != "LOADED"
+    ):
+        raise VerticalFlowError("WORK_PROFILE_NOT_LOADED")
+    budgets = payload["budgets"]
+    work_attempts = budgets.get("work_attempts") if isinstance(budgets, dict) else None
+    if (
+        isinstance(work_attempts, bool)
+        or not isinstance(work_attempts, int)
+        or work_attempts < 1
+    ):
+        raise VerticalFlowError("WORK_BUDGET_EXHAUSTED")
     return task
 
 
@@ -204,6 +219,13 @@ def validate_action_identity(candidate: object) -> dict[str, object]:
         or candidate["proposed_verification"]
         != ["fixture content equals UTF-8 after newline"]
         or candidate["acceptance_criteria_ids"] != [_CRITERION_ID]
+        or candidate["rationale"]
+        != "direct Context Pack evidence identifies the fixture item and its snapshot hash"
+        or not isinstance(candidate["confidence"], float)
+        or candidate["confidence"] != 1.0
+        or candidate["confidence_basis"] != "DIRECT"
+        or candidate["dependencies"] != []
+        or candidate["risk_notes"] != []
     ):
         raise VerticalFlowError("WORK_ACTION_IDENTITY_INVALID")
     return candidate
@@ -341,7 +363,6 @@ def execute_fixture_update(
         "type": "test",
         "source": _RESOURCE_REF,
         "observation": "fixture workspace content equals exact UTF-8 after newline",
-        "exit_code": 0,
         "observed_at": observed_at,
     }
     return {

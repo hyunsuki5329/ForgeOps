@@ -64,6 +64,19 @@ CASE_CATALOG = (
     ("NEGATIVE_SUMMARY_MISMATCH", "negative", "SUMMARY_MISMATCH", "expected_error", "MAIN_SUMMARY_INVALID"),
     ("NEGATIVE_MAIN_ACTOR_OWNERSHIP", "negative", "MAIN_ACTOR_OWNERSHIP", "expected_error", "MAIN_ACTOR_OWNERSHIP_FORBIDDEN"),
 )
+_AFTER_WORK_MUTATIONS = frozenset(
+    {
+        "WORK_STALE_REVISION",
+        "WORK_STATE_OWNERSHIP",
+        "EVIDENCE_DANGLING",
+        "EVIDENCE_STALE",
+        "EVIDENCE_FUTURE",
+        "EVIDENCE_LOW_TIER",
+        "CANDIDATE_COVERAGE",
+        "CRITERION_COVERAGE",
+        "SUMMARY_MISMATCH",
+    }
+)
 
 
 class VerificationError(Exception):
@@ -181,7 +194,7 @@ def _base_flow(
     source = root / "source"
     workspace = root / "workspace"
     for tree in (source, workspace):
-        (tree / "fixture").mkdir(parents=True)
+        (tree / "fixture").mkdir(parents=True, exist_ok=True)
         (tree / "fixture/work-item.txt").write_bytes(b"before\n")
     task = main_actor.normalize_product_task(
         copy.deepcopy(fixture["product_contract"]),
@@ -233,7 +246,7 @@ def _gate_flow(fixture, product_schema, root) -> None:
     source = root / "source"
     workspace = root / "workspace"
     for tree in (source, workspace):
-        (tree / "fixture").mkdir(parents=True)
+        (tree / "fixture").mkdir(parents=True, exist_ok=True)
         (tree / "fixture/work-item.txt").write_bytes(b"before\n")
     task = main_actor.normalize_product_task(
         copy.deepcopy(fixture["product_contract"]),
@@ -390,7 +403,9 @@ def _negative_case(mutation: str, fixture, product_schema, root) -> None:
         raise VerificationError("VERIFIER_CASE_INVALID")
 
 
-def _fixture_effect_count(root: Path) -> int:
+def _fixture_effect_count(
+    root: Path, *, workspace_expected: bytes = b"before\n"
+) -> int:
     allowed = {
         Path("source/fixture/work-item.txt"),
         Path("workspace/fixture/work-item.txt"),
@@ -400,10 +415,18 @@ def _fixture_effect_count(root: Path) -> int:
         if path.is_file() and path.relative_to(root) not in allowed:
             unexpected += 1
     source = root / "source/fixture/work-item.txt"
-    if source.exists() and source.read_bytes() != b"before\n":
+    if (
+        source.is_symlink()
+        or not source.is_file()
+        or source.read_bytes() != b"before\n"
+    ):
         unexpected += 1
     workspace = root / "workspace/fixture/work-item.txt"
-    if workspace.exists() and workspace.read_bytes() not in {b"before\n", b"after\n"}:
+    if (
+        workspace.is_symlink()
+        or not workspace.is_file()
+        or workspace.read_bytes() != workspace_expected
+    ):
         unexpected += 1
     return unexpected
 
@@ -412,9 +435,18 @@ def _evaluate_case(case, fixture, product_schema) -> tuple[dict[str, str], int]:
     expected = case.get("expected_result", case.get("expected_error"))
     actual = "VERIFIER_CASE_INVALID"
     unauthorized_effects = 0
+    workspace_expected = (
+        b"after\n"
+        if case.get("id") == "POSITIVE_MAIN_PART_WORK_MAIN"
+        or case.get("mutation") in _AFTER_WORK_MUTATIONS
+        else b"before\n"
+    )
     try:
         with tempfile.TemporaryDirectory(prefix="forgeops-w6-verify-") as folder:
             root = Path(folder)
+            for tree in (root / "source", root / "workspace"):
+                (tree / "fixture").mkdir(parents=True)
+                (tree / "fixture/work-item.txt").write_bytes(b"before\n")
             try:
                 if case["id"] == "POSITIVE_MAIN_PART_WORK_MAIN":
                     _positive_flow(fixture, product_schema, root)
@@ -423,7 +455,9 @@ def _evaluate_case(case, fixture, product_schema) -> tuple[dict[str, str], int]:
                 else:
                     _negative_case(case["mutation"], fixture, product_schema, root)
             finally:
-                unauthorized_effects = _fixture_effect_count(root)
+                unauthorized_effects = _fixture_effect_count(
+                    root, workspace_expected=workspace_expected
+                )
         actual = "PASSED"
     except common.VerticalFlowError as exc:
         actual = exc.code

@@ -86,6 +86,10 @@ from jsonschema import Draft202012Validator
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = ROOT / "contracts/forgeops-local-vertical/1.0/schema.json"
 SUITE = ROOT / "fixtures/forgeops-local-vertical/suite.json"
+WBS_COLUMNS = (
+    "id", "phase", "week", "status", "person_day", "predecessor",
+    "prd_ids", "deliverable", "definition_of_done", "vg_ids", "evidence_types",
+)
 
 CASE_IDS = (
     "POSITIVE_MAIN_PART_WORK_MAIN",
@@ -120,6 +124,20 @@ CASE_IDS = (
     "NEGATIVE_MAIN_ACTOR_OWNERSHIP",
 )
 
+def parse_wbs_rows() -> dict[str, dict[str, str]]:
+    records = {}
+    for line in (ROOT / "docs/project/wbs.md").read_text(encoding="utf-8").splitlines():
+        if not line.startswith("| WBS-"):
+            continue
+        values = tuple(value.strip() for value in line.strip("|").split("|"))
+        if len(values) == len(WBS_COLUMNS):
+            record = dict(zip(WBS_COLUMNS, values, strict=True))
+            records[record["id"]] = record
+    return records
+
+def comma_ids(raw: str) -> tuple[str, ...]:
+    return tuple(value.strip() for value in raw.split(",") if value.strip())
+
 class LocalVerticalContractTests(unittest.TestCase):
     def test_schema_and_suite_are_closed_and_exact(self):
         schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
@@ -131,28 +149,22 @@ class LocalVerticalContractTests(unittest.TestCase):
         self.assertEqual(CASE_IDS, tuple(case["id"] for case in suite["cases"]))
         self.assertEqual(len(CASE_IDS), len(set(CASE_IDS)))
 
-    def test_adapter_registers_one_exact_e2_command(self):
-        adapter = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-        self.assertIn("- id: main-part-work-main", adapter)
-        self.assertIn("- id: forgeops-local-vertical", adapter)
-        self.assertIn("evidence_tier: E2", adapter)
+    def test_wbs_rows_reassign_exact_contract_ownership_to_w6_and_w7(self):
+        rows = parse_wbs_rows()
+        self.assertEqual("WBS_DONE", rows["WBS-014"]["status"])
+        self.assertEqual(("PRD-FR-008", "PRD-NFR-001"), comma_ids(rows["WBS-014"]["prd_ids"]))
+        self.assertEqual(("VG-010",), comma_ids(rows["WBS-014"]["vg_ids"]))
+        self.assertEqual(
+            ("PRD-FR-010", "PRD-NFR-002", "PRD-NFR-003"),
+            comma_ids(rows["WBS-018"]["prd_ids"]),
+        )
+        self.assertEqual(
+            ("VG-005", "VG-006", "VG-012"),
+            comma_ids(rows["WBS-018"]["vg_ids"]),
+        )
+        self.assertEqual(("VG-013",), comma_ids(rows["WBS-021"]["vg_ids"]))
+        self.assertEqual(("VG-013",), comma_ids(rows["WBS-022"]["vg_ids"]))
 
-    def test_wbs_rows_remove_future_gate_without_weakening_w7(self):
-        wbs = (ROOT / "docs/project/wbs.md").read_text(encoding="utf-8")
-        row_014 = next(line for line in wbs.splitlines() if line.startswith("| WBS-014 |"))
-        row_018 = next(line for line in wbs.splitlines() if line.startswith("| WBS-018 |"))
-        row_021 = next(line for line in wbs.splitlines() if line.startswith("| WBS-021 |"))
-        row_022 = next(line for line in wbs.splitlines() if line.startswith("| WBS-022 |"))
-        self.assertIn("WBS_DONE", row_014)
-        self.assertIn("VG-010", row_014)
-        self.assertNotIn("VG-013", row_014)
-        self.assertIn("PRD-FR-010", row_018)
-        self.assertIn("VG-005, VG-006, VG-012", row_018)
-        self.assertNotIn("PRD-FR-011", row_018)
-        self.assertNotIn("PRD-FR-012", row_018)
-        self.assertNotIn("VG-013", row_018)
-        self.assertIn("VG-013", row_021)
-        self.assertIn("VG-013", row_022)
 ```
 
 - [ ] **Step 2: Run the focused tests and observe RED**
@@ -163,7 +175,7 @@ Run:
 python -m unittest tests.local_vertical.test_contracts -v
 ```
 
-Expected: FAIL because the schema, suite, adapter identity, and re-scoped WBS rows do not exist yet.
+Expected: FAIL because the schema, suite, and structurally re-scoped WBS rows do not exist yet.
 
 - [ ] **Step 3: Create the closed suite/result schema and exact fixture catalog**
 
@@ -211,6 +223,8 @@ Add this validation record to `AGENTS.md`:
 ```
 
 Add profile `forgeops-local-vertical` containing only `main-part-work-main`.
+
+Do not add a source-text assertion for `AGENTS.md`. Task 5 consumes this registration by running the exact command and verifying its result identity, exit code, and output artifact.
 
 - [ ] **Step 5: Apply the exact WBS re-scope and capacity note**
 

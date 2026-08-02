@@ -27,8 +27,9 @@ ForgeOps는 AI 에이전트가 소프트웨어 작업을 수행할 때 필요한
 - **W2:** 상태 전이, replay, resource/command/network authority, approval/effect policy 검증을 구현했습니다.
 - **W3:** versioned OpenAPI, data/control boundary, durable event, run manifest, VG-004 인터페이스 계약 검증을 구현했습니다.
 - **W4:** Foundation conformance, attested sandbox containment·egress·teardown, secret surface와 artifact isolation 검증을 구현했습니다.
-- **W5:** content-addressed immutable snapshot, trusted baseline runner, deterministic Context Pack과 VG-010/VG-011 E2 검증을 구현했습니다. WBS-013/015는 완료됐고 WBS-014의 구현과 VG-010 범위는 통과했지만 formal 완료에는 후속 W7 VG-013이 남아 있습니다.
-- **Phase 0:** 등록된 18개 필수 결과가 모두 `PASSED`이고 blockers 0으로 `READY`입니다. W1~W4는 완료됐으며, WBS-014의 후속 gate와 W6 이후 orchestration·patch·lifecycle·Phase 1 Exit 및 배포 작업은 아직 완료되지 않았습니다.
+- **W5:** content-addressed immutable snapshot, trusted baseline runner, deterministic Context Pack과 VG-010/VG-011 E2 검증을 구현했습니다. WBS-013~015는 완료됐고 changed-task regression VG-013은 별도 W7 범위로 남아 있습니다.
+- **W6:** Product Task를 Main이 정규화하고 Part가 read-only 후보를 제안한 뒤, Main-issued immutable context로 Work의 exact fixture action을 제한하고 Main만 accepted revision과 canonical event sequence를 확정하는 local vertical flow를 구현했습니다. VG-012는 30/30 사례가 fresh E2 `PASSED`입니다.
+- **Phase 0:** 등록된 18개 필수 결과가 모두 `PASSED`이고 blockers 0으로 `READY`입니다. W1~W6의 해당 범위는 완료됐지만 W7 VG-013, lifecycle, Phase 1 safety gate·Exit 및 배포 작업은 아직 완료되지 않았습니다.
 
 ## 검증 실행
 
@@ -41,6 +42,8 @@ python tools/interface_contract/verify.py --openapi contracts/forgeops-api/1.0/o
 검증 결과는 공개 가능한 요약만 남기며, 거부 fixture에서 외부 효과가 발생하지 않는지도 함께 확인합니다.
 
 W5는 `forgeops-snapshot-baseline`과 `forgeops-context-security` 프로필의 등록 명령 4개로 검증합니다. 현재 VG-010은 24/24, VG-011은 20/20 사례가 fresh E2 `PASSED`이며 관찰 가능한 source write는 0입니다. OS 수준 protected read, network call, external write는 이 E2 검증 범위에서 0으로 단정하지 않고 결과에 `null`로 기록합니다. 이 결과는 VG-010/VG-011 범위만 증명하며 VG-013이나 Phase 1 Exit를 선언하지 않습니다.
+
+W6는 `forgeops-local-vertical` 프로필의 `main-part-work-main` 명령으로 검증합니다. 결과는 `artifacts/verification/vg-012-local-vertical-result.json`에 30/30 E2 `PASSED`, source tree hash unchanged, unauthorized fixture effect 0으로 기록됩니다. 다만 OS 수준 protected read·network call·external write 부재는 관찰하지 않아 `null`이며, VG-013과 Phase 1 safety gate·Exit도 아직 증명하지 않습니다.
 
 ## 문서 안내
 

@@ -2,10 +2,11 @@ import copy
 from dataclasses import fields
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import MappingProxyType
 import unittest
 
-from tools.local_vertical import common, main_actor, part_actor
+from tools.local_vertical import common, main_actor, part_actor, work_actor
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -289,3 +290,139 @@ class MainNormalizationTests(unittest.TestCase):
                         validation_at=value,
                         human_review_result=None,
                     )
+
+
+class MainDecisionTests(unittest.TestCase):
+    def setUp(self):
+        suite = json.loads(SUITE.read_text(encoding="utf-8"))
+        self.fixture = suite["base_fixture"]
+        task = main_actor.normalize_product_task(
+            self.fixture["product_contract"],
+            self.fixture["trusted_bridge_context"],
+            json.loads(PRODUCT_SCHEMA.read_text(encoding="utf-8")),
+            correlation_id="CORR-W6-FIXTURE",
+        )
+        self.candidate = part_actor.propose_candidates(
+            main_actor.build_part_task(task),
+            self.fixture["snapshot_manifest"],
+            self.fixture["context_pack"],
+        )
+        self.context = main_actor.approve_candidates(
+            task,
+            self.candidate,
+            approved_candidate_ids=["CAND-W6-UPDATE"],
+            validation_at=self.fixture["validation_at"],
+            human_review_result=None,
+        )
+        self.accepted_state = copy.deepcopy(self.fixture["accepted_state"])
+        self.temporary = TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        root = Path(self.temporary.name)
+        workspace = root / "workspace"
+        source = root / "source"
+        for tree in (workspace, source):
+            (tree / "fixture").mkdir(parents=True)
+            (tree / "fixture/work-item.txt").write_bytes(b"before\n")
+        self.work_result = work_actor.preflight_execute_verify(
+            self.context,
+            workspace_root=workspace,
+            source_root=source,
+            clock=lambda: self.fixture["validation_at"],
+        )
+
+    def decide(self, result=None):
+        return main_actor.validate_and_decide(
+            self.work_result if result is None else result,
+            self.context,
+            self.accepted_state,
+        )
+
+    def test_fresh_complete_work_result_is_the_only_success_path(self):
+        decision = self.decide()
+        self.assertEqual("main_decision", decision["packet_type"])
+        self.assertEqual("main", decision["actor"])
+        accepted = decision["payload"]["accepted_state"]
+        self.assertEqual(2, accepted["revision"])
+        self.assertEqual("SUCCEEDED", accepted["status"])
+        self.assertEqual(9, accepted["next_seq"])
+        self.assertEqual([7, 8], [event["seq"] for event in decision["payload"]["events"]])
+        self.assertEqual("ACCEPT", decision["payload"]["decision"])
+        self.assertTrue(accepted["accepted_payload_ref"].startswith("sha256:"))
+        self.assertEqual(1, self.accepted_state["revision"])
+
+    def test_stale_or_invalid_result_has_zero_accepted_effect(self):
+        self.work_result["base_revision"] = 0
+        before = common.canonical_json_bytes(self.accepted_state)
+        with self.assertRaisesRegex(common.VerticalFlowError, "MAIN_WORK_REVISION_STALE"):
+            self.decide()
+        self.assertEqual(before, common.canonical_json_bytes(self.accepted_state))
+
+    def test_blocked_part_proposal_can_gate_waiting_for_human(self):
+        task = common.thaw_json(self.context.task_packet)
+        task["payload"]["control"]["route"] = "PART_THEN_WORK"
+        task["payload"]["control"]["operation_mode"] = "EXPLORE"
+        task["payload"]["authority"]["read_scope"] = "NONE"
+        task["payload"]["authority"]["read_resources"] = []
+        blocked = part_actor.propose_candidates(
+            task, self.fixture["snapshot_manifest"], self.fixture["context_pack"]
+        )
+        decision = main_actor.decide_candidate_gate(blocked, self.accepted_state)
+        self.assertEqual("GATE", decision["payload"]["decision"])
+        self.assertEqual("WAITING_FOR_HUMAN", decision["payload"]["accepted_state"]["status"])
+        self.assertEqual(2, decision["payload"]["accepted_state"]["revision"])
+        self.assertEqual([7], [event["seq"] for event in decision["payload"]["events"]])
+        self.assertEqual(1, self.accepted_state["revision"])
+
+    def test_envelope_identity_and_work_state_ownership_are_closed(self):
+        for field, value, code in (
+            ("actor", "part", "MAIN_WORK_ENVELOPE_INVALID"),
+            ("task_id", "TASK-OTHER", "MAIN_WORK_IDENTITY_INVALID"),
+            ("correlation_id", "CORR-OTHER", "MAIN_WORK_IDENTITY_INVALID"),
+        ):
+            with self.subTest(field=field):
+                result = copy.deepcopy(self.work_result)
+                result[field] = value
+                with self.assertRaisesRegex(common.VerticalFlowError, code):
+                    self.decide(result)
+        for field, value in (("accepted_state", {}), ("revision", 2), ("events", []), ("seq", 7)):
+            with self.subTest(field=field):
+                result = copy.deepcopy(self.work_result)
+                result["payload"][field] = value
+                with self.assertRaisesRegex(common.VerticalFlowError, "WORK_STATE_OWNERSHIP_FORBIDDEN"):
+                    self.decide(result)
+
+    def test_candidate_and_criterion_coverage_are_exact_raw_arrays(self):
+        mutations = (
+            ("candidate scalar", lambda p: p.update(candidate_results="CAND-W6-UPDATE"), "MAIN_CANDIDATE_COVERAGE_INVALID"),
+            ("candidate missing", lambda p: p.update(candidate_results=[]), "MAIN_CANDIDATE_COVERAGE_INVALID"),
+            ("candidate duplicate", lambda p: p["candidate_results"].append(copy.deepcopy(p["candidate_results"][0])), "MAIN_CANDIDATE_COVERAGE_INVALID"),
+            ("candidate unknown", lambda p: p["candidate_results"][0].update(candidate_id="CAND-UNKNOWN"), "MAIN_CANDIDATE_COVERAGE_INVALID"),
+            ("criterion scalar", lambda p: p.update(acceptance_results="AC-W6-1"), "MAIN_CRITERION_COVERAGE_INVALID"),
+            ("criterion missing", lambda p: p.update(acceptance_results=[]), "MAIN_CRITERION_COVERAGE_INVALID"),
+            ("criterion duplicate", lambda p: p["acceptance_results"].append(copy.deepcopy(p["acceptance_results"][0])), "MAIN_CRITERION_COVERAGE_INVALID"),
+            ("criterion unknown", lambda p: p["acceptance_results"][0].update(criterion_id="AC-UNKNOWN"), "MAIN_CRITERION_COVERAGE_INVALID"),
+        )
+        for name, mutate, code in mutations:
+            with self.subTest(name=name):
+                result = copy.deepcopy(self.work_result)
+                mutate(result["payload"])
+                with self.assertRaisesRegex(common.VerticalFlowError, code):
+                    self.decide(result)
+
+    def test_evidence_refs_freshness_tier_and_summary_are_closed(self):
+        mutations = (
+            ("dangling", lambda p: p["candidate_results"][0].update(evidence_refs=["UNKNOWN"]), "MAIN_EVIDENCE_REFERENCE_INVALID"),
+            ("duplicate", lambda p: p["candidate_results"][0].update(evidence_refs=["EVID-WORK-FIXTURE-TEST"] * 2), "MAIN_EVIDENCE_REFERENCE_INVALID"),
+            ("scalar", lambda p: p["candidate_results"][0].update(evidence_refs="EVID-WORK-FIXTURE-TEST"), "MAIN_EVIDENCE_REFERENCE_INVALID"),
+            ("wrong mode", lambda p: p["evidence"][0].update(observed_revision=1), "MAIN_EVIDENCE_FRESHNESS_INVALID"),
+            ("before-anchor", lambda p: p["evidence"][0].update(observed_at="2026-08-02T00:04:59Z"), "MAIN_EVIDENCE_FRESHNESS_INVALID"),
+            ("stale", lambda p: p["evidence"][0].update(observed_at="2026-08-02T00:10:01Z"), "MAIN_EVIDENCE_FRESHNESS_INVALID"),
+            ("tier", lambda p: p["evidence"][0].update(tier="E1"), "MAIN_EVIDENCE_TIER_INVALID"),
+            ("summary", lambda p: p.update(validation_summary={"passed": 0, "failed": 0, "not_run": 0}), "MAIN_SUMMARY_INVALID"),
+        )
+        for name, mutate, code in mutations:
+            with self.subTest(name=name):
+                result = copy.deepcopy(self.work_result)
+                mutate(result["payload"])
+                with self.assertRaisesRegex(common.VerticalFlowError, code):
+                    self.decide(result)

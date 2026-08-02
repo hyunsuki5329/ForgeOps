@@ -1,0 +1,211 @@
+{
+  "cases": [
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_MAIN_PART_WORK_MAIN",
+      "kind": "positive"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_GATE_WAITING",
+      "kind": "positive"
+    },
+    {
+      "actual": "MAIN_CONTRACT_VERSION_UNSUPPORTED",
+      "expected": "MAIN_CONTRACT_VERSION_UNSUPPORTED",
+      "id": "NEGATIVE_MAIN_PROTOCOL",
+      "kind": "negative"
+    },
+    {
+      "actual": "PART_ENVELOPE_INVALID",
+      "expected": "PART_ENVELOPE_INVALID",
+      "id": "NEGATIVE_PART_ENVELOPE_MISMATCH",
+      "kind": "negative"
+    },
+    {
+      "actual": "PART_READ_AUTHORITY_DENIED",
+      "expected": "PART_READ_AUTHORITY_DENIED",
+      "id": "NEGATIVE_PART_READ_NONE",
+      "kind": "negative"
+    },
+    {
+      "actual": "PART_CONTEXT_PROVENANCE_INVALID",
+      "expected": "PART_CONTEXT_PROVENANCE_INVALID",
+      "id": "NEGATIVE_CONTEXT_HASH_MISMATCH",
+      "kind": "negative"
+    },
+    {
+      "actual": "PART_STATE_OWNERSHIP_FORBIDDEN",
+      "expected": "PART_STATE_OWNERSHIP_FORBIDDEN",
+      "id": "NEGATIVE_PART_STATE_OWNERSHIP",
+      "kind": "negative"
+    },
+    {
+      "actual": "PART_PROTECTED_APPROVAL_REQUIRED",
+      "expected": "PART_PROTECTED_APPROVAL_REQUIRED",
+      "id": "NEGATIVE_PROTECTED_NO_APPROVAL",
+      "kind": "negative"
+    },
+    {
+      "actual": "PART_WRITE_AUTHORITY_DENIED",
+      "expected": "PART_WRITE_AUTHORITY_DENIED",
+      "id": "NEGATIVE_APPROVAL_WITHOUT_AUTHORITY",
+      "kind": "negative"
+    },
+    {
+      "actual": "WORK_ACTION_IDENTITY_INVALID",
+      "expected": "WORK_ACTION_IDENTITY_INVALID",
+      "id": "NEGATIVE_HYBRID_IDENTITY",
+      "kind": "negative"
+    },
+    {
+      "actual": "AUTHORITY_SCOPE_LIST_MISMATCH",
+      "expected": "AUTHORITY_SCOPE_LIST_MISMATCH",
+      "id": "NEGATIVE_SCOPE_LIST_MISMATCH",
+      "kind": "negative"
+    },
+    {
+      "actual": "WORK_ENVELOPE_INVALID",
+      "expected": "WORK_ENVELOPE_INVALID",
+      "id": "NEGATIVE_WORK_ENVELOPE_MISMATCH",
+      "kind": "negative"
+    },
+    {
+      "actual": "WORK_OPERATION_MODE_INVALID",
+      "expected": "WORK_OPERATION_MODE_INVALID",
+      "id": "NEGATIVE_WORK_MODE_EXPLORE",
+      "kind": "negative"
+    },
+    {
+      "actual": "WORK_CAPABILITY_DENIED",
+      "expected": "WORK_CAPABILITY_DENIED",
+      "id": "NEGATIVE_WORK_CAPABILITY_UNKNOWN",
+      "kind": "negative"
+    },
+    {
+      "actual": "WORK_APPROVED_ID_INVALID",
+      "expected": "WORK_APPROVED_ID_INVALID",
+      "id": "NEGATIVE_TRUST_APPROVED_ID_INJECTION",
+      "kind": "negative"
+    },
+    {
+      "actual": "WORK_VALIDATION_AT_UNTRUSTED",
+      "expected": "WORK_VALIDATION_AT_UNTRUSTED",
+      "id": "NEGATIVE_TRUST_VALIDATION_AT_INJECTION",
+      "kind": "negative"
+    },
+    {
+      "actual": "AUTHORITY_EXECUTE_SCOPE_INVALID",
+      "expected": "AUTHORITY_EXECUTE_SCOPE_INVALID",
+      "id": "NEGATIVE_PROJECT_EXECUTE_SCOPE",
+      "kind": "negative"
+    },
+    {
+      "actual": "AUTHORITY_RESOURCE_INVALID",
+      "expected": "AUTHORITY_RESOURCE_INVALID",
+      "id": "NEGATIVE_WILDCARD_COMPANION",
+      "kind": "negative"
+    },
+    {
+      "actual": "RESOURCE_IDENTITY_NONCANONICAL",
+      "expected": "RESOURCE_IDENTITY_NONCANONICAL",
+      "id": "NEGATIVE_RESOURCE_TRAVERSAL",
+      "kind": "negative"
+    },
+    {
+      "actual": "WORK_ACTION_TYPE_UNSUPPORTED",
+      "expected": "WORK_ACTION_TYPE_UNSUPPORTED",
+      "id": "NEGATIVE_UNSUPPORTED_COMMAND",
+      "kind": "negative"
+    },
+    {
+      "actual": "MAIN_WORK_REVISION_STALE",
+      "expected": "MAIN_WORK_REVISION_STALE",
+      "id": "NEGATIVE_WORK_STALE_REVISION",
+      "kind": "negative"
+    },
+    {
+      "actual": "WORK_STATE_OWNERSHIP_FORBIDDEN",
+      "expected": "WORK_STATE_OWNERSHIP_FORBIDDEN",
+      "id": "NEGATIVE_WORK_STATE_OWNERSHIP",
+      "kind": "negative"
+    },
+    {
+      "actual": "MAIN_EVIDENCE_REFERENCE_INVALID",
+      "expected": "MAIN_EVIDENCE_REFERENCE_INVALID",
+      "id": "NEGATIVE_EVIDENCE_DANGLING",
+      "kind": "negative"
+    },
+    {
+      "actual": "MAIN_EVIDENCE_FRESHNESS_INVALID",
+      "expected": "MAIN_EVIDENCE_FRESHNESS_INVALID",
+      "id": "NEGATIVE_EVIDENCE_STALE",
+      "kind": "negative"
+    },
+    {
+      "actual": "MAIN_EVIDENCE_FRESHNESS_INVALID",
+      "expected": "MAIN_EVIDENCE_FRESHNESS_INVALID",
+      "id": "NEGATIVE_EVIDENCE_FUTURE",
+      "kind": "negative"
+    },
+    {
+      "actual": "MAIN_EVIDENCE_TIER_INVALID",
+      "expected": "MAIN_EVIDENCE_TIER_INVALID",
+      "id": "NEGATIVE_EVIDENCE_LOW_TIER",
+      "kind": "negative"
+    },
+    {
+      "actual": "MAIN_CANDIDATE_COVERAGE_INVALID",
+      "expected": "MAIN_CANDIDATE_COVERAGE_INVALID",
+      "id": "NEGATIVE_CANDIDATE_COVERAGE",
+      "kind": "negative"
+    },
+    {
+      "actual": "MAIN_CRITERION_COVERAGE_INVALID",
+      "expected": "MAIN_CRITERION_COVERAGE_INVALID",
+      "id": "NEGATIVE_CRITERION_COVERAGE",
+      "kind": "negative"
+    },
+    {
+      "actual": "MAIN_SUMMARY_INVALID",
+      "expected": "MAIN_SUMMARY_INVALID",
+      "id": "NEGATIVE_SUMMARY_MISMATCH",
+      "kind": "negative"
+    },
+    {
+      "actual": "MAIN_ACTOR_OWNERSHIP_FORBIDDEN",
+      "expected": "MAIN_ACTOR_OWNERSHIP_FORBIDDEN",
+      "id": "NEGATIVE_MAIN_ACTOR_OWNERSHIP",
+      "kind": "negative"
+    }
+  ],
+  "command_id": "main-part-work-main",
+  "effect_counters": {
+    "external_writes": null,
+    "network_calls": null,
+    "protected_reads": null,
+    "result_artifact_raw_secret_occurrences": 0,
+    "source_tree_hash_unchanged": true,
+    "unauthorized_fixture_effects": 0
+  },
+  "evidence_tier": "E2",
+  "gate_id": "VG-012",
+  "input_hashes": {
+    "context_schema": "b9e22c4bc0f5fe25df7cc67b7abe19c0a9ebc9e3c01c102995feb46ee48fc48a",
+    "product_schema": "25056ed672952c95ccd4e1f944dd884a9de5a9886c6cd3b3a2b87ab2a6d8c9e4",
+    "schema": "3724916b0d58d30d92bdac6f7c5fec20bd8fcf3148bf13dfb76df8c95f2cfe22",
+    "snapshot_schema": "2d0e16fcc65f96e24ba6eb075b74ed10f70c0161e250e35cf1a256a4f73dc3e0",
+    "suite": "570c4b60e417c3bdb9618abbf1aeec9414bf6f0c2f7bf21c19839908c282d144"
+  },
+  "observed_at": "2026-08-02T07:26:08Z",
+  "profile_id": "forgeops-local-vertical",
+  "result_version": "1.0",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 30,
+    "total": 30
+  }
+}

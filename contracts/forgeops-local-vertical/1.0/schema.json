@@ -76,7 +76,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["route", "operation_mode", "response_phase", "risk_level", "evidence_floor", "trace_level"],
       "properties": {
-        "route": {"enum": ["PART_THEN_WORK", "WORK_ONLY", "MAIN_ONLY"]},
+        "route": {"enum": ["DIRECT", "PART_ONLY", "PART_THEN_WORK", "WORK_ONLY", "FORK_JOIN"]},
         "operation_mode": {"enum": ["EXPLORE", "EXECUTE"]},
         "response_phase": {"enum": ["PLAN", "REPORT"]},
         "risk_level": {"enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},

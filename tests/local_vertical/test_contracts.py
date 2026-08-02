@@ -137,6 +137,17 @@ class LocalVerticalContractTests(unittest.TestCase):
                 controls[field]["undeclared_claim"] = "ALLOWED"
                 self.assertTrue(list(Draft202012Validator(schema).iter_errors(suite)))
 
+    def test_control_route_uses_the_protocol_2_0_closed_enum(self):
+        schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
+        for route in ("DIRECT", "PART_ONLY", "PART_THEN_WORK", "WORK_ONLY", "FORK_JOIN"):
+            with self.subTest(route=route):
+                suite = json.loads(SUITE.read_text(encoding="utf-8"))
+                suite["base_fixture"]["trusted_bridge_context"]["canonical_control"]["control"]["route"] = route
+                self.assertEqual([], list(Draft202012Validator(schema).iter_errors(suite)))
+        suite = json.loads(SUITE.read_text(encoding="utf-8"))
+        suite["base_fixture"]["trusted_bridge_context"]["canonical_control"]["control"]["route"] = "MAIN_ONLY"
+        self.assertTrue(list(Draft202012Validator(schema).iter_errors(suite)))
+
     def test_public_result_requires_unobserved_external_surfaces_to_be_null(self):
         schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
         public_result_schema = {"$ref": "#/$defs/public_result", "$defs": schema["$defs"]}

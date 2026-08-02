@@ -160,6 +160,11 @@ project_profile:
       cwd: "."
       evidence_tier: E2
       required: true
+    - id: main-part-work-main
+      command: python tools/local_vertical/verify.py --schema contracts/forgeops-local-vertical/1.0/schema.json --product-schema contracts/product-task-contract/1.0/schema.json --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-local-vertical/suite.json --result artifacts/verification/vg-012-local-vertical-result.json --command-id main-part-work-main
+      cwd: "."
+      evidence_tier: E2
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -225,6 +230,9 @@ project_profile:
           command_ids:
             - context-provenance
             - injection-negative
+        - id: forgeops-local-vertical
+          command_ids:
+            - main-part-work-main
       validation_discovery:
         - pyproject.toml
         - uv.lock

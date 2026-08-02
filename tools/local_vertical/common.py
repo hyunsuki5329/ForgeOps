@@ -52,7 +52,7 @@ def require_strict_utc(raw: object, *, code: str) -> datetime:
     return parsed
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False, eq=False)
 class TrustedExecutionContext:
     """Main/runtime-owned immutable execution input; deliberately not a packet."""
 
@@ -67,17 +67,8 @@ class TrustedExecutionContext:
     validation_at: str
     human_review_result: object | None
 
-    def __post_init__(self) -> None:
-        for name in (
-            "task_packet",
-            "candidate_packet",
-            "approved_candidate_ids",
-            "approved_candidates",
-            "authority",
-            "acceptance_criteria",
-            "human_review_result",
-        ):
-            object.__setattr__(self, name, freeze_json(getattr(self, name)))
+    def __init__(self) -> None:
+        raise TypeError("TrustedExecutionContext is issued only by Main")
 
 
 def canonical_json_bytes(value: object) -> bytes:

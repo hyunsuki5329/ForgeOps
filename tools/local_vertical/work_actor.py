@@ -10,12 +10,14 @@ import tempfile
 from tools.local_vertical.common import (
     TrustedExecutionContext,
     VerticalFlowError,
+    canonical_json_bytes,
     canonical_resource_ref,
     require_id,
     require_strict_utc,
     thaw_json,
     validate_authority,
 )
+from tools.local_vertical.main_actor import validate_main_issued_context
 
 
 _TASK_FIELDS = frozenset(
@@ -99,6 +101,22 @@ def validate_work_task(task: object, current_revision: object) -> dict[str, obje
     ):
         raise VerticalFlowError("WORK_CAPABILITY_DENIED")
     return task
+
+
+def require_exact_authority(
+    task: Mapping[str, object], context: TrustedExecutionContext
+) -> None:
+    """Require the embedded Work task and trusted snapshot to bind identical authority."""
+    try:
+        task_authority = task["payload"]["authority"]
+        trusted_authority = thaw_json(context.authority)
+        matches = canonical_json_bytes(task_authority) == canonical_json_bytes(
+            trusted_authority
+        )
+    except (KeyError, TypeError, VerticalFlowError) as exc:
+        raise VerticalFlowError("WORK_AUTHORITY_CONTEXT_MISMATCH") from exc
+    if not matches:
+        raise VerticalFlowError("WORK_AUTHORITY_CONTEXT_MISMATCH")
 
 
 def _candidate_id(candidate: object) -> str:
@@ -268,6 +286,24 @@ def _validate_result_context(context: TrustedExecutionContext) -> None:
         raise VerticalFlowError("WORK_CONTEXT_INVALID")
 
 
+def _capture_fresh_observed_at(
+    context: TrustedExecutionContext, clock: object
+) -> str:
+    if not callable(clock):
+        raise VerticalFlowError("WORK_OBSERVED_AT_INVALID")
+    observed_at = clock()
+    observed_time = require_strict_utc(
+        observed_at, code="WORK_OBSERVED_AT_INVALID"
+    )
+    validation_time = require_strict_utc(
+        context.validation_at, code="WORK_VALIDATION_AT_INVALID"
+    )
+    age_seconds = (observed_time - validation_time).total_seconds()
+    if not 0 <= age_seconds <= 300:
+        raise VerticalFlowError("WORK_EVIDENCE_FRESHNESS_INVALID")
+    return observed_at
+
+
 def _atomic_replace(target: Path, content: bytes) -> None:
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{target.name}.", suffix=".tmp", dir=target.parent
@@ -364,11 +400,11 @@ def preflight_execute_verify(
     context: object, *, workspace_root: object, source_root: object, clock: object
 ) -> dict[str, object]:
     """Preflight, atomically update, and verify the one approved W6 fixture action."""
-    if not isinstance(context, TrustedExecutionContext):
-        raise VerticalFlowError("WORK_CONTEXT_INVALID")
+    validate_main_issued_context(context)
     task = thaw_json(context.task_packet)
     candidate_packet = thaw_json(context.candidate_packet)
     validate_work_task(task, context.current_revision)
+    require_exact_authority(task, context)
     candidates = validate_approved_coverage(candidate_packet, context)
     if len(candidates) != 1:
         raise VerticalFlowError("WORK_APPROVED_ID_INVALID")
@@ -382,10 +418,7 @@ def preflight_execute_verify(
     if _is_protected(resource_ref, project_profile.get("protected_resources")):
         raise VerticalFlowError("WORK_PROTECTED_RESOURCE_DENIED")
     _validate_result_context(context)
-    if not callable(clock):
-        raise VerticalFlowError("WORK_OBSERVED_AT_INVALID")
-    observed_at = clock()
-    require_strict_utc(observed_at, code="WORK_OBSERVED_AT_INVALID")
+    observed_at = _capture_fresh_observed_at(context, clock)
     target = contained_workspace_target(workspace_root, resource_ref)
     reject_source_target(target, source_root)
     return execute_fixture_update(

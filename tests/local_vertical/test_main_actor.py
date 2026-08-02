@@ -243,6 +243,30 @@ class MainNormalizationTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             context.approved_candidates[0]["candidate_id"] = "CAND-INJECTED"
 
+    def test_only_main_can_construct_and_validate_a_trusted_context(self):
+        """Break caught: treating any caller-constructed ten-field dataclass as Main-issued trust."""
+        context = self.packet()
+        fixture = json.loads(SUITE.read_text(encoding="utf-8"))["base_fixture"]
+        candidate = part_actor.propose_candidates(
+            main_actor.build_part_task(context),
+            fixture["snapshot_manifest"],
+            fixture["context_pack"],
+        )
+        issued = main_actor.approve_candidates(
+            context,
+            candidate,
+            approved_candidate_ids=["CAND-W6-UPDATE"],
+            validation_at="2026-08-02T00:05:00Z",
+            human_review_result=None,
+        )
+
+        direct_values = {
+            field.name: getattr(issued, field.name) for field in fields(issued)
+        }
+        with self.assertRaises(TypeError):
+            common.TrustedExecutionContext(**direct_values)
+        self.assertIsNone(main_actor.validate_main_issued_context(issued))
+
     def test_approval_rejects_invalid_runtime_timestamp(self):
         """Break caught: freezing a non-UTC or normalized validator time into trusted context."""
         task = self.packet()

@@ -1,5 +1,5 @@
 import copy
-from dataclasses import replace
+from dataclasses import fields
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -49,6 +49,12 @@ class WorkActorTests(unittest.TestCase):
     def assert_trees_unchanged(self):
         self.assertEqual(b"before\n", (self.workspace / "fixture/work-item.txt").read_bytes())
         self.assertEqual(b"before\n", (self.source / "fixture/work-item.txt").read_bytes())
+
+    def unregistered_clone(self, context):
+        clone = object.__new__(common.TrustedExecutionContext)
+        for field in fields(context):
+            object.__setattr__(clone, field.name, getattr(context, field.name))
+        return clone
 
     def test_exact_approved_fixture_update_returns_fresh_e2_work_result(self):
         """Break caught: skipping the bounded update or reporting success without fresh E2 evidence."""
@@ -135,49 +141,164 @@ class WorkActorTests(unittest.TestCase):
     def test_preflight_rejects_explore_mode_unknown_write_capability_or_stale_context(self):
         """Break caught: Work mutating without EXECUTE, AVAILABLE write capability, and current revision."""
         context = self.approved_context()
-        cases = []
         explore_task = common.thaw_json(context.task_packet)
         explore_task["payload"]["control"]["operation_mode"] = "EXPLORE"
-        cases.append(("explore", replace(context, task_packet=explore_task), "WORK_OPERATION_MODE_INVALID"))
-        unknown_task = common.thaw_json(context.task_packet)
-        unknown_task["payload"]["capabilities"]["filesystem_write"] = "UNKNOWN"
-        cases.append(("unknown", replace(context, task_packet=unknown_task), "WORK_CAPABILITY_DENIED"))
-        cases.append(("stale", replace(context, current_revision=2), "WORK_REVISION_STALE"))
+        with self.assertRaisesRegex(common.VerticalFlowError, "WORK_OPERATION_MODE_INVALID"):
+            work_actor.validate_work_task(explore_task, context.current_revision)
 
-        for name, mutated, code in cases:
+        with self.assertRaisesRegex(common.VerticalFlowError, "WORK_REVISION_STALE"):
+            work_actor.validate_work_task(
+                common.thaw_json(context.task_packet), context.current_revision + 1
+            )
+
+        unknown_task = copy.deepcopy(self.task_packet)
+        unknown_task["payload"]["capabilities"]["filesystem_write"] = "UNKNOWN"
+        unknown_context = main_actor.approve_candidates(
+            unknown_task,
+            self.candidate_packet,
+            approved_candidate_ids=["CAND-W6-UPDATE"],
+            validation_at="2026-08-02T00:05:00Z",
+            human_review_result=None,
+        )
+        with self.assertRaisesRegex(common.VerticalFlowError, "WORK_CAPABILITY_DENIED"):
+            work_actor.preflight_execute_verify(
+                unknown_context,
+                workspace_root=self.workspace,
+                source_root=self.source,
+                clock=lambda: "2026-08-02T00:05:00Z",
+            )
+        self.assert_trees_unchanged()
+
+    def test_approval_rejects_named_authority_miss_and_invalid_project_effect_scopes(self):
+        """Break caught: unrelated named access or project-wide command/network scope authorizing a write."""
+        cases = []
+        named_miss = copy.deepcopy(self.task_packet)
+        named_miss["payload"]["authority"]["write_resources"] = ["fixture/other.txt"]
+        cases.append(("named-miss", named_miss, "WORK_WRITE_AUTHORITY_DENIED"))
+        project_execute = copy.deepcopy(self.task_packet)
+        project_execute["payload"]["authority"]["execute_scope"] = "PROJECT"
+        cases.append(("project-execute", project_execute, "AUTHORITY_EXECUTE_SCOPE_INVALID"))
+        project_network = copy.deepcopy(self.task_packet)
+        project_network["payload"]["authority"]["network_scope"] = "PROJECT"
+        cases.append(("project-network", project_network, "AUTHORITY_NETWORK_SCOPE_INVALID"))
+
+        for name, task, code in cases:
             with self.subTest(name=name):
                 with self.assertRaisesRegex(common.VerticalFlowError, code):
-                    work_actor.preflight_execute_verify(
-                        mutated,
-                        workspace_root=self.workspace,
-                        source_root=self.source,
-                        clock=lambda: "2026-08-02T00:05:00Z",
+                    main_actor.approve_candidates(
+                        task,
+                        self.candidate_packet,
+                        approved_candidate_ids=["CAND-W6-UPDATE"],
+                        validation_at="2026-08-02T00:05:00Z",
+                        human_review_result=None,
                     )
                 self.assert_trees_unchanged()
 
-    def test_preflight_rejects_named_authority_miss_and_invalid_project_effect_scopes(self):
-        """Break caught: unrelated named access or project-wide command/network scope authorizing a write."""
-        context = self.approved_context()
-        cases = []
-        named_miss = common.thaw_json(context.authority)
-        named_miss["write_resources"] = ["fixture/other.txt"]
-        cases.append(("named-miss", named_miss, "WORK_WRITE_AUTHORITY_DENIED"))
-        project_execute = common.thaw_json(context.authority)
-        project_execute["execute_scope"] = "PROJECT"
-        cases.append(("project-execute", project_execute, "AUTHORITY_EXECUTE_SCOPE_INVALID"))
-        project_network = common.thaw_json(context.authority)
-        project_network["network_scope"] = "PROJECT"
-        cases.append(("project-network", project_network, "AUTHORITY_NETWORK_SCOPE_INVALID"))
+    def test_unregistered_context_is_rejected_before_clock_or_effect(self):
+        """Break caught: trusting an object.__new__ clone solely because its ten fields match."""
+        calls = []
+        forged = self.unregistered_clone(self.approved_context())
 
-        for name, authority, code in cases:
+        try:
+            with self.assertRaisesRegex(
+                common.VerticalFlowError, "WORK_CONTEXT_PROVENANCE_INVALID"
+            ):
+                work_actor.preflight_execute_verify(
+                    forged,
+                    workspace_root=self.workspace,
+                    source_root=self.source,
+                    clock=lambda: calls.append("called") or "2026-08-02T00:05:00Z",
+                )
+        finally:
+            self.assertEqual([], calls)
+            self.assert_trees_unchanged()
+
+    def test_issued_context_digest_mismatch_is_rejected_before_clock_or_effect(self):
+        """Break caught: object.__setattr__ changing an issued field without invalidating trust."""
+        calls = []
+        context = self.approved_context()
+        object.__setattr__(context, "validation_at", "2026-08-02T00:04:59Z")
+
+        try:
+            with self.assertRaisesRegex(
+                common.VerticalFlowError, "WORK_CONTEXT_PROVENANCE_INVALID"
+            ):
+                work_actor.preflight_execute_verify(
+                    context,
+                    workspace_root=self.workspace,
+                    source_root=self.source,
+                    clock=lambda: calls.append("called") or "2026-08-02T00:05:00Z",
+                )
+        finally:
+            self.assertEqual([], calls)
+            self.assert_trees_unchanged()
+
+    def test_embedded_task_authority_mismatch_is_rejected_before_clock_or_effect(self):
+        """Break caught: embedded Work TaskPacket authority diverging from trusted authority."""
+        calls = []
+        context = self.approved_context()
+        mismatched_task = common.thaw_json(context.task_packet)
+        mismatched_task["payload"]["authority"]["write_resources"] = [
+            "fixture/other.txt"
+        ]
+        with self.assertRaisesRegex(
+            common.VerticalFlowError, "WORK_AUTHORITY_CONTEXT_MISMATCH"
+        ):
+            work_actor.require_exact_authority(mismatched_task, context)
+        object.__setattr__(context, "task_packet", common.freeze_json(mismatched_task))
+
+        try:
+            with self.assertRaisesRegex(
+                common.VerticalFlowError, "WORK_CONTEXT_PROVENANCE_INVALID"
+            ):
+                work_actor.preflight_execute_verify(
+                    context,
+                    workspace_root=self.workspace,
+                    source_root=self.source,
+                    clock=lambda: calls.append("called") or "2026-08-02T00:05:00Z",
+                )
+        finally:
+            self.assertEqual([], calls)
+            self.assert_trees_unchanged()
+
+    def test_observed_time_accepts_exact_zero_and_300_second_boundaries(self):
+        """Break caught: rejecting either inclusive edge of the approved evidence window."""
+        for observed_at in ("2026-08-02T00:05:00Z", "2026-08-02T00:10:00Z"):
+            with self.subTest(observed_at=observed_at):
+                (self.workspace / "fixture/work-item.txt").write_bytes(b"before\n")
+                result = work_actor.preflight_execute_verify(
+                    self.approved_context(),
+                    workspace_root=self.workspace,
+                    source_root=self.source,
+                    clock=lambda value=observed_at: value,
+                )
+                self.assertEqual(
+                    observed_at, result["payload"]["evidence"][0]["observed_at"]
+                )
+                self.assertEqual(
+                    b"after\n",
+                    (self.workspace / "fixture/work-item.txt").read_bytes(),
+                )
+                self.assertEqual(
+                    b"before\n", (self.source / "fixture/work-item.txt").read_bytes()
+                )
+
+    def test_observed_time_rejects_future_or_stale_values_before_effect(self):
+        """Break caught: accepting evidence before Main's anchor or more than 300 seconds after it."""
+        for name, observed_at in (
+            ("before-anchor", "2026-08-02T00:04:59Z"),
+            ("stale", "2026-08-02T00:10:01Z"),
+        ):
             with self.subTest(name=name):
-                mutated = replace(context, authority=authority)
-                with self.assertRaisesRegex(common.VerticalFlowError, code):
+                (self.workspace / "fixture/work-item.txt").write_bytes(b"before\n")
+                with self.assertRaisesRegex(
+                    common.VerticalFlowError, "WORK_EVIDENCE_FRESHNESS_INVALID"
+                ):
                     work_actor.preflight_execute_verify(
-                        mutated,
+                        self.approved_context(),
                         workspace_root=self.workspace,
                         source_root=self.source,
-                        clock=lambda: "2026-08-02T00:05:00Z",
+                        clock=lambda value=observed_at: value,
                     )
                 self.assert_trees_unchanged()
 

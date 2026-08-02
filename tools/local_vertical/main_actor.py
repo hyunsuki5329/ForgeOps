@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import copy
+import hmac
+import weakref
 from collections.abc import Mapping
 
 from jsonschema import Draft202012Validator
@@ -15,6 +17,7 @@ from tools.local_vertical.common import (
     freeze_json,
     require_id,
     require_strict_utc,
+    thaw_json,
     validate_authority,
 )
 
@@ -98,6 +101,21 @@ _PART_EVIDENCE_FIELDS = frozenset(
     {"id", "tier", "type", "source", "observation", "observed_revision"}
 )
 _EVIDENCE_TIERS = frozenset({"E0", "E1", "E2", "E3"})
+_TRUSTED_CONTEXT_FIELDS = (
+    "task_packet",
+    "candidate_packet",
+    "current_revision",
+    "approved_candidate_ids",
+    "approved_candidates",
+    "authority",
+    "candidate_evidence_floor",
+    "acceptance_criteria",
+    "validation_at",
+    "human_review_result",
+)
+_ISSUED_CONTEXT_DIGESTS: weakref.WeakKeyDictionary[TrustedExecutionContext, str] = (
+    weakref.WeakKeyDictionary()
+)
 
 
 def _copy_mapping(value: object, *, code: str) -> dict[str, object]:
@@ -207,6 +225,28 @@ def build_part_task(task_packet: object) -> dict[str, object]:
     control["route"] = "PART_THEN_WORK"
     control["operation_mode"] = "EXPLORE"
     return task
+
+
+def _trusted_context_digest(context: TrustedExecutionContext) -> str:
+    try:
+        values = {
+            name: thaw_json(getattr(context, name)) for name in _TRUSTED_CONTEXT_FIELDS
+        }
+        return canonical_sha256(values)
+    except (AttributeError, BridgeError, VerticalFlowError, TypeError, ValueError) as exc:
+        raise VerticalFlowError("WORK_CONTEXT_PROVENANCE_INVALID") from exc
+
+
+def validate_main_issued_context(context: object) -> None:
+    """Fail closed unless this exact immutable object was issued unchanged by Main."""
+    if not isinstance(context, TrustedExecutionContext):
+        raise VerticalFlowError("WORK_CONTEXT_PROVENANCE_INVALID")
+    issued_digest = _ISSUED_CONTEXT_DIGESTS.get(context)
+    if issued_digest is None:
+        raise VerticalFlowError("WORK_CONTEXT_PROVENANCE_INVALID")
+    observed_digest = _trusted_context_digest(context)
+    if not hmac.compare_digest(issued_digest, observed_digest):
+        raise VerticalFlowError("WORK_CONTEXT_PROVENANCE_INVALID")
 
 
 def _require_work_approval_task(task_packet: object) -> dict[str, object]:
@@ -482,15 +522,20 @@ def approve_candidates(
         {"criterion_id": criterion_id, "evidence_floor": evidence_floor}
         for criterion_id in criterion_ids
     ]
-    return TrustedExecutionContext(
-        task_packet=freeze_json(work_task),
-        candidate_packet=freeze_json(packet),
-        current_revision=task["base_revision"],
-        approved_candidate_ids=tuple(approved_candidate_ids),
-        approved_candidates=freeze_json(validated_candidates),
-        authority=freeze_json(authority),
-        candidate_evidence_floor=evidence_floor,
-        acceptance_criteria=freeze_json(acceptance_criteria),
-        validation_at=validation_at,
-        human_review_result=freeze_json(human_review_result),
-    )
+    issued_values = {
+        "task_packet": work_task,
+        "candidate_packet": packet,
+        "current_revision": task["base_revision"],
+        "approved_candidate_ids": approved_candidate_ids,
+        "approved_candidates": validated_candidates,
+        "authority": authority,
+        "candidate_evidence_floor": evidence_floor,
+        "acceptance_criteria": acceptance_criteria,
+        "validation_at": validation_at,
+        "human_review_result": human_review_result,
+    }
+    context = object.__new__(TrustedExecutionContext)
+    for name in _TRUSTED_CONTEXT_FIELDS:
+        object.__setattr__(context, name, freeze_json(issued_values[name]))
+    _ISSUED_CONTEXT_DIGESTS[context] = _trusted_context_digest(context)
+    return context

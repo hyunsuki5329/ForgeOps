@@ -64,7 +64,12 @@ def require_id(raw: object, *, code: str = "ID_INVALID") -> str:
 
 
 def canonical_resource_ref(raw: object) -> str:
-    if not isinstance(raw, str) or not raw or "\\" in raw or "*" in raw:
+    if (
+        not isinstance(raw, str)
+        or not raw
+        or "\\" in raw
+        or any(character in raw for character in "*?[]")
+    ):
         raise VerticalFlowError("RESOURCE_IDENTITY_NONCANONICAL")
     path = PurePosixPath(raw)
     if (
@@ -74,6 +79,32 @@ def canonical_resource_ref(raw: object) -> str:
         or "//" in raw
     ):
         raise VerticalFlowError("RESOURCE_IDENTITY_NONCANONICAL")
+    return raw
+
+
+def canonical_network_host(raw: object) -> str:
+    """Require an exact lower-case ASCII DNS hostname with an optional TCP port."""
+    if not isinstance(raw, str) or not raw or raw != raw.strip() or not raw.isascii():
+        raise VerticalFlowError("NETWORK_IDENTITY_NONCANONICAL")
+    if raw.count(":") > 1:
+        raise VerticalFlowError("NETWORK_IDENTITY_NONCANONICAL")
+
+    hostname = raw
+    if ":" in raw:
+        hostname, port = raw.split(":", 1)
+        if not port or not port.isdecimal() or not 1 <= int(port) <= 65535:
+            raise VerticalFlowError("NETWORK_IDENTITY_NONCANONICAL")
+    if not 1 <= len(hostname) <= 253:
+        raise VerticalFlowError("NETWORK_IDENTITY_NONCANONICAL")
+
+    for label in hostname.split("."):
+        if (
+            not 1 <= len(label) <= 63
+            or label[0] == "-"
+            or label[-1] == "-"
+            or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789-" for character in label)
+        ):
+            raise VerticalFlowError("NETWORK_IDENTITY_NONCANONICAL")
     return raw
 
 
@@ -125,6 +156,20 @@ def _copy_id_list(raw: object, *, kind: str) -> list[str]:
     return values
 
 
+def _copy_network_host_list(raw: object) -> list[str]:
+    if not isinstance(raw, list):
+        raise VerticalFlowError("AUTHORITY_NETWORK_LIST_INVALID")
+    values: list[str] = []
+    for item in raw:
+        try:
+            values.append(canonical_network_host(item))
+        except VerticalFlowError as exc:
+            raise VerticalFlowError("AUTHORITY_NETWORK_VALUE_INVALID") from exc
+    if len(values) != len(set(values)):
+        raise VerticalFlowError("AUTHORITY_NETWORK_DUPLICATE")
+    return values
+
+
 def _validate_resource_branch(scope: object, raw_values: object) -> tuple[str, list[str]]:
     if not isinstance(scope, str) or scope not in _RESOURCE_SCOPES:
         raise VerticalFlowError("AUTHORITY_RESOURCE_SCOPE_INVALID")
@@ -154,6 +199,17 @@ def _validate_named_branch(
     return scope, values
 
 
+def _validate_network_branch(scope: object, raw_values: object) -> tuple[str, list[str]]:
+    if not isinstance(scope, str) or scope not in _NETWORK_SCOPES:
+        raise VerticalFlowError("AUTHORITY_NETWORK_SCOPE_INVALID")
+    values = _copy_network_host_list(raw_values)
+    if scope == "NAMED_HOSTS" and not values:
+        raise VerticalFlowError("AUTHORITY_NETWORK_LIST_REQUIRED")
+    if scope in {"NONE", "UNKNOWN"} and values:
+        raise VerticalFlowError("AUTHORITY_NETWORK_LIST_FORBIDDEN")
+    return scope, values
+
+
 def validate_authority(authority: object) -> dict[str, object]:
     """Validate exact authority branches without granting or normalizing authority."""
     if not isinstance(authority, dict):
@@ -174,15 +230,11 @@ def validate_authority(authority: object) -> dict[str, object]:
         named_scope="NAMED_COMMANDS",
         valid_scopes=_EXECUTE_SCOPES,
     )
-    network_scope, network_hosts = _validate_named_branch(
-        authority["network_scope"],
-        authority["network_hosts"],
-        kind="NETWORK",
-        named_scope="NAMED_HOSTS",
-        valid_scopes=_NETWORK_SCOPES,
+    network_scope, network_hosts = _validate_network_branch(
+        authority["network_scope"], authority["network_hosts"]
     )
     for field in ("destructive_actions", "external_side_effects"):
-        if authority[field] not in _EFFECT_FLAGS:
+        if not isinstance(authority[field], str) or authority[field] not in _EFFECT_FLAGS:
             raise VerticalFlowError("AUTHORITY_EFFECT_FLAG_INVALID")
 
     return {

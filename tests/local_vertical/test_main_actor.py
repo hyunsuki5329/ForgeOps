@@ -80,6 +80,55 @@ class MainNormalizationTests(unittest.TestCase):
                 with self.assertRaisesRegex(common.VerticalFlowError, code):
                     common.validate_authority(authority)
 
+    def test_resource_pattern_metacharacters_are_not_canonical_resource_refs(self):
+        """Break caught: interpreting glob patterns as named resource authority."""
+        for resource_ref in ("fixture/?.txt", "fixture/[ab].txt", "fixture/a].txt"):
+            with self.subTest(resource_ref=resource_ref):
+                with self.assertRaisesRegex(
+                    common.VerticalFlowError, "RESOURCE_IDENTITY_NONCANONICAL"
+                ):
+                    common.canonical_resource_ref(resource_ref)
+
+    def test_network_hosts_require_canonical_lower_case_dns_with_optional_valid_port(self):
+        """Break caught: treating URLs, malformed DNS names, or invalid ports as named hosts."""
+        invalid_hosts = (
+            "API.EXAMPLE.COM:0",
+            "https://api.example.com",
+            "api.example.com/path",
+            "api.example.com?query",
+            "api.example.com#fragment",
+            "user@api.example.com",
+            "api..example.com",
+            "-api.example.com",
+            "api-.example.com",
+            "api.example.com:65536",
+            "api.example.com:1:2",
+            "api.example.com:port",
+            "api.example.com:0",
+            " api.example.com",
+        )
+        for host in invalid_hosts:
+            with self.subTest(host=host):
+                authority = copy.deepcopy(self.bridge_context["canonical_control"]["authority"])
+                authority["network_scope"] = "NAMED_HOSTS"
+                authority["network_hosts"] = [host]
+                with self.assertRaisesRegex(common.VerticalFlowError, "AUTHORITY_NETWORK_VALUE_INVALID"):
+                    common.validate_authority(authority)
+
+        authority = copy.deepcopy(self.bridge_context["canonical_control"]["authority"])
+        authority["network_scope"] = "NAMED_HOSTS"
+        authority["network_hosts"] = ["api.example.com:443"]
+        self.assertEqual(["api.example.com:443"], common.validate_authority(authority)["network_hosts"])
+
+    def test_non_string_effect_flags_are_closed_errors(self):
+        """Break caught: leaking a runtime TypeError from an unhashable effect flag."""
+        for field in ("destructive_actions", "external_side_effects"):
+            with self.subTest(field=field):
+                authority = copy.deepcopy(self.bridge_context["canonical_control"]["authority"])
+                authority[field] = []
+                with self.assertRaisesRegex(common.VerticalFlowError, "AUTHORITY_EFFECT_FLAG_INVALID"):
+                    common.validate_authority(authority)
+
     def test_project_execute_or_network_scope_fails_closed(self):
         """Break caught: treating PROJECT as executable or network authority."""
         for field, code in (

@@ -1,0 +1,91 @@
+{
+  "cases": [
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_PROGRESS_CONTINUES",
+      "kind": "positive"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_SIGNATURE_CHANGE_CONTINUES",
+      "kind": "positive"
+    },
+    {
+      "actual": "NO_PROGRESS_STOPPED",
+      "expected": "NO_PROGRESS_STOPPED",
+      "id": "NEGATIVE_IDENTICAL_SIGNATURE",
+      "kind": "negative"
+    },
+    {
+      "actual": "NO_PROGRESS_STOPPED",
+      "expected": "NO_PROGRESS_STOPPED",
+      "id": "NEGATIVE_EVIDENCE_UNCHANGED",
+      "kind": "negative"
+    },
+    {
+      "actual": "NO_PROGRESS_STOPPED",
+      "expected": "NO_PROGRESS_STOPPED",
+      "id": "NEGATIVE_DIFF_UNCHANGED",
+      "kind": "negative"
+    },
+    {
+      "actual": "NO_PROGRESS_STOPPED",
+      "expected": "NO_PROGRESS_STOPPED",
+      "id": "NEGATIVE_NO_PROGRESS_LIMIT",
+      "kind": "negative"
+    },
+    {
+      "actual": "DISPATCH_FORBIDDEN",
+      "expected": "DISPATCH_FORBIDDEN",
+      "id": "NEGATIVE_REPAIR_AFTER_STOP",
+      "kind": "negative"
+    },
+    {
+      "actual": "BUDGET_REPAIR_EXCEEDED",
+      "expected": "BUDGET_REPAIR_EXCEEDED",
+      "id": "NEGATIVE_BUDGET_PRECEDENCE",
+      "kind": "negative"
+    },
+    {
+      "actual": "PROGRESS_INPUT_INVALID",
+      "expected": "PROGRESS_INPUT_INVALID",
+      "id": "NEGATIVE_NONCANONICAL_SIGNATURE",
+      "kind": "negative"
+    },
+    {
+      "actual": "NO_PROGRESS_STOPPED",
+      "expected": "NO_PROGRESS_STOPPED",
+      "id": "NEGATIVE_UNTRUSTED_PROGRESS",
+      "kind": "negative"
+    }
+  ],
+  "command_id": "no-progress-stop",
+  "effect_counters": {
+    "adapter_cleanup_residues": 0,
+    "external_write_attempts": 0,
+    "network_calls": null,
+    "os_mount_residue": null,
+    "os_process_tree_residue": null,
+    "result_artifact_raw_secret_occurrences": 0,
+    "source_tree_hash_unchanged": true,
+    "unauthorized_dispatches": 0
+  },
+  "evidence_tier": "E2",
+  "gate_id": "VG-014",
+  "input_hashes": {
+    "profile_source": "d5a7b3feb4ff231ce32e8e28e7b9458a99065f814a88c42ce43eb686c264db17",
+    "schema": "bfc64c48af63006b7a91d25a2def4d4811f466f972e2de379b5a0e9a1e1b6c09",
+    "suite": "8ff793f3f70ecd156b60471a9c0a101fad85d2636ad8cfc62581f962173a33b7"
+  },
+  "observed_at": "2026-08-18T16:56:55Z",
+  "profile_id": "forgeops-lifecycle-budget",
+  "result_version": "1.0",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 10,
+    "total": 10
+  }
+}

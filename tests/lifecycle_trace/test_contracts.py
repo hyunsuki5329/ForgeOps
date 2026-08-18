@@ -1,8 +1,11 @@
 import json
+import hashlib
 from pathlib import Path
 import unittest
 
 from jsonschema import Draft202012Validator
+
+from tools.lifecycle_trace import verify
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -93,13 +96,45 @@ class LifecycleTraceContractTests(unittest.TestCase):
         self.assertIn("        - id: forgeops-lifecycle-budget\n", text)
         self.assertIn("        - id: forgeops-trace-manifest\n", text)
 
-    def test_w8_scope_is_not_completed_early(self):
+    def test_w8_scope_is_completed_only_with_acceptance_evidence(self):
         wbs = (ROOT / "docs/project/wbs.md").read_text(encoding="utf-8")
         for number in (23, 24, 25):
             line = next(line for line in wbs.splitlines() if line.startswith(f"| WBS-0{number}"))
-            self.assertIn("| WBS_NOT_STARTED |", line)
+            self.assertIn("| WBS_DONE |", line)
         self.assertIn("W8 lifecycle/trace scope note", wbs)
         self.assertIn("VG-008 E3", wbs)
+        self.assertIn("W8 acceptance note", wbs)
+        self.assertIn("48/48 fresh E2 `PASSED`", wbs)
+
+    def test_committed_evidence_is_current_public_safe_and_documented(self):
+        schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
+        result_schema = {"$ref": "#/$defs/publicResult", "$defs": schema["$defs"]}
+        totals = {"budget-cancel-negative": 16, "no-progress-stop": 10,
+                  "trace-manifest-completeness": 12, "external-write-negative": 10}
+        input_hashes = {
+            "schema": hashlib.sha256(SCHEMA.read_bytes()).hexdigest(),
+            "suite": hashlib.sha256(SUITE.read_bytes()).hexdigest(),
+            "profile_source": verify._profile_source_hash(ROOT),
+        }
+        rtm = (ROOT / "docs/project/requirements-traceability-matrix.md").read_text(encoding="utf-8")
+        for command_id, total in totals.items():
+            with self.subTest(command_id=command_id):
+                result = json.loads((ROOT / verify.TRUSTED_COMMANDS[command_id]).read_text(encoding="utf-8"))
+                self.assertEqual([], list(Draft202012Validator(result_schema).iter_errors(result)))
+                self.assertEqual("PASSED", result["status"])
+                self.assertEqual({"total": total, "passed": total, "failed": 0}, result["summary"])
+                self.assertEqual(input_hashes, result["input_hashes"])
+                counters = result["effect_counters"]
+                self.assertTrue(counters["source_tree_hash_unchanged"])
+                for name in ("unauthorized_dispatches", "adapter_cleanup_residues",
+                             "external_write_attempts", "result_artifact_raw_secret_occurrences"):
+                    self.assertEqual(0, counters[name])
+                for name in ("os_process_tree_residue", "os_mount_residue", "network_calls"):
+                    self.assertIsNone(counters[name])
+                self.assertIn(result["observed_at"], rtm)
+        viewer = (ROOT / verify.VIEWER_REF).read_text(encoding="utf-8").lower()
+        for token in ("<script", "<form", "http://", "https://", "file://"):
+            self.assertNotIn(token, viewer)
 
 
 if __name__ == "__main__":

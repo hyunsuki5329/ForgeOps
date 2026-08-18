@@ -1,6 +1,6 @@
 import unittest
 
-from tools.lifecycle_trace.model import LifecycleError
+from tools.lifecycle_trace.model import LifecycleError, canonical_hash
 from tools.lifecycle_trace.trace import ExternalWriteGate, TraceManifest, render_trace_html
 
 
@@ -71,10 +71,63 @@ class TraceManifestTests(unittest.TestCase):
 
     def test_html_escapes_untrusted_text(self):
         trace = valid_manifest()
-        trace.events[0]["event_type"] = "<img src=x onerror=alert(1)>"
+        trace.events[0]["code"] = "<img src=x onerror=alert(1)>"
         html = render_trace_html(trace.to_dict())
         self.assertNotIn("<img", html)
         self.assertIn("&lt;img", html)
+
+    def test_events_are_closed_with_phase_code_and_strict_utc(self):
+        trace = valid_manifest()
+        manifest = trace.validate()
+        expected_keys = {"seq", "revision", "actor", "phase", "code", "observed_at",
+                         "evidence_refs", "artifact_refs"}
+        self.assertEqual(expected_keys, set(manifest["events"][0]))
+        self.assertEqual("TASK_ACCEPTED", manifest["events"][0]["code"])
+        self.assertTrue(manifest["events"][0]["observed_at"].endswith("Z"))
+        trace.events[0]["observed_at"] = "2026-08-19 00:00:00"
+        with self.assertRaisesRegex(LifecycleError, "TRACE_TIME_INVALID"):
+            trace.validate()
+
+    def test_identity_budget_and_manifest_self_hash_are_verified(self):
+        trace = valid_manifest()
+        manifest = trace.validate()
+        self.assertEqual({"state", "usage", "limits"}, set(manifest["budget"]))
+        self.assertRegex(manifest["manifest_hash"], r"^[0-9a-f]{64}$")
+        trace.identities["task_id"] = "bad"
+        with self.assertRaisesRegex(LifecycleError, "TRACE_IDENTITY_INVALID"):
+            trace.validate()
+        trace = valid_manifest()
+        trace._manifest_hash = "0" * 64
+        with self.assertRaisesRegex(LifecycleError, "TRACE_MANIFEST_INVALID"):
+            trace.validate()
+
+    def test_event_unknown_field_and_active_viewer_content_are_absent(self):
+        trace = valid_manifest()
+        trace.events[0]["unknown"] = True
+        with self.assertRaisesRegex(LifecycleError, "TRACE_EVENT_INVALID"):
+            trace.validate()
+        html = render_trace_html(valid_manifest().validate()).lower()
+        for token in ("<script", "<form", "http://", "https://", "file://"):
+            self.assertNotIn(token, html)
+        self.assertIn("budget", html)
+        self.assertIn("cleanup", html)
+        self.assertIn("next actions", html)
+
+    def test_budget_terminal_and_cleanup_shapes_are_recursively_closed(self):
+        mutations = (
+            lambda trace: trace.budget.update({"unknown": 1}),
+            lambda trace: trace.budget["usage"].update({"unknown": 1}),
+            lambda trace: trace.budget["limits"].update({"unknown": 1}),
+            lambda trace: trace.terminal.update({"unknown": 1}),
+            lambda trace: trace.cleanup.update({"unknown": 1}),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                trace = valid_manifest()
+                mutate(trace)
+                trace._manifest_hash = canonical_hash(trace._body())
+                with self.assertRaisesRegex(LifecycleError, "TRACE_(MANIFEST|CLEANUP)_INVALID"):
+                    trace.validate()
 
 
 class ExternalWriteGateTests(unittest.TestCase):

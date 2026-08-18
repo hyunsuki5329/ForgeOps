@@ -1,6 +1,6 @@
 import unittest
 
-from tools.lifecycle_trace.budget import BudgetController, BudgetLimits, NoProgressGuard
+from tools.lifecycle_trace.budget import BudgetController, BudgetLimits, BudgetUsage, NoProgressGuard
 from tools.lifecycle_trace.model import LifecycleError
 
 
@@ -40,11 +40,29 @@ class BudgetTests(unittest.TestCase):
             self.budget.reserve("repair_attempts", 1)
 
     def test_unknown_or_nonpositive_reservation_is_rejected(self):
-        for dimension, amount in (("unknown", 1), ("tokens", 0), ("tokens", -1)):
+        for dimension, amount in (("unknown", 1), ("tokens", 0), ("tokens", -1),
+                                  ("tokens", True), ("tokens", 1.5)):
             with self.subTest(dimension=dimension, amount=amount):
                 budget = BudgetController(self.limits, clock_ms=lambda: 0)
                 with self.assertRaisesRegex(LifecycleError, "BUDGET_INPUT_INVALID"):
                     budget.reserve(dimension, amount)
+
+    def test_batch_reservation_is_atomic_and_usage_is_closed(self):
+        self.assertIsInstance(self.budget.usage, BudgetUsage)
+        with self.assertRaisesRegex(LifecycleError, "BUDGET_COMMAND_EXCEEDED"):
+            self.budget.reserve_many({"tokens": 10, "command_calls": 4})
+        self.assertEqual(0, self.budget.usage.tokens)
+        self.assertEqual(0, self.budget.usage.command_calls)
+        budget = BudgetController(self.limits, clock_ms=lambda: 0)
+        with self.assertRaisesRegex(LifecycleError, "BUDGET_TOKEN_EXCEEDED"):
+            budget.reserve_many({"command_calls": 4, "tokens": 101})
+        self.assertEqual(BudgetUsage(), budget.usage)
+
+    def test_bool_or_noninteger_limit_is_rejected(self):
+        for value in (True, 1.5):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(LifecycleError, "BUDGET_INPUT_INVALID"):
+                    BudgetLimits(value, 100, 4, 3, 2, 500)
 
 
 class NoProgressTests(unittest.TestCase):

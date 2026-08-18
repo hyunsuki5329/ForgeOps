@@ -74,6 +74,29 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual("STOPPED", run.state)
         self.assertEqual("BUDGET_TIME_EXCEEDED", run.terminal_reason)
 
+    def test_dispatch_reserves_atomically_and_records_only_after_admission(self):
+        run = LifecycleRun(budget())
+        run.dispatch("ACTION-1", {"tokens": 10, "command_calls": 1})
+        self.assertEqual(("ACTION-1",), run.dispatched_actions)
+        self.assertEqual(10, run.budget.usage.tokens)
+        with self.assertRaisesRegex(LifecycleError, "BUDGET_COMMAND_EXCEEDED"):
+            run.dispatch("ACTION-2", {"tokens": 10, "command_calls": 3})
+        self.assertEqual(("ACTION-1",), run.dispatched_actions)
+        self.assertEqual(10, run.budget.usage.tokens)
+
+    def test_allocate_finish_and_invalid_terminal_inputs_are_closed(self):
+        run = LifecycleRun(budget())
+        run.resources.allocate("leases", "LEASE-1")
+        receipt = run.finish("SUCCESS")
+        self.assertEqual("COMPLETED", run.state)
+        self.assertEqual(0, receipt["remaining"]["leases"])
+        with self.assertRaisesRegex(LifecycleError, "DISPATCH_FORBIDDEN"):
+            run.dispatch("ACTION-1", {"tokens": 1})
+        for reason in ("raw reason", ""):
+            with self.subTest(reason=reason):
+                with self.assertRaisesRegex(LifecycleError, "LIFECYCLE_INPUT_INVALID"):
+                    LifecycleRun(budget()).cancel(reason)
+
 
 if __name__ == "__main__":
     unittest.main()

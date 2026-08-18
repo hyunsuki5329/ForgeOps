@@ -1,0 +1,103 @@
+{
+  "cases": [
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_SUCCESS_TRACE",
+      "kind": "positive"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_CANCEL_TRACE",
+      "kind": "positive"
+    },
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_BUDGET_TRACE",
+      "kind": "positive"
+    },
+    {
+      "actual": "TRACE_SEQUENCE_INVALID",
+      "expected": "TRACE_SEQUENCE_INVALID",
+      "id": "NEGATIVE_EVENT_GAP",
+      "kind": "negative"
+    },
+    {
+      "actual": "TRACE_SEQUENCE_INVALID",
+      "expected": "TRACE_SEQUENCE_INVALID",
+      "id": "NEGATIVE_EVENT_REORDER",
+      "kind": "negative"
+    },
+    {
+      "actual": "TRACE_REVISION_INVALID",
+      "expected": "TRACE_REVISION_INVALID",
+      "id": "NEGATIVE_REVISION_DECREASE",
+      "kind": "negative"
+    },
+    {
+      "actual": "TRACE_ACTOR_INVALID",
+      "expected": "TRACE_ACTOR_INVALID",
+      "id": "NEGATIVE_ACTOR_INVALID",
+      "kind": "negative"
+    },
+    {
+      "actual": "TRACE_REFERENCE_INVALID",
+      "expected": "TRACE_REFERENCE_INVALID",
+      "id": "NEGATIVE_EVIDENCE_DANGLING",
+      "kind": "negative"
+    },
+    {
+      "actual": "TRACE_REFERENCE_INVALID",
+      "expected": "TRACE_REFERENCE_INVALID",
+      "id": "NEGATIVE_ARTIFACT_DANGLING",
+      "kind": "negative"
+    },
+    {
+      "actual": "TRACE_CLEANUP_INVALID",
+      "expected": "TRACE_CLEANUP_INVALID",
+      "id": "NEGATIVE_CLEANUP_MISSING",
+      "kind": "negative"
+    },
+    {
+      "actual": "TRACE_TERMINAL_INVALID",
+      "expected": "TRACE_TERMINAL_INVALID",
+      "id": "NEGATIVE_TERMINAL_REASON",
+      "kind": "negative"
+    },
+    {
+      "actual": "TRACE_NEXT_ACTION_INVALID",
+      "expected": "TRACE_NEXT_ACTION_INVALID",
+      "id": "NEGATIVE_NEXT_ACTION",
+      "kind": "negative"
+    }
+  ],
+  "command_id": "trace-manifest-completeness",
+  "effect_counters": {
+    "adapter_cleanup_residues": 0,
+    "external_write_attempts": 0,
+    "network_calls": null,
+    "os_mount_residue": null,
+    "os_process_tree_residue": null,
+    "result_artifact_raw_secret_occurrences": 0,
+    "source_tree_hash_unchanged": true,
+    "unauthorized_dispatches": 0
+  },
+  "evidence_tier": "E2",
+  "gate_id": "VG-015",
+  "input_hashes": {
+    "profile_source": "d5a7b3feb4ff231ce32e8e28e7b9458a99065f814a88c42ce43eb686c264db17",
+    "schema": "bfc64c48af63006b7a91d25a2def4d4811f466f972e2de379b5a0e9a1e1b6c09",
+    "suite": "8ff793f3f70ecd156b60471a9c0a101fad85d2636ad8cfc62581f962173a33b7"
+  },
+  "observed_at": "2026-08-18T16:56:56Z",
+  "profile_id": "forgeops-trace-manifest",
+  "result_version": "1.0",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 12,
+    "total": 12
+  }
+}

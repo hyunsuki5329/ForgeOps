@@ -244,14 +244,17 @@ external-write-negative: 10/10 PASSED
 
 ## Completion checklist
 
-- [ ] All five tasks have independent commits and tests.
-- [ ] All 48 registered cases pass at E2.
-- [ ] Observed dispatch, cleanup, external-write, and secret counters are safe.
-- [ ] OS-wide unobserved counters remain `null`.
-- [ ] Static viewer is deterministic and contains no active content.
-- [ ] WBS-023~025 are done; WBS-026 onward remain not started.
-- [ ] VG-014/VG-015 are passed without claiming Phase 1 Exit.
-- [ ] Full regression and branch-wide diff checks pass.
+- [x] All five tasks have independent commits and tests.
+- [x] All 48 registered cases pass at E2.
+- [x] Observed dispatch, cleanup, external-write, and secret counters are safe.
+- [x] OS-wide unobserved counters remain `null`.
+- [x] Static viewer is deterministic and contains no active content.
+- [x] WBS-023~025 are done; WBS-026 onward remain not started.
+- [x] VG-014/VG-015 are passed without claiming Phase 1 Exit.
+- [x] Full regression and branch-wide diff checks pass.
+
+Fresh completion evidence: W8 focused tests 44/44; registered VG-014/VG-015
+cases 48/48; repository tests 516 passed with 7 documented optional skips.
 
 ## Execution decision
 

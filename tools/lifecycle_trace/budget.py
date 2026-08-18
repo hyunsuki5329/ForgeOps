@@ -17,8 +17,26 @@ class BudgetLimits:
     cost_microunits: int
 
     def __post_init__(self) -> None:
-        if any(value <= 0 for value in self.__dict__.values()):
+        if any(not isinstance(value, int) or isinstance(value, bool) or value <= 0
+               for value in self.__dict__.values()):
             raise LifecycleError("BUDGET_INPUT_INVALID")
+
+
+@dataclass
+class BudgetUsage:
+    tokens: int = 0
+    tool_calls: int = 0
+    command_calls: int = 0
+    repair_attempts: int = 0
+    cost_microunits: int = 0
+
+    def __getitem__(self, dimension: str) -> int:
+        if dimension not in ERRORS:
+            raise KeyError(dimension)
+        return getattr(self, dimension)
+
+    def as_dict(self) -> dict[str, int]:
+        return {name: getattr(self, name) for name in ERRORS}
 
 
 ERRORS = {
@@ -37,13 +55,15 @@ class BudgetController:
         self._started_at = clock_ms()
         self.state = "ACTIVE"
         self.stop_reason: str | None = None
-        self.usage = {name: 0 for name in ERRORS}
+        self.usage = BudgetUsage()
 
     def _stop(self, code: str) -> None:
         self.state = "STOPPED"
         self.stop_reason = code
 
     def stop(self, code: str) -> None:
+        if not isinstance(code, str) or not CANONICAL_NAME.fullmatch(code):
+            raise LifecycleError("BUDGET_INPUT_INVALID")
         if self.state == "ACTIVE":
             self._stop(code)
 
@@ -63,12 +83,33 @@ class BudgetController:
             code = ERRORS[dimension]
             self._stop(code)
             raise LifecycleError(code)
-        self.usage[dimension] = projected
+        setattr(self.usage, dimension, projected)
+
+    def reserve_many(self, reservations: dict[str, int]) -> None:
+        if not isinstance(reservations, dict) or not reservations:
+            raise LifecycleError("BUDGET_INPUT_INVALID")
+        self.authorize_dispatch()
+        if any(dimension not in ERRORS or not isinstance(amount, int)
+               or isinstance(amount, bool) or amount <= 0
+               for dimension, amount in reservations.items()):
+            raise LifecycleError("BUDGET_INPUT_INVALID")
+        projected: dict[str, int] = {}
+        for dimension in ERRORS:
+            if dimension not in reservations:
+                continue
+            amount = reservations[dimension]
+            projected[dimension] = self.usage[dimension] + amount
+            if projected[dimension] > getattr(self.limits, dimension):
+                code = ERRORS[dimension]
+                self._stop(code)
+                raise LifecycleError(code)
+        for dimension, value in projected.items():
+            setattr(self.usage, dimension, value)
 
     def snapshot(self) -> dict[str, object]:
         return {"state": self.state, "stop_reason": self.stop_reason,
                 "elapsed_ms": max(0, self._clock_ms() - self._started_at),
-                "usage": dict(self.usage), "limits": dict(self.limits.__dict__)}
+                "usage": self.usage.as_dict(), "limits": dict(self.limits.__dict__)}
 
 
 class NoProgressGuard:

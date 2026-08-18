@@ -34,6 +34,9 @@ class ResourceLedger:
             raise LifecycleError("RESOURCE_INPUT_INVALID")
         self._items[kind].add(resource_id)
 
+    def allocate(self, kind: str, resource_id: str) -> None:
+        self.acquire(kind, resource_id)
+
     def counts(self) -> dict[str, int]:
         return {kind: len(self._items[kind]) for kind in self.KINDS}
 
@@ -58,6 +61,11 @@ class LifecycleRun:
         self.terminal_reason: str | None = None
         self._cleanup_receipt: dict[str, object] | None = None
         self._cleanup_hash: str | None = None
+        self._dispatched_actions: list[str] = []
+
+    @property
+    def dispatched_actions(self) -> tuple[str, ...]:
+        return tuple(self._dispatched_actions)
 
     def authorize_dispatch(self) -> None:
         if self.state == "CANCELLED":
@@ -69,7 +77,22 @@ class LifecycleRun:
         except LifecycleError as error:
             self.state = "STOPPED"
             self.terminal_reason = error.code
+            self.cleanup()
             raise
+
+    def dispatch(self, action_id: str, reservations: dict[str, int]) -> None:
+        if not isinstance(action_id, str) or not RESOURCE_ID.fullmatch(action_id):
+            raise LifecycleError("LIFECYCLE_INPUT_INVALID")
+        self.authorize_dispatch()
+        try:
+            self.budget.reserve_many(reservations)
+        except LifecycleError as error:
+            if self.budget.state == "STOPPED":
+                self.state = "STOPPED"
+                self.terminal_reason = error.code
+                self.cleanup()
+            raise
+        self._dispatched_actions.append(action_id)
 
     def cleanup(self) -> dict[str, object]:
         if self._cleanup_receipt is not None:
@@ -86,6 +109,8 @@ class LifecycleRun:
             return self.cleanup()
         if self.state != "ACTIVE":
             raise LifecycleError("DISPATCH_FORBIDDEN")
+        if not isinstance(reason, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]{0,63}", reason):
+            raise LifecycleError("LIFECYCLE_INPUT_INVALID")
         self.state = "CANCELLED"
         self.terminal_reason = reason
         self.budget.stop("RUN_CANCELLED")
@@ -98,4 +123,15 @@ class LifecycleRun:
         self.state = "COMPLETED"
         self.terminal_reason = "SUCCESS"
         self.budget.stop("SUCCESS")
+        return receipt
+
+    def finish(self, reason: str) -> dict[str, object]:
+        if reason == "SUCCESS":
+            return self.complete()
+        if reason != "FAILED" or self.state != "ACTIVE":
+            raise LifecycleError("LIFECYCLE_INPUT_INVALID" if self.state == "ACTIVE" else "DISPATCH_FORBIDDEN")
+        receipt = self.cleanup()
+        self.state = "FAILED"
+        self.terminal_reason = reason
+        self.budget.stop(reason)
         return receipt

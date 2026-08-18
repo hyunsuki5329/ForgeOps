@@ -1,0 +1,91 @@
+{
+  "cases": [
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_NO_EXTERNAL_WRITE",
+      "kind": "positive"
+    },
+    {
+      "actual": "EXTERNAL_ACTION_FORBIDDEN",
+      "expected": "EXTERNAL_ACTION_FORBIDDEN",
+      "id": "NEGATIVE_DIRECT_PUBLISH",
+      "kind": "negative"
+    },
+    {
+      "actual": "EXTERNAL_GATEWAY_REQUIRED",
+      "expected": "EXTERNAL_GATEWAY_REQUIRED",
+      "id": "NEGATIVE_GATEWAY_BYPASS",
+      "kind": "negative"
+    },
+    {
+      "actual": "EXTERNAL_TARGET_INVALID",
+      "expected": "EXTERNAL_TARGET_INVALID",
+      "id": "NEGATIVE_REMOTE_TARGET",
+      "kind": "negative"
+    },
+    {
+      "actual": "EXTERNAL_APPROVAL_REQUIRED",
+      "expected": "EXTERNAL_APPROVAL_REQUIRED",
+      "id": "NEGATIVE_APPROVAL_ABSENT",
+      "kind": "negative"
+    },
+    {
+      "actual": "EXTERNAL_APPROVAL_INVALID",
+      "expected": "EXTERNAL_APPROVAL_INVALID",
+      "id": "NEGATIVE_APPROVAL_MISMATCH",
+      "kind": "negative"
+    },
+    {
+      "actual": "EXTERNAL_EFFECT_DUPLICATE",
+      "expected": "EXTERNAL_EFFECT_DUPLICATE",
+      "id": "NEGATIVE_DUPLICATE_EFFECT",
+      "kind": "negative"
+    },
+    {
+      "actual": "EXTERNAL_DENIAL_TRACE_MISSING",
+      "expected": "EXTERNAL_DENIAL_TRACE_MISSING",
+      "id": "NEGATIVE_DENIAL_NOT_TRACED",
+      "kind": "negative"
+    },
+    {
+      "actual": "EXTERNAL_EFFECT_OBSERVED",
+      "expected": "EXTERNAL_EFFECT_OBSERVED",
+      "id": "NEGATIVE_EFFECT_OBSERVED",
+      "kind": "negative"
+    },
+    {
+      "actual": "RESULT_SECRET_DETECTED",
+      "expected": "RESULT_SECRET_DETECTED",
+      "id": "NEGATIVE_RAW_SECRET",
+      "kind": "negative"
+    }
+  ],
+  "command_id": "external-write-negative",
+  "effect_counters": {
+    "adapter_cleanup_residues": 0,
+    "external_write_attempts": 0,
+    "network_calls": null,
+    "os_mount_residue": null,
+    "os_process_tree_residue": null,
+    "result_artifact_raw_secret_occurrences": 0,
+    "source_tree_hash_unchanged": true,
+    "unauthorized_dispatches": 0
+  },
+  "evidence_tier": "E2",
+  "gate_id": "VG-015",
+  "input_hashes": {
+    "profile_source": "d5a7b3feb4ff231ce32e8e28e7b9458a99065f814a88c42ce43eb686c264db17",
+    "schema": "bfc64c48af63006b7a91d25a2def4d4811f466f972e2de379b5a0e9a1e1b6c09",
+    "suite": "8ff793f3f70ecd156b60471a9c0a101fad85d2636ad8cfc62581f962173a33b7"
+  },
+  "observed_at": "2026-08-18T16:56:57Z",
+  "profile_id": "forgeops-trace-manifest",
+  "result_version": "1.0",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 10,
+    "total": 10
+  }
+}

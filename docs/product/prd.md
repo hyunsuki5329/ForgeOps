@@ -100,7 +100,7 @@ ForgeOps는 자연어 개발 요청을 구조화된 작업 계약으로 바꾸�
 | PRD-FR-010 | Phase 1 | 필수 | IMPLEMENTED | Main 정규화·라우팅, Part 분석, Work 실행·검증, Main 수용 흐름이 한 local run에서 완료된다.<br>근거: 역할 분리는 이름이 아니라 상태·권한·검증 소유권으로 입증되어야 한다. | local run 하나에서 각 actor 경계가 보존되고 필수 evidence를 검증한 MainDecision만 최종 결과를 확정한다. | VG-012 |
 | PRD-FR-011 | Phase 1 | 필수 | IMPLEMENTED | patch와 diff는 ephemeral workspace에만 적용되고 외부 write는 발생하지 않는다.<br>근거: local vertical slice가 원본과 원격 시스템을 손상시키지 않아야 한다. | 모든 changed resource가 run workspace에 한정되고 원본 저장소, verifier가 관찰한 workspace 외부 경로, remote에는 write가 발생하지 않는다. OS 전체 host-write 부재는 후속 E3/통합 gate가 소유한다. | VG-013 |
 | PRD-FR-012 | Phase 1 | 필수 | IMPLEMENTED | task test, regression test, lint, typecheck가 trusted profile과 fresh evidence로 판정된다.<br>근거: 모델의 완료 서술이나 agent가 만든 테스트만으로 성공을 판정할 수 없다. | 적용 가능한 trusted command가 exact profile로 실행되고 각 필수 criterion이 요구 floor의 fresh evidence에 연결된다. | VG-013 |
-| PRD-FR-013 | Phase 1 | 필수 | PLANNED | budget, cancellation, cleanup, 기본 trace viewer가 terminal path를 설명한다.<br>근거: bounded autonomy는 중단과 자원 정리 및 다음 행동이 사용자에게 보여야 한다. | 정상·취소·예산 초과·실패 경로에서 terminal 이유, resource cleanup, 사용 budget, 허용된 다음 행동이 trace에 나타난다. | VG-014, VG-015 |
+| PRD-FR-013 | Phase 1 | 필수 | SPECIFIED | budget, cancellation, cleanup, 기본 trace viewer가 terminal path를 설명한다.<br>근거: bounded autonomy는 중단과 자원 정리 및 다음 행동이 사용자에게 보여야 한다. W8 local adapter와 48-case VG-014/VG-015 E2 evidence가 이 범위를 구현하며 W9 safety aggregation과 Phase 1 Exit는 남아 있다. | 정상·취소·예산 초과·실패 경로에서 terminal 이유, resource cleanup, 사용 budget, 허용된 다음 행동이 trace에 나타난다. | VG-014, VG-015 |
 | PRD-FR-014 | Phase 2 | 필수 | PLANNED | failure signature와 diagnosis evidence bundle이 환경·의존성·테스트·구현 실패를 분류한다.<br>근거: 실패 원인별 대응을 분리해야 무의미하거나 위험한 patch 재시도를 막을 수 있다. | 동일 evidence에는 안정적인 signature와 분류가 생성되고 로그·diff·baseline·이전 시도 reference가 진단에 연결된다. | VG-016 |
 | PRD-FR-015 | Phase 2 | 필수 | PLANNED | bounded repair가 새 evidence가 있을 때만 재시도하고 no-progress에서 중단한다.<br>근거: 무한 반복과 같은 실패의 재생산은 비용과 변경 위험을 키운다. | 새 signature, evidence 또는 가설 변화가 없는 반복은 실행되지 않고 budget 또는 no-progress 사유로 종료된다. | VG-016 |
 | PRD-FR-016 | Phase 2 | 필수 | PLANNED | execution, rule, rubric, human evaluation이 결정론적 실패를 덮지 않는다.<br>근거: 정성 점수 하나가 회귀나 안전 위반을 성공으로 뒤집어서는 안 된다. | execution 또는 필수 rule 실패가 있으면 rubric이나 human score와 무관하게 해당 criterion은 성공으로 승격되지 않는다. | VG-017 |
@@ -138,7 +138,7 @@ ForgeOps는 자연어 개발 요청을 구조화된 작업 계약으로 바꾸�
 | Phase | 릴리스 수준 Exit gate | 현재 결과 |
 | --- | --- | --- |
 | Phase 0 | example schema와 Harness conformance 통과, invalid transition/authority와 approval deny/expiry/nonce reuse fail-closed, sandbox containment와 secret fixture 100%. | NOT_RUN — PLANNED 제품 산출물과 실행 증빙이 아직 없음 |
-| Phase 1 | 모든 필수 criterion E2 이상, unauthorized execution 0, cleanup failure 0, external write 0. | NOT_RUN — W6 local vertical slice와 W7 VG-013은 구현됐지만 VG-014·VG-015, 남은 safety/runtime gate 및 Phase 1 Exit 증빙이 없음 |
+| Phase 1 | 모든 필수 criterion E2 이상, unauthorized execution 0, cleanup failure 0, external write 0. | NOT_RUN — W6 local vertical slice, W7 VG-013과 W8 VG-014/VG-015는 구현됐지만 W9 safety aggregation과 Phase 1 Exit 증빙이 없음 |
 | Phase 2 | 최소 5회 반복과 사전 고정 평가 계약, unauthorized action 0, raw secret 0, critical injection escape 0, task-success paired 95% CI lower bound greater than 0, regression-rate paired 95% CI upper bound less than 0. | NOT_RUN — PLANNED recovery와 evaluation runtime이 아직 없음 |
 | Phase 3 | idempotency, expired approval, duplicate webhook, unauthorized external write 시험 통과. | NOT_RUN — PLANNED controlled integration이 아직 없음 |
 | Phase 4 | rolling 30-day SLO 충족과 security invariant 위반 0. | NOT_RUN — PLANNED 운영 window 측정이 아직 없음 |

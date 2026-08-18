@@ -30,7 +30,8 @@ ForgeOps는 AI 에이전트가 소프트웨어 작업을 수행할 때 필요한
 - **W5:** content-addressed immutable snapshot, trusted baseline runner, deterministic Context Pack과 VG-010/VG-011 E2 검증을 구현했습니다. WBS-013~015는 완료됐습니다.
 - **W6:** Product Task를 Main이 정규화하고 Part가 read-only 후보를 제안한 뒤, Main-issued immutable context로 Work의 exact fixture action을 제한하고 Main만 accepted revision과 canonical event sequence를 확정하는 local vertical flow를 구현했습니다. VG-012는 30/30 사례가 fresh E2 `PASSED`입니다.
 - **W7:** 원본과 분리된 workspace의 bounded patch/canonical diff, code-owned task·regression·lint·typecheck profile, baseline differential과 test/coverage/profile anti-tamper를 구현했습니다. VG-013 세 명령은 합계 27/27 사례가 fresh E2 `PASSED`입니다.
-- **Phase 0:** 등록된 18개 필수 결과가 모두 `PASSED`이고 blockers 0으로 `READY`입니다. W1~W7의 해당 범위는 완료됐지만 VG-014·VG-015, lifecycle, Phase 1 safety gate·Exit 및 배포 작업은 아직 완료되지 않았습니다.
+- **W8:** fail-closed budget·no-progress stop, cancellation과 5종 adapter cleanup, closed trace manifest, 정적 viewer와 external-write gateway를 구현했습니다. VG-014/VG-015 네 명령은 합계 48/48 사례가 fresh E2 `PASSED`입니다.
+- **Phase 0:** 등록된 18개 필수 결과가 모두 `PASSED`이고 blockers 0으로 `READY`입니다. W1~W8의 해당 범위는 완료됐지만 W9, Phase 1 safety gate·Exit 및 배포 작업은 아직 완료되지 않았습니다.
 
 ## 검증 실행
 
@@ -46,7 +47,9 @@ W5는 `forgeops-snapshot-baseline`과 `forgeops-context-security` 프로필의 �
 
 W6는 `forgeops-local-vertical` 프로필의 `main-part-work-main` 명령으로 검증합니다. 결과는 `artifacts/verification/vg-012-local-vertical-result.json`에 30/30 E2 `PASSED`, source tree hash unchanged, unauthorized fixture effect 0으로 기록됩니다.
 
-W7은 `forgeops-patch-verification` 프로필의 `task-checks`, `regression-checks`, `verification-anti-tamper` 명령으로 검증합니다. 세 결과는 `artifacts/verification/vg-013-*-result.json`에 각각 9/9 E2 `PASSED`로 기록되며, 관찰된 unauthorized workspace effect·outside-workspace write attempt·remote write attempt·raw secret occurrence는 모두 0입니다. OS 전체 host write와 network call은 이 로컬 E2 검증에서 관찰하지 않아 `null`입니다. VG-014·VG-015와 Phase 1 safety gate·Exit는 아직 증명하지 않습니다.
+W7은 `forgeops-patch-verification` 프로필의 `task-checks`, `regression-checks`, `verification-anti-tamper` 명령으로 검증합니다. 세 결과는 `artifacts/verification/vg-013-*-result.json`에 각각 9/9 E2 `PASSED`로 기록되며, 관찰된 unauthorized workspace effect·outside-workspace write attempt·remote write attempt·raw secret occurrence는 모두 0입니다. OS 전체 host write와 network call은 이 로컬 E2 검증에서 관찰하지 않아 `null`입니다.
+
+W8은 `forgeops-lifecycle-budget`과 `forgeops-trace-manifest` 프로필의 네 등록 명령으로 검증합니다. `artifacts/verification/vg-014-*-result.json`과 `vg-015-*-result.json`에 16/16, 10/10, 12/12, 10/10 E2 `PASSED`가 기록되며 정적 trace viewer는 `artifacts/reviews/w8-trace-viewer.html`입니다. OS process tree·mount·network는 기존 VG-008 E3가 소유하고 W8 결과에서는 `null`입니다. W9와 Phase 1 safety gate·Exit는 아직 완료되지 않았습니다.
 
 ## 문서 안내
 

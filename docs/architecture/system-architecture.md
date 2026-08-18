@@ -117,6 +117,8 @@ fresh fixture로 검증된 bridge 범위의 ARC-002·ARC-010에 적용한다. �
 | ARC-013 | SPECIFIED | Approval-bound external effect와 replay mode 경계 | ARC-003, ARC-006, ARC-011 | PRD-FR-006, PRD-FR-018, PRD-FR-025, PRD-NFR-002, PRD-NFR-005 |
 | ARC-014 | PLANNED | Phase별 deployment topology와 미결정 기술 선택의 결정 경계 | ARC-003, ARC-004, ARC-005, ARC-006, ARC-007, ARC-008, ARC-009, ARC-010, ARC-011, ARC-012, ARC-013, phase Exit gate | PRD-FR-007, PRD-FR-021, PRD-FR-022, PRD-NFR-003, PRD-NFR-007 |
 
+**W8 local lifecycle/trace slice:** ARC-003/004/011/012 책임의 로컬 subset은 `tools/lifecycle_trace`의 fail-closed budget, no-progress stop, cancellation/cleanup, closed trace manifest, static viewer와 external-write gateway로 구현됐다. VG-014/VG-015 네 명령이 48/48 E2 `PASSED`를 기록한다. 실제 process tree·mount·network 격리와 teardown은 기존 VG-008 E3가 소유하고, W9 safety aggregation 및 제품 runtime이 남아 관련 ARC의 전체 maturity는 바꾸지 않는다.
+
 구성요소 간 통신은 versioned schema와 stable identity를 사용하고, 저장된
 event나 manifest는 실행 권한의 근거가 아니다. Control Plane이 승인 UI를
 제공하더라도 승인 자체가 capability, authority 또는 tool availability를

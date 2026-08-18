@@ -170,6 +170,26 @@ project_profile:
       cwd: "."
       evidence_tier: E2
       required: true
+    - id: budget-cancel-negative
+      command: python tools/lifecycle_trace/verify.py --schema contracts/forgeops-lifecycle-trace/1.0/schema.json --suite fixtures/forgeops-lifecycle-trace/suite.json --result artifacts/verification/vg-014-budget-cancel-result.json --command-id budget-cancel-negative
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: no-progress-stop
+      command: python tools/lifecycle_trace/verify.py --schema contracts/forgeops-lifecycle-trace/1.0/schema.json --suite fixtures/forgeops-lifecycle-trace/suite.json --result artifacts/verification/vg-014-no-progress-result.json --command-id no-progress-stop
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: trace-manifest-completeness
+      command: python tools/lifecycle_trace/verify.py --schema contracts/forgeops-lifecycle-trace/1.0/schema.json --suite fixtures/forgeops-lifecycle-trace/suite.json --result artifacts/verification/vg-015-trace-manifest-result.json --command-id trace-manifest-completeness
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: external-write-negative
+      command: python tools/lifecycle_trace/verify.py --schema contracts/forgeops-lifecycle-trace/1.0/schema.json --suite fixtures/forgeops-lifecycle-trace/suite.json --result artifacts/verification/vg-015-external-write-result.json --command-id external-write-negative
+      cwd: "."
+      evidence_tier: E2
+      required: true
     - id: regression-checks
       command: python tools/patch_verification/verify.py --schema contracts/forgeops-patch-verification/1.0/schema.json --suite fixtures/forgeops-patch-verification/suite.json --result artifacts/verification/vg-013-regression-checks-result.json --command-id regression-checks
       cwd: "."
@@ -253,6 +273,14 @@ project_profile:
             - task-checks
             - regression-checks
             - verification-anti-tamper
+        - id: forgeops-lifecycle-budget
+          command_ids:
+            - budget-cancel-negative
+            - no-progress-stop
+        - id: forgeops-trace-manifest
+          command_ids:
+            - trace-manifest-completeness
+            - external-write-negative
       validation_discovery:
         - pyproject.toml
         - uv.lock

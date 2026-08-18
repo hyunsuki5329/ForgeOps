@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forgeops.dev/contracts/forgeops-lifecycle-trace/1.0/schema.json",
+  "title": "ForgeOps lifecycle trace verification suite",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["suite_version", "profiles", "base_fixture", "cases"],
+  "properties": {
+    "suite_version": {"const": "1.0"},
+    "profiles": {
+      "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+      "prefixItems": [
+        {"const": "forgeops-lifecycle-budget"},
+        {"const": "forgeops-trace-manifest"}
+      ],
+      "items": false
+    },
+    "base_fixture": {"$ref": "#/$defs/baseFixture"},
+    "cases": {
+      "type": "array", "minItems": 48, "maxItems": 48,
+      "items": {"$ref": "#/$defs/case"}
+    }
+  },
+  "$defs": {
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["time_ms", "tokens", "tool_calls", "command_calls", "repair_attempts", "cost_microunits"],
+      "properties": {
+        "time_ms": {"type": "integer", "minimum": 1},
+        "tokens": {"type": "integer", "minimum": 1},
+        "tool_calls": {"type": "integer", "minimum": 1},
+        "command_calls": {"type": "integer", "minimum": 1},
+        "repair_attempts": {"type": "integer", "minimum": 1},
+        "cost_microunits": {"type": "integer", "minimum": 1}
+      }
+    },
+    "identities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["task_id", "run_id", "correlation_id"],
+      "properties": {
+        "task_id": {"type": "string", "pattern": "^TASK-[A-Z0-9-]+$"},
+        "run_id": {"type": "string", "pattern": "^RUN-[A-Z0-9-]+$"},
+        "correlation_id": {"type": "string", "pattern": "^CORR-[A-Z0-9-]+$"}
+      }
+    },
+    "baseFixture": {
+      "type": "object", "additionalProperties": false,
+      "required": ["limits", "no_progress_limit", "validation_at", "identities", "evidence_catalog", "artifact_catalog", "resources"],
+      "properties": {
+        "limits": {"$ref": "#/$defs/limits"},
+        "no_progress_limit": {"type": "integer", "minimum": 1},
+        "validation_at": {"type": "string", "format": "date-time"},
+        "identities": {"$ref": "#/$defs/identities"},
+        "evidence_catalog": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^EVID-[A-Z0-9-]+$"}},
+        "artifact_catalog": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^ART-[A-Z0-9-]+$"}},
+        "resources": {
+          "type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true,
+          "prefixItems": [
+            {"const": "processes"}, {"const": "mounts"}, {"const": "leases"},
+            {"const": "transient_secrets"}, {"const": "workspaces"}
+          ],
+          "items": false
+        }
+      }
+    },
+    "case": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "command_id", "kind", "mutation", "expected"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^(POSITIVE|NEGATIVE)_[A-Z0-9_]+$"},
+        "command_id": {"enum": ["budget-cancel-negative", "no-progress-stop", "trace-manifest-completeness", "external-write-negative"]},
+        "kind": {"enum": ["positive", "negative"]},
+        "mutation": {"type": "string", "pattern": "^[A-Z0-9_]+$"},
+        "expected": {"type": "string", "pattern": "^(PASSED|[A-Z][A-Z0-9_]+)$"}
+      }
+    },
+    "caseResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "expected", "actual"],
+      "properties": {
+        "id": {"type": "string"},
+        "kind": {"enum": ["positive", "negative"]},
+        "expected": {"type": "string"},
+        "actual": {"type": "string"}
+      }
+    },
+    "publicResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["result_version", "gate_id", "profile_id", "command_id", "status", "evidence_tier", "observed_at", "input_hashes", "summary", "effect_counters", "cases"],
+      "properties": {
+        "result_version": {"const": "1.0"},
+        "gate_id": {"enum": ["VG-014", "VG-015"]},
+        "profile_id": {"enum": ["forgeops-lifecycle-budget", "forgeops-trace-manifest"]},
+        "command_id": {"enum": ["budget-cancel-negative", "no-progress-stop", "trace-manifest-completeness", "external-write-negative"]},
+        "status": {"enum": ["PASSED", "FAILED"]},
+        "evidence_tier": {"const": "E2"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "input_hashes": {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema", "suite", "profile_source"],
+          "properties": {
+            "schema": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "suite": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "profile_source": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          }
+        },
+        "summary": {
+          "type": "object", "additionalProperties": false,
+          "required": ["total", "passed", "failed"],
+          "properties": {
+            "total": {"type": "integer", "minimum": 0},
+            "passed": {"type": "integer", "minimum": 0},
+            "failed": {"type": "integer", "minimum": 0}
+          }
+        },
+        "effect_counters": {
+          "type": "object", "additionalProperties": false,
+          "required": ["source_tree_hash_unchanged", "unauthorized_dispatches", "adapter_cleanup_residues", "external_write_attempts", "result_artifact_raw_secret_occurrences", "os_process_tree_residue", "os_mount_residue", "network_calls"],
+          "properties": {
+            "source_tree_hash_unchanged": {"type": "boolean"},
+            "unauthorized_dispatches": {"type": "integer", "minimum": 0},
+            "adapter_cleanup_residues": {"type": "integer", "minimum": 0},
+            "external_write_attempts": {"type": "integer", "minimum": 0},
+            "result_artifact_raw_secret_occurrences": {"type": "integer", "minimum": 0},
+            "os_process_tree_residue": {"type": "null"},
+            "os_mount_residue": {"type": "null"},
+            "network_calls": {"type": "null"}
+          }
+        },
+        "cases": {"type": "array", "items": {"$ref": "#/$defs/caseResult"}}
+      }
+    }
+  }
+}

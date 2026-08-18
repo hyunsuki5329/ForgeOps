@@ -112,6 +112,8 @@ Expected evidence type은 Protocol 2.0의 closed evidence type 중 향후 생성
 
 **W7 acceptance note — WBS-020~WBS-022:** 등록된 `forgeops-patch-verification` 프로필의 `task-checks`, `regression-checks`, `verification-anti-tamper`가 각각 9/9, 합계 27/27 사례를 fresh E2 `PASSED`로 기록했다. 세 결과의 failed case, unauthorized workspace effect, outside-workspace write attempt, remote write attempt와 raw secret occurrence는 모두 0이다. 따라서 WBS-020~WBS-022는 `WBS_DONE`이다. OS 전체 host write와 network call은 이 로컬 E2 범위에서 관찰하지 않아 `null`이며, VG-015·W8 이후·Phase 1 Exit는 완료로 선언하지 않는다.
 
+**W8 lifecycle/trace scope note — WBS-023~WBS-025:** W8은 결정론적 로컬 lifecycle adapter의 budget, no-progress, cancellation, cleanup, trace manifest와 external-write denial을 VG-014/VG-015 E2로 검증한다. 실제 Linux process tree, mount와 network 경계는 기존 VG-008 E3가 계속 소유하며, W8 공개 결과의 해당 OS 관측값은 추정하지 않고 `null`로 유지한다.
+
 | ID | Phase | Week | Status | person-day | Predecessor | PRD IDs | Exit | VG IDs | Expected evidence type |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | WBS-033 | Phase 2 | N/A (상위 마일스톤) | WBS_NOT_STARTED | N/A (상위 마일스톤) | WBS-032 | PRD-FR-014, PRD-FR-015, PRD-FR-016, PRD-FR-017, PRD-FR-025, PRD-NFR-001, PRD-NFR-005, PRD-NFR-008, PRD-NFR-010 | bounded repair and benchmark go/no-go | VG-016, VG-017, VG-018 | test, runtime |

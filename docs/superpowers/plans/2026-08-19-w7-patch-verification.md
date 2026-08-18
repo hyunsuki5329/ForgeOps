@@ -654,7 +654,7 @@ Only after Step 6 succeeds:
 
 ```powershell
 python -m unittest discover -s tests -v
-python -m py_compile tools/patch_verification/*.py tests/patch_verification/*.py
+python -m py_compile tools/patch_verification/__init__.py tools/patch_verification/model.py tools/patch_verification/patch.py tools/patch_verification/profiles.py tools/patch_verification/anti_tamper.py tools/patch_verification/verify.py tests/patch_verification/__init__.py tests/patch_verification/test_contracts.py tests/patch_verification/test_patch.py tests/patch_verification/test_profiles.py tests/patch_verification/test_anti_tamper.py tests/patch_verification/test_verify.py
 git diff --check
 git status --short
 ```

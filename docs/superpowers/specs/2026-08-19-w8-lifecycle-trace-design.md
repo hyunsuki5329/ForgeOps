@@ -1,8 +1,8 @@
 # W8 Lifecycle Budget, Cleanup, and Trace Design
 
-**Date:** 2026-08-19  
-**Status:** Approved for implementation  
-**Base:** `feature/w7-patch-verification` (`a831ae8`)  
+**Date:** 2026-08-19
+**Status:** Approved for implementation
+**Base:** `feature/w7-patch-verification` (`a831ae8`)
 **Scope:** WBS-023~WBS-025, VG-014, VG-015
 
 ## 1. Goal and evidence boundary

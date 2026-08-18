@@ -179,11 +179,11 @@ class PatchVerificationContractTests(unittest.TestCase):
         self.assertLess(profile_block.index("- task-checks"), profile_block.index("- regression-checks"))
         self.assertLess(profile_block.index("- regression-checks"), profile_block.index("- verification-anti-tamper"))
 
-    def test_wbs_assigns_w7_to_vg013_without_completing_it_early(self):
+    def test_wbs_assigns_completed_w7_only_to_vg013(self):
         rows = _parse_wbs_rows()
         for wbs_id in ("WBS-020", "WBS-021", "WBS-022"):
             with self.subTest(wbs_id=wbs_id):
-                self.assertEqual("WBS_NOT_STARTED", rows[wbs_id]["status"])
+                self.assertEqual("WBS_DONE", rows[wbs_id]["status"])
                 self.assertEqual(("VG-013",), _comma_ids(rows[wbs_id]["vg_ids"]))
         wbs = (ROOT / "docs/project/wbs.md").read_text(encoding="utf-8")
         self.assertIn("W7/VG-013 patch verification", wbs)

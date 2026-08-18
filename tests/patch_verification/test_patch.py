@@ -83,6 +83,29 @@ class BoundedPatchTests(unittest.TestCase):
             "PATCH_CONTAINMENT_VIOLATION", source=self.source, workspace=self.source
         )
 
+    def test_source_and_workspace_roots_cannot_overlap(self):
+        nested_workspace = self.source / "nested-workspace"
+        materialize_fixture(nested_workspace, SUITE["base_fixture"]["files"])
+        source_before = tree_hash(self.source)
+        workspace_before = tree_hash(nested_workspace)
+        with self.assertRaises(PatchVerificationError) as caught:
+            apply_bounded_patch(
+                self.source, nested_workspace, self.intent, audit=self.audit
+            )
+        self.assertEqual("PATCH_CONTAINMENT_VIOLATION", caught.exception.code)
+        self.assertEqual(source_before, tree_hash(self.source))
+        self.assertEqual(workspace_before, tree_hash(nested_workspace))
+        self.assertEqual(0, self.audit.workspace_writes)
+
+        nested_source = self.workspace / "nested-source"
+        materialize_fixture(nested_source, SUITE["base_fixture"]["files"])
+        with self.assertRaises(PatchVerificationError) as caught:
+            apply_bounded_patch(
+                nested_source, self.workspace, self.intent, audit=self.audit
+            )
+        self.assertEqual("PATCH_CONTAINMENT_VIOLATION", caught.exception.code)
+        self.assertEqual(0, self.audit.workspace_writes)
+
     def test_raw_or_malformed_intent_is_rejected(self):
         mutations = []
         extra = copy.deepcopy(self.intent)

@@ -1,0 +1,85 @@
+{
+  "cases": [
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_GUARDS_UNCHANGED",
+      "kind": "positive"
+    },
+    {
+      "actual": "TEST_DELETED",
+      "expected": "TEST_DELETED",
+      "id": "NEGATIVE_TEST_DELETE",
+      "kind": "negative"
+    },
+    {
+      "actual": "TEST_SKIP_INJECTED",
+      "expected": "TEST_SKIP_INJECTED",
+      "id": "NEGATIVE_SKIP_INJECTION",
+      "kind": "negative"
+    },
+    {
+      "actual": "TEST_XFAIL_INJECTED",
+      "expected": "TEST_XFAIL_INJECTED",
+      "id": "NEGATIVE_XFAIL_INJECTION",
+      "kind": "negative"
+    },
+    {
+      "actual": "ASSERTION_WEAKENED",
+      "expected": "ASSERTION_WEAKENED",
+      "id": "NEGATIVE_ASSERTION_WEAKEN",
+      "kind": "negative"
+    },
+    {
+      "actual": "COVERAGE_POLICY_CHANGED",
+      "expected": "COVERAGE_POLICY_CHANGED",
+      "id": "NEGATIVE_COVERAGE_EXCLUSION",
+      "kind": "negative"
+    },
+    {
+      "actual": "VERIFICATION_PROFILE_CHANGED",
+      "expected": "VERIFICATION_PROFILE_CHANGED",
+      "id": "NEGATIVE_PROFILE_CHANGE",
+      "kind": "negative"
+    },
+    {
+      "actual": "TEST_PATH_INVALID",
+      "expected": "TEST_PATH_INVALID",
+      "id": "NEGATIVE_TEST_SYMLINK",
+      "kind": "negative"
+    },
+    {
+      "actual": "TEST_PATH_INVALID",
+      "expected": "TEST_PATH_INVALID",
+      "id": "NEGATIVE_TEST_RENAME",
+      "kind": "negative"
+    }
+  ],
+  "command_id": "verification-anti-tamper",
+  "effect_counters": {
+    "host_external_writes": null,
+    "network_calls": null,
+    "outside_workspace_write_attempts": 0,
+    "remote_write_attempts": 0,
+    "result_artifact_raw_secret_occurrences": 0,
+    "source_tree_hash_unchanged": true,
+    "unauthorized_workspace_effects": 0
+  },
+  "evidence_tier": "E2",
+  "gate_id": "VG-013",
+  "input_hashes": {
+    "profile_source": "6be352eff5ee7ddf37e96e2e790ea95351732d1731280d5c0e5b4d47d68d024a",
+    "schema": "e76413cea2fc1007315c1c36740e1ecaa292197ed76b9be2b9a23fe25189d30b",
+    "suite": "c7f451850a8eaca964ba322e9144898a0e585e7444f14b75007b8d924546cc0e"
+  },
+  "observed_at": "2026-08-18T15:32:37Z",
+  "profile_digest": "cf779479dd356af4006bc3862e179174f724cde3dceed7c02b72970a97f49cdb",
+  "profile_id": "forgeops-patch-verification",
+  "result_version": "1.0",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 9,
+    "total": 9
+  }
+}

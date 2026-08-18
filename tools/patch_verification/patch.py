@@ -108,6 +108,8 @@ def apply_bounded_patch(
         raise PatchVerificationError("PATCH_CONTAINMENT_VIOLATION") from error
     if (
         source_resolved == workspace_resolved
+        or source_resolved in workspace_resolved.parents
+        or workspace_resolved in source_resolved.parents
         or not source_resolved.is_dir()
         or not workspace_resolved.is_dir()
         or _is_reparse_or_symlink(source_root)

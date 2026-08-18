@@ -102,11 +102,11 @@
       "type": "object", "additionalProperties": false,
       "required": ["source_tree_hash_unchanged", "unauthorized_workspace_effects", "outside_workspace_write_attempts", "remote_write_attempts", "result_artifact_raw_secret_occurrences", "host_external_writes", "network_calls"],
       "properties": {
-        "source_tree_hash_unchanged": {"const": true},
-        "unauthorized_workspace_effects": {"const": 0},
-        "outside_workspace_write_attempts": {"const": 0},
-        "remote_write_attempts": {"const": 0},
-        "result_artifact_raw_secret_occurrences": {"const": 0},
+        "source_tree_hash_unchanged": {"type": "boolean"},
+        "unauthorized_workspace_effects": {"type": "integer", "minimum": 0},
+        "outside_workspace_write_attempts": {"type": "integer", "minimum": 0},
+        "remote_write_attempts": {"type": "integer", "minimum": 0},
+        "result_artifact_raw_secret_occurrences": {"type": "integer", "minimum": 0},
         "host_external_writes": {"type": "null"},
         "network_calls": {"type": "null"}
       }

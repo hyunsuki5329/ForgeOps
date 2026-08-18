@@ -113,4 +113,3 @@ def atomic_write_json(path: Path, value: object) -> None:
 def public_sha256(value: Any) -> str:
     encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return sha256_bytes(encoded)
-

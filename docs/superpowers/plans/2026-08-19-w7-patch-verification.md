@@ -73,7 +73,7 @@
 - Consumes: W5 snapshot concepts, W6 registered command conventions, WBS-020~022 and VG-013 definitions.
 - Produces: closed suite/result schema, exact `CASE_IDS`, three registered CLI identities and the final W7 ownership boundary used by Tasks 2~5.
 
-- [ ] **Step 1: Write failing contract and catalog tests**
+- [x] **Step 1: Write failing contract and catalog tests**
 
 Create `tests/patch_verification/test_contracts.py` with constants and these assertions:
 
@@ -121,7 +121,7 @@ COMMAND_CASE_IDS = {
 
 Tests must verify Draft 2020-12, recursive `additionalProperties: false`, exact ordered case IDs, unique IDs, exact command partition, exact fixture hashes, public result required fields, nullable unobserved counters, AGENTS command/path equality and WBS-020 VG-013-only ownership with WBS-021/022 still VG-013.
 
-- [ ] **Step 2: Run contract tests RED**
+- [x] **Step 2: Run contract tests RED**
 
 Run:
 
@@ -131,7 +131,7 @@ python -m unittest tests.patch_verification.test_contracts -v
 
 Expected: import/file failures because the contract, suite and registration do not exist.
 
-- [ ] **Step 3: Create the exact suite fixture**
+- [x] **Step 3: Create the exact suite fixture**
 
 Use these exact LF-terminated fixture bytes and hashes:
 
@@ -158,7 +158,7 @@ The suite root must contain exactly:
 
 Each case contains exactly `id`, `command_id`, `kind`, `mutation` and one of `expected_result` or `expected_error`.
 
-- [ ] **Step 4: Create the closed schema**
+- [x] **Step 4: Create the closed schema**
 
 Define closed `$defs` for `fileFixture`, `patchIntent`, `case`, `baseFixture`, `suite`, `caseResult`, `summary`, `effectCounters`, `inputHashes` and `publicResult`. Use enums for the three commands, 27 mutations, `positive|negative`, `PASSED|FAILED`, `E2`, and stable error categories from the design.
 
@@ -178,7 +178,7 @@ Define closed `$defs` for `fileFixture`, `patchIntent`, `case`, `baseFixture`, `
 
 The last two accept only `null`; observed counts accept non-negative integers, and `source_tree_hash_unchanged` is boolean.
 
-- [ ] **Step 5: Register exact commands and profile**
+- [x] **Step 5: Register exact commands and profile**
 
 Add these commands to `AGENTS.md`:
 
@@ -202,11 +202,11 @@ Add these commands to `AGENTS.md`:
 
 Add profile `forgeops-patch-verification` with command IDs in exactly that order.
 
-- [ ] **Step 6: Re-scope WBS-020 without claiming completion**
+- [x] **Step 6: Re-scope WBS-020 without claiming completion**
 
 Change WBS-020 VG IDs to `VG-013` and its DoD to local source/workspace/diff boundaries. Add an acceptance note that VG-015 remains W8 WBS-025/Phase integration scope. Keep WBS-020~022 `WBS_NOT_STARTED` until Task 5 generates fresh results.
 
-- [ ] **Step 7: Run contract tests GREEN and commit**
+- [x] **Step 7: Run contract tests GREEN and commit**
 
 Run:
 
@@ -239,7 +239,7 @@ git commit -m "feat: define W7 patch verification contract"
 - Consumes: Task 1 `base_fixture.patch_intent`, exact file fixtures and allowed resource list.
 - Produces: `EffectAudit`, `PatchVerificationError`, `materialize_fixture`, `apply_bounded_patch` and a closed patch artifact consumed by Tasks 3~5.
 
-- [ ] **Step 1: Write failing positive patch test**
+- [x] **Step 1: Write failing positive patch test**
 
 ```python
 def test_exact_patch_changes_only_workspace_and_returns_bounded_diff(self):
@@ -257,11 +257,11 @@ def test_exact_patch_changes_only_workspace_and_returns_bounded_diff(self):
     self.assertEqual(0, audit.remote_write_attempts)
 ```
 
-- [ ] **Step 2: Write failing containment and limit tests**
+- [x] **Step 2: Write failing containment and limit tests**
 
 Add subtests for absolute path, `../`, wildcard, unknown resource, before hash mismatch, source-as-workspace, symlink target, raw patch field, after hash mismatch, oversized diff and source mutation. Assert exact stable error and unchanged source; pre-mutation errors also require unchanged workspace.
 
-- [ ] **Step 3: Run patch tests RED**
+- [x] **Step 3: Run patch tests RED**
 
 ```powershell
 python -m unittest tests.patch_verification.test_patch -v
@@ -269,7 +269,7 @@ python -m unittest tests.patch_verification.test_patch -v
 
 Expected: module import failure.
 
-- [ ] **Step 4: Implement model primitives**
+- [x] **Step 4: Implement model primitives**
 
 `model.py` must define:
 
@@ -294,7 +294,7 @@ def atomic_write_json(path: Path, value: object) -> None: ...
 
 Tree hashing must reject symlink/reparse entries and hash ordinal root-relative POSIX paths plus raw bytes.
 
-- [ ] **Step 5: Implement fixture materialization and patch preflight**
+- [x] **Step 5: Implement fixture materialization and patch preflight**
 
 Create every fixture file under verifier-owned roots with LF-preserved UTF-8 bytes. `apply_bounded_patch` requires exact intent fields:
 
@@ -311,7 +311,7 @@ Create every fixture file under verifier-owned roots with LF-preserved UTF-8 byt
 
 Reject bool for integer limits, limits outside `1..65536` bytes or `1..2000` lines, and any target not an existing regular non-symlink file inside the workspace.
 
-- [ ] **Step 6: Implement atomic mutation and canonical diff**
+- [x] **Step 6: Implement atomic mutation and canonical diff**
 
 Use a sibling temporary file and `os.replace`, then verify exact bytes. Generate diff with:
 
@@ -327,7 +327,7 @@ difflib.unified_diff(
 
 Return exactly `resource_ref`, `before_sha256`, `after_sha256`, `diff`, `diff_sha256`, `diff_bytes`, `changed_lines`.
 
-- [ ] **Step 7: Run patch tests GREEN and commit**
+- [x] **Step 7: Run patch tests GREEN and commit**
 
 ```powershell
 python -m unittest tests.patch_verification.test_patch -v
@@ -356,7 +356,7 @@ git commit -m "feat: add bounded W7 patch pipeline"
 - Consumes: Task 2 workspace and patch artifact.
 - Produces: `TRUSTED_PROFILE`, `TRUSTED_PROFILE_DIGEST`, `run_trusted_profile`, `compare_baseline_and_changed` and fresh E2 check evidence.
 
-- [ ] **Step 1: Write failing exact profile tests**
+- [x] **Step 1: Write failing exact profile tests**
 
 Assert:
 
@@ -373,7 +373,7 @@ self.assertEqual(
 
 Mutating `verification-profile.json`, supplying an unknown profile, wrong digest, raw command, duplicate/reordered checks or stale/non-UTC time must fail before any check execution.
 
-- [ ] **Step 2: Write failing baseline differential tests**
+- [x] **Step 2: Write failing baseline differential tests**
 
 Test these exact outcomes:
 
@@ -384,13 +384,13 @@ Test these exact outcomes:
 - baseline-passed check failing after patch → `NEW_REGRESSION`
 - all records have E2, strict UTC time, profile ID/digest and stable fingerprints
 
-- [ ] **Step 3: Run profile tests RED**
+- [x] **Step 3: Run profile tests RED**
 
 ```powershell
 python -m unittest tests.patch_verification.test_profiles -v
 ```
 
-- [ ] **Step 4: Implement exact registered checks**
+- [x] **Step 4: Implement exact registered checks**
 
 Implement AST-based loading without importing workspace modules.
 
@@ -410,7 +410,7 @@ The evaluator may execute only a minimal restricted expression model for the fix
 
 LINT checks UTF-8, LF, no trailing whitespace and AST parse for both Python files. TYPECHECK requires exact `int` annotations and return annotation for both fixture functions.
 
-- [ ] **Step 5: Implement evidence and differential**
+- [x] **Step 5: Implement evidence and differential**
 
 Each check result contains exactly:
 
@@ -434,7 +434,7 @@ Each check result contains exactly:
 
 Do not include raw source, stdout/stderr or `exit_code` for non-command evidence.
 
-- [ ] **Step 6: Run profile tests GREEN and commit**
+- [x] **Step 6: Run profile tests GREEN and commit**
 
 ```powershell
 python -m unittest tests.patch_verification.test_profiles -v
@@ -464,7 +464,7 @@ git commit -m "feat: add W7 trusted check profiles"
 - Consumes: Task 1 protected fixture files and Task 3 trusted profile digest.
 - Produces: `build_guard_manifest` and `verify_guard_manifest`, returning a closed guard result used before Task 5 accepts checks.
 
-- [ ] **Step 1: Write failing unchanged guard test**
+- [x] **Step 1: Write failing unchanged guard test**
 
 ```python
 manifest = build_guard_manifest(workspace, TRUSTED_PROFILE_DIGEST)
@@ -481,7 +481,7 @@ self.assertEqual(
 )
 ```
 
-- [ ] **Step 2: Write failing tamper category tests**
+- [x] **Step 2: Write failing tamper category tests**
 
 Mutate one item per subtest and assert the exact code:
 
@@ -497,13 +497,13 @@ test file symlink -> TEST_PATH_INVALID
 
 Every negative asserts source unchanged and no new file/write after guard invocation.
 
-- [ ] **Step 3: Run guard tests RED**
+- [x] **Step 3: Run guard tests RED**
 
 ```powershell
 python -m unittest tests.patch_verification.test_anti_tamper -v
 ```
 
-- [ ] **Step 4: Implement closed manifest and semantic fingerprints**
+- [x] **Step 4: Implement closed manifest and semantic fingerprints**
 
 Manifest exact fields:
 
@@ -521,11 +521,11 @@ Manifest exact fields:
 
 For tests, semantic fingerprint is canonical JSON of test class/function names, decorators, assertion call names and AST dumps of assertion arguments. For coverage/profile files it is canonical parsed data. Reject extra/missing manifest fields, duplicate paths and non-list arrays.
 
-- [ ] **Step 5: Implement stable precedence and zero-effect verification**
+- [x] **Step 5: Implement stable precedence and zero-effect verification**
 
 Check containment and file type before reading bytes. Detect skip/xfail/assertion weakening before generic hash mismatch so specific categories remain stable. Reject any unexpected `tests/test_*.py` path to catch rename/addition.
 
-- [ ] **Step 6: Run guard tests GREEN and commit**
+- [x] **Step 6: Run guard tests GREEN and commit**
 
 ```powershell
 python -m unittest tests.patch_verification.test_anti_tamper -v
@@ -563,7 +563,7 @@ git commit -m "feat: add W7 verification anti-tamper guard"
 - Consumes: Tasks 1~4 schema, suite, patch artifact, differential result and guard result.
 - Produces: registered `run(args, repository_root=...) -> int`, three fresh closed VG-013 artifacts and evidence-grounded W7 status.
 
-- [ ] **Step 1: Write failing registered CLI tests**
+- [x] **Step 1: Write failing registered CLI tests**
 
 Test exact `TRUSTED_COMMANDS` identity, wrong command/result/schema/suite pair preserving a sentinel, malformed schema/suite preserving result, atomic replacement, exact case partition/order, raw input hashes, public-safe output, runner error exit 2, case failure exit 1 and success exit 0.
 
@@ -580,7 +580,7 @@ self.assertEqual(9, result["summary"]["passed"])
 self.assertEqual(0, result["summary"]["failed"])
 ```
 
-- [ ] **Step 2: Write failing audit false-positive tests**
+- [x] **Step 2: Write failing audit false-positive tests**
 
 Monkeypatch each observed invariant independently:
 
@@ -592,13 +592,13 @@ Monkeypatch each observed invariant independently:
 
 Each must write a closed `FAILED` result and return 1. Unobserved `host_external_writes` and `network_calls` must remain `None`, not zero.
 
-- [ ] **Step 3: Run verifier tests RED**
+- [x] **Step 3: Run verifier tests RED**
 
 ```powershell
 python -m unittest tests.patch_verification.test_verify -v
 ```
 
-- [ ] **Step 4: Implement exact command evaluation**
+- [x] **Step 4: Implement exact command evaluation**
 
 ```python
 TRUSTED_COMMANDS = {
@@ -610,13 +610,13 @@ TRUSTED_COMMANDS = {
 
 For each selected case, create a fresh temporary source/workspace bundle, apply only the named mutation, run the relevant Task 2/3/4 path, compare expected/actual, then audit source/workspace/effects. Catch only `PatchVerificationError` as expected product failure; unexpected exceptions are runner errors and must not replace the prior result.
 
-- [ ] **Step 5: Assemble and validate public results**
+- [x] **Step 5: Assemble and validate public results**
 
 Capture one strict UTC `observed_at` per command. Hash schema and suite raw bytes plus `tools/patch_verification/profiles.py` as `profile_source`. Validate the complete result against `$defs.publicResult` before `atomic_write_json`.
 
 Secret scan patterns include assignment-like `token`, `secret`, `password`, `credential`, `api_key`, `access_token`, absolute workspace paths and raw fixture source outside the bounded diff field.
 
-- [ ] **Step 6: Run focused tests and exact VG-013 commands**
+- [x] **Step 6: Run focused tests and exact VG-013 commands**
 
 ```powershell
 python -m unittest discover -s tests/patch_verification -v
@@ -627,7 +627,7 @@ python tools/patch_verification/verify.py --schema contracts/forgeops-patch-veri
 
 Expected: each result 9/9 E2 `PASSED`, failed 0; all observed effect counters safe.
 
-- [ ] **Step 7: Run linked verification**
+- [x] **Step 7: Run linked verification**
 
 Run exact registered commands for:
 
@@ -639,7 +639,7 @@ VG-023: evidence-positive-negative, extension-provenance
 
 Restore/exclude timestamp-only changes to pre-existing artifacts; W7 owns only three VG-013 results.
 
-- [ ] **Step 8: Update evidence-owned documentation**
+- [x] **Step 8: Update evidence-owned documentation**
 
 Only after Step 6 succeeds:
 
@@ -650,7 +650,7 @@ Only after Step 6 succeeds:
 - verification plan records all three commands 9/9 and VG-013 actual `PASSED`; Phase 1 remains `NOT_RUN`.
 - README describes W7 and explicitly retains VG-014/VG-015/Phase 1 blockers.
 
-- [ ] **Step 9: Run full regression and consistency checks**
+- [x] **Step 9: Run full regression and consistency checks**
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -668,7 +668,7 @@ Use a read-only consistency script to assert:
 - VG-015 and Phase 1 Exit remain NOT_RUN
 - no result contains raw secret or absolute temporary path
 
-- [ ] **Step 10: Review complete W7 diff and commit**
+- [x] **Step 10: Review complete W7 diff and commit**
 
 Review merge base `bc4bc57..HEAD` for spec coverage, path containment, profile authority, baseline differential, tamper categories, effect-counter honesty and documentation claims. Resolve all Critical/Important findings before completion.
 

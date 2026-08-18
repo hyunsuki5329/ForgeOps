@@ -165,6 +165,21 @@ project_profile:
       cwd: "."
       evidence_tier: E2
       required: true
+    - id: task-checks
+      command: python tools/patch_verification/verify.py --schema contracts/forgeops-patch-verification/1.0/schema.json --suite fixtures/forgeops-patch-verification/suite.json --result artifacts/verification/vg-013-task-checks-result.json --command-id task-checks
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: regression-checks
+      command: python tools/patch_verification/verify.py --schema contracts/forgeops-patch-verification/1.0/schema.json --suite fixtures/forgeops-patch-verification/suite.json --result artifacts/verification/vg-013-regression-checks-result.json --command-id regression-checks
+      cwd: "."
+      evidence_tier: E2
+      required: true
+    - id: verification-anti-tamper
+      command: python tools/patch_verification/verify.py --schema contracts/forgeops-patch-verification/1.0/schema.json --suite fixtures/forgeops-patch-verification/suite.json --result artifacts/verification/vg-013-verification-anti-tamper-result.json --command-id verification-anti-tamper
+      cwd: "."
+      evidence_tier: E2
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -233,6 +248,11 @@ project_profile:
         - id: forgeops-local-vertical
           command_ids:
             - main-part-work-main
+        - id: forgeops-patch-verification
+          command_ids:
+            - task-checks
+            - regression-checks
+            - verification-anti-tamper
       validation_discovery:
         - pyproject.toml
         - uv.lock

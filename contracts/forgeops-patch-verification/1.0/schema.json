@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forgeops.dev/contracts/forgeops-patch-verification/1.0/schema.json",
+  "title": "ForgeOps Patch Verification Contract 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["suite_version", "profile", "base_fixture", "cases"],
+  "properties": {
+    "suite_version": {"const": "1.0"},
+    "profile": {"$ref": "#/$defs/profile"},
+    "base_fixture": {"$ref": "#/$defs/baseFixture"},
+    "cases": {
+      "type": "array",
+      "minItems": 27,
+      "maxItems": 27,
+      "items": {"$ref": "#/$defs/suiteCase"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "checks", "max_evidence_age_seconds"],
+      "properties": {
+        "profile_id": {"const": "forgeops-w7-fixture-checks"},
+        "checks": {
+          "type": "array",
+          "prefixItems": [
+            {"const": "TASK_TEST"}, {"const": "REGRESSION_TEST"},
+            {"const": "LINT"}, {"const": "TYPECHECK"}
+          ],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "max_evidence_age_seconds": {"type": "integer", "minimum": 1, "maximum": 3600}
+      }
+    },
+    "fileFixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "content", "sha256"],
+      "properties": {
+        "path": {"enum": ["src/calculator.py", "tests/test_calculator.py", ".coveragerc", "verification-profile.json"]},
+        "content": {"type": "string"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "patchIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_ref", "before_sha256", "after_sha256", "replacement_text", "max_diff_bytes", "max_changed_lines"],
+      "properties": {
+        "resource_ref": {"const": "src/calculator.py"},
+        "before_sha256": {"$ref": "#/$defs/sha256"},
+        "after_sha256": {"$ref": "#/$defs/sha256"},
+        "replacement_text": {"type": "string"},
+        "max_diff_bytes": {"type": "integer", "minimum": 1, "maximum": 65536},
+        "max_changed_lines": {"type": "integer", "minimum": 1, "maximum": 100}
+      }
+    },
+    "baseFixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "allowed_resources", "patch_intent", "validation_at"],
+      "properties": {
+        "files": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/fileFixture"}},
+        "allowed_resources": {"type": "array", "prefixItems": [{"const": "src/calculator.py"}], "items": false},
+        "patch_intent": {"$ref": "#/$defs/patchIntent"},
+        "validation_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "suiteCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command_id", "kind", "mutation"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^(POSITIVE|NEGATIVE)_[A-Z0-9_]+$"},
+        "command_id": {"enum": ["task-checks", "regression-checks", "verification-anti-tamper"]},
+        "kind": {"enum": ["positive", "negative"]},
+        "mutation": {"type": "string", "pattern": "^(POSITIVE|NEGATIVE)_[A-Z0-9_]+$"},
+        "expected_result": {"const": "PASSED"},
+        "expected_error": {"type": "string", "pattern": "^[A-Z0-9_]+$"}
+      },
+      "oneOf": [
+        {"required": ["expected_result"], "not": {"required": ["expected_error"]}},
+        {"required": ["expected_error"], "not": {"required": ["expected_result"]}}
+      ]
+    },
+    "inputHashes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema", "suite", "profile_source"],
+      "properties": {"schema": {"$ref": "#/$defs/sha256"}, "suite": {"$ref": "#/$defs/sha256"}, "profile_source": {"$ref": "#/$defs/sha256"}}
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["total", "passed", "failed"],
+      "properties": {"total": {"type": "integer", "minimum": 0}, "passed": {"type": "integer", "minimum": 0}, "failed": {"type": "integer", "minimum": 0}}
+    },
+    "effectCounters": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_tree_hash_unchanged", "unauthorized_workspace_effects", "outside_workspace_write_attempts", "remote_write_attempts", "result_artifact_raw_secret_occurrences", "host_external_writes", "network_calls"],
+      "properties": {
+        "source_tree_hash_unchanged": {"type": "boolean"},
+        "unauthorized_workspace_effects": {"type": "integer", "minimum": 0},
+        "outside_workspace_write_attempts": {"type": "integer", "minimum": 0},
+        "remote_write_attempts": {"type": "integer", "minimum": 0},
+        "result_artifact_raw_secret_occurrences": {"type": "integer", "minimum": 0},
+        "host_external_writes": {"type": "null"},
+        "network_calls": {"type": "null"}
+      }
+    },
+    "caseResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "expected", "actual"],
+      "properties": {"id": {"type": "string"}, "kind": {"enum": ["positive", "negative"]}, "expected": {"type": "string"}, "actual": {"type": "string"}}
+    },
+    "publicResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result_version", "gate_id", "profile_id", "command_id", "status", "evidence_tier", "observed_at", "input_hashes", "profile_digest", "summary", "effect_counters", "cases"],
+      "properties": {
+        "result_version": {"const": "1.0"}, "gate_id": {"const": "VG-013"},
+        "profile_id": {"const": "forgeops-patch-verification"},
+        "command_id": {"enum": ["task-checks", "regression-checks", "verification-anti-tamper"]},
+        "status": {"enum": ["PASSED", "FAILED"]}, "evidence_tier": {"const": "E2"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "input_hashes": {"$ref": "#/$defs/inputHashes"}, "profile_digest": {"$ref": "#/$defs/sha256"},
+        "summary": {"$ref": "#/$defs/summary"}, "effect_counters": {"$ref": "#/$defs/effectCounters"},
+        "cases": {"type": "array", "items": {"$ref": "#/$defs/caseResult"}}
+      }
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "suite_version": "1.0",
+  "profile": {
+    "profile_id": "forgeops-w7-fixture-checks",
+    "checks": ["TASK_TEST", "REGRESSION_TEST", "LINT", "TYPECHECK"],
+    "max_evidence_age_seconds": 300
+  },
+  "base_fixture": {
+    "files": [
+      {
+        "path": "src/calculator.py",
+        "content": "def total(left: int, right: int) -> int:\n    return left - right\n\ndef identity(value: int) -> int:\n    return value\n",
+        "sha256": "d7c0073ac57f6b7f11d524b13b0eb3a0badc43380985b593aa7a59b6b0d1b461"
+      },
+      {
+        "path": "tests/test_calculator.py",
+        "content": "import unittest\n\nfrom src.calculator import identity, total\n\n\nclass CalculatorTests(unittest.TestCase):\n    def test_total_matches_task(self):\n        self.assertEqual(5, total(2, 3))\n\n    def test_identity_regression(self):\n        self.assertEqual(7, identity(7))\n",
+        "sha256": "9de315c74fa479ed3f924a2a38bbe5752cec3675d8175310e172a7052409f0ea"
+      },
+      {
+        "path": ".coveragerc",
+        "content": "[run]\nsource = src\nomit =\n    tests/*\n",
+        "sha256": "ee199da3fd728b9e24cc6ffe76dc69adf4db903056e1d56801d3163608e35dcd"
+      },
+      {
+        "path": "verification-profile.json",
+        "content": "{\n  \"profile_id\": \"forgeops-w7-fixture-checks\",\n  \"checks\": [\"TASK_TEST\", \"REGRESSION_TEST\", \"LINT\", \"TYPECHECK\"]\n}\n",
+        "sha256": "78891da4564a528c252606a97db065c9b784dd1d79c99384f2488f0ff64eb826"
+      }
+    ],
+    "allowed_resources": ["src/calculator.py"],
+    "patch_intent": {
+      "resource_ref": "src/calculator.py",
+      "before_sha256": "d7c0073ac57f6b7f11d524b13b0eb3a0badc43380985b593aa7a59b6b0d1b461",
+      "after_sha256": "a735f4673c5cdda031f0e3a32ae62b05c404cbd868f7b491df598d67051c7af1",
+      "replacement_text": "def total(left: int, right: int) -> int:\n    return left + right\n\ndef identity(value: int) -> int:\n    return value\n",
+      "max_diff_bytes": 4096,
+      "max_changed_lines": 8
+    },
+    "validation_at": "2026-08-19T00:05:00Z"
+  },
+  "cases": [
+    {"id":"POSITIVE_BOUNDED_PATCH","command_id":"task-checks","kind":"positive","mutation":"POSITIVE_BOUNDED_PATCH","expected_result":"PASSED"},
+    {"id":"NEGATIVE_ABSOLUTE_RESOURCE","command_id":"task-checks","kind":"negative","mutation":"NEGATIVE_ABSOLUTE_RESOURCE","expected_error":"PATCH_RESOURCE_INVALID"},
+    {"id":"NEGATIVE_TRAVERSAL_RESOURCE","command_id":"task-checks","kind":"negative","mutation":"NEGATIVE_TRAVERSAL_RESOURCE","expected_error":"PATCH_RESOURCE_INVALID"},
+    {"id":"NEGATIVE_UNKNOWN_RESOURCE","command_id":"task-checks","kind":"negative","mutation":"NEGATIVE_UNKNOWN_RESOURCE","expected_error":"PATCH_RESOURCE_UNAUTHORIZED"},
+    {"id":"NEGATIVE_BEFORE_HASH_MISMATCH","command_id":"task-checks","kind":"negative","mutation":"NEGATIVE_BEFORE_HASH_MISMATCH","expected_error":"PATCH_BASE_MISMATCH"},
+    {"id":"NEGATIVE_SOURCE_AS_WORKSPACE","command_id":"task-checks","kind":"negative","mutation":"NEGATIVE_SOURCE_AS_WORKSPACE","expected_error":"PATCH_CONTAINMENT_VIOLATION"},
+    {"id":"NEGATIVE_WORKSPACE_SYMLINK_ESCAPE","command_id":"task-checks","kind":"negative","mutation":"NEGATIVE_WORKSPACE_SYMLINK_ESCAPE","expected_error":"PATCH_CONTAINMENT_VIOLATION"},
+    {"id":"NEGATIVE_DIFF_LIMIT","command_id":"task-checks","kind":"negative","mutation":"NEGATIVE_DIFF_LIMIT","expected_error":"PATCH_DIFF_LIMIT_EXCEEDED"},
+    {"id":"NEGATIVE_RAW_PATCH_INPUT","command_id":"task-checks","kind":"negative","mutation":"NEGATIVE_RAW_PATCH_INPUT","expected_error":"PATCH_INPUT_INVALID"},
+    {"id":"POSITIVE_TRUSTED_CHECKS","command_id":"regression-checks","kind":"positive","mutation":"POSITIVE_TRUSTED_CHECKS","expected_result":"PASSED"},
+    {"id":"NEGATIVE_TASK_CHECK_FAILURE","command_id":"regression-checks","kind":"negative","mutation":"NEGATIVE_TASK_CHECK_FAILURE","expected_error":"TASK_CHECK_FAILED"},
+    {"id":"NEGATIVE_NEW_REGRESSION","command_id":"regression-checks","kind":"negative","mutation":"NEGATIVE_NEW_REGRESSION","expected_error":"NEW_REGRESSION"},
+    {"id":"NEGATIVE_BASELINE_UNHEALTHY","command_id":"regression-checks","kind":"negative","mutation":"NEGATIVE_BASELINE_UNHEALTHY","expected_error":"BASELINE_UNHEALTHY"},
+    {"id":"NEGATIVE_LINT_FAILURE","command_id":"regression-checks","kind":"negative","mutation":"NEGATIVE_LINT_FAILURE","expected_error":"LINT_FAILED"},
+    {"id":"NEGATIVE_TYPECHECK_FAILURE","command_id":"regression-checks","kind":"negative","mutation":"NEGATIVE_TYPECHECK_FAILURE","expected_error":"TYPECHECK_FAILED"},
+    {"id":"NEGATIVE_UNKNOWN_PROFILE","command_id":"regression-checks","kind":"negative","mutation":"NEGATIVE_UNKNOWN_PROFILE","expected_error":"PROFILE_IDENTITY_INVALID"},
+    {"id":"NEGATIVE_PROFILE_DIGEST_MISMATCH","command_id":"regression-checks","kind":"negative","mutation":"NEGATIVE_PROFILE_DIGEST_MISMATCH","expected_error":"PROFILE_DIGEST_INVALID"},
+    {"id":"NEGATIVE_STALE_EVIDENCE","command_id":"regression-checks","kind":"negative","mutation":"NEGATIVE_STALE_EVIDENCE","expected_error":"EVIDENCE_FRESHNESS_INVALID"},
+    {"id":"POSITIVE_GUARDS_UNCHANGED","command_id":"verification-anti-tamper","kind":"positive","mutation":"POSITIVE_GUARDS_UNCHANGED","expected_result":"PASSED"},
+    {"id":"NEGATIVE_TEST_DELETE","command_id":"verification-anti-tamper","kind":"negative","mutation":"NEGATIVE_TEST_DELETE","expected_error":"TEST_DELETED"},
+    {"id":"NEGATIVE_SKIP_INJECTION","command_id":"verification-anti-tamper","kind":"negative","mutation":"NEGATIVE_SKIP_INJECTION","expected_error":"TEST_SKIP_INJECTED"},
+    {"id":"NEGATIVE_XFAIL_INJECTION","command_id":"verification-anti-tamper","kind":"negative","mutation":"NEGATIVE_XFAIL_INJECTION","expected_error":"TEST_XFAIL_INJECTED"},
+    {"id":"NEGATIVE_ASSERTION_WEAKEN","command_id":"verification-anti-tamper","kind":"negative","mutation":"NEGATIVE_ASSERTION_WEAKEN","expected_error":"ASSERTION_WEAKENED"},
+    {"id":"NEGATIVE_COVERAGE_EXCLUSION","command_id":"verification-anti-tamper","kind":"negative","mutation":"NEGATIVE_COVERAGE_EXCLUSION","expected_error":"COVERAGE_POLICY_CHANGED"},
+    {"id":"NEGATIVE_PROFILE_CHANGE","command_id":"verification-anti-tamper","kind":"negative","mutation":"NEGATIVE_PROFILE_CHANGE","expected_error":"VERIFICATION_PROFILE_CHANGED"},
+    {"id":"NEGATIVE_TEST_SYMLINK","command_id":"verification-anti-tamper","kind":"negative","mutation":"NEGATIVE_TEST_SYMLINK","expected_error":"TEST_PATH_INVALID"},
+    {"id":"NEGATIVE_TEST_RENAME","command_id":"verification-anti-tamper","kind":"negative","mutation":"NEGATIVE_TEST_RENAME","expected_error":"TEST_PATH_INVALID"}
+  ]
+}

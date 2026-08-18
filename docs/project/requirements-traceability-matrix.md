@@ -10,7 +10,7 @@
 
 **문서 범위:** PRD 37개, ARC 14개, THR 12개, CTL 20개, RSK 14개, WBS 35개, VG 24개의 planned linkage와 초기 검증 상태
 
-**현재 상태:** 37개 요구사항의 planned linkage는 `COVERED`; PRD-FR-001~PRD-FR-005, PRD-FR-007~PRD-FR-010 및 PRD-NFR-001/009의 11개는 fresh mapped evidence로 `PASSED`, 나머지 26개는 `NOT_RUN`. Phase 0 aggregation은 18/18 `PASSED`, blockers 0, `READY`이며 W5 VG-010/VG-011과 W6 VG-012도 E2 `PASSED`다. W7 VG-013과 Phase 1 Exit는 미완료다.
+**현재 상태:** 37개 요구사항의 planned linkage는 `COVERED`; PRD-FR-001~PRD-FR-005, PRD-FR-007~PRD-FR-012 및 PRD-NFR-001/009의 13개는 fresh mapped evidence로 `PASSED`, 나머지 24개는 `NOT_RUN`. Phase 0 aggregation은 18/18 `PASSED`, blockers 0, `READY`이며 W5 VG-010/VG-011, W6 VG-012와 W7 VG-013도 E2 `PASSED`다. VG-014·VG-015와 Phase 1 Exit는 미완료다.
 
 **기준 출처:** [제품 요구사항](../product/prd.md), [시스템 아키텍처](../architecture/system-architecture.md), [위협 모델](../security/threat-model.md), [검증 및 평가 계획](../quality/verification-and-evaluation-plan.md), [WBS](wbs.md), [위험 등록부](risk-register.md), [ForgeOps 제품 기초 문서 실행 계획](../superpowers/plans/2026-07-14-forgeops-product-documentation.md)
 
@@ -56,8 +56,8 @@ Current Phase 0 aggregation is `READY`: [phase-0-exit-result.json](../../artifac
 | PRD-FR-008 | Phase 1 / 필수 | IMPLEMENTED | ARC-005, ARC-007 | THR-002, THR-011 | CTL-002, CTL-016 | RSK-007 | WBS-013, WBS-014 | VG-010 | E2 | PASSED | E2 | artifacts/verification/vg-010-snapshot-identity-result.json; artifacts/verification/vg-010-baseline-retrieval-result.json | observed_at=2026-08-01T05:51:21Z; 2026-08-01T05:51:27Z | COVERED | immutable snapshot identity, dirty-state manifest, separated workspace와 trusted baseline/retrieval 반복성 24/24 E2 PASSED; WBS-014의 별도 VG-013 완료 조건은 후속 범위 |
 | PRD-FR-009 | Phase 1 / 필수 | IMPLEMENTED | ARC-005 | THR-001 | CTL-001 | RSK-005 | WBS-015 | VG-011 | E2 | PASSED | E2 | artifacts/verification/vg-011-context-provenance-result.json; artifacts/verification/vg-011-injection-negative-result.json | observed_at=2026-08-01T05:51:34Z; 2026-08-01T05:51:41Z | COVERED | provenance-bound Context Pack과 repository instruction/control-field injection 격리 20/20 E2 PASSED |
 | PRD-FR-010 | Phase 1 / 필수 | IMPLEMENTED | ARC-003, ARC-004, ARC-009 | THR-010 | CTL-005, CTL-015 | RSK-003 | WBS-016, WBS-017, WBS-018, WBS-019 | VG-012 | E2 | PASSED | E2 | artifacts/verification/vg-012-local-vertical-result.json | observed_at=2026-08-02T08:18:04Z | COVERED | main-part-work-main 30/30 E2 PASSED; Main만 accepted revision·canonical seq를 확정 |
-| PRD-FR-011 | Phase 1 / 필수 | PLANNED | ARC-006, ARC-007 | THR-002, THR-005, THR-006 | CTL-002, CTL-006, CTL-010 | RSK-004, RSK-005 | WBS-020 | VG-013, VG-015 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
-| PRD-FR-012 | Phase 1 / 필수 | PLANNED | ARC-008 | THR-011 | CTL-016 | RSK-007 | WBS-021, WBS-022 | VG-013 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
+| PRD-FR-011 | Phase 1 / 필수 | IMPLEMENTED | ARC-006, ARC-007 | THR-002, THR-005, THR-006 | CTL-002, CTL-006, CTL-010 | RSK-004, RSK-005 | WBS-020 | VG-013 | E2 | PASSED | E2 | artifacts/verification/vg-013-task-checks-result.json; artifacts/verification/vg-013-regression-checks-result.json; artifacts/verification/vg-013-verification-anti-tamper-result.json | observed_at=2026-08-18T15:32:34Z; 2026-08-18T15:32:35Z; 2026-08-18T15:32:37Z | COVERED | bounded workspace patch/diff와 verifier-observed outside/remote write 0; OS 전체 host write는 미관찰 `null`; VG-015는 W8 trace/gateway 범위로 `NOT_RUN` |
+| PRD-FR-012 | Phase 1 / 필수 | IMPLEMENTED | ARC-008 | THR-011 | CTL-016 | RSK-007 | WBS-021, WBS-022 | VG-013 | E2 | PASSED | E2 | artifacts/verification/vg-013-task-checks-result.json; artifacts/verification/vg-013-regression-checks-result.json; artifacts/verification/vg-013-verification-anti-tamper-result.json | observed_at=2026-08-18T15:32:34Z; 2026-08-18T15:32:35Z; 2026-08-18T15:32:37Z | COVERED | trusted task·regression·lint·typecheck와 anti-tamper 27/27 E2 PASSED |
 | PRD-FR-013 | Phase 1 / 필수 | PLANNED | ARC-003, ARC-004, ARC-011 | THR-010, THR-012 | CTL-011, CTL-017, CTL-020 | RSK-011 | WBS-023, WBS-024, WBS-025, WBS-026, WBS-027, WBS-028 | VG-014, VG-015 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-FR-014 | Phase 2 / 필수 | PLANNED | ARC-008 | THR-010, THR-012 | CTL-015, CTL-017 | RSK-007 | WBS-033 | VG-016 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
 | PRD-FR-015 | Phase 2 / 필수 | PLANNED | ARC-008 | THR-012 | CTL-017 | RSK-001 | WBS-033 | VG-016 | E2 | NOT_RUN | 없음 | 없음 | 없음 | COVERED | mapped WBS 구현 후 mapped VG 실행·RTM 갱신 |
@@ -102,7 +102,7 @@ Current Phase 0 aggregation is `READY`: [phase-0-exit-result.json](../../artifac
 
 Task 7 exact cross-document validator가 `RTM_VALIDATE=PASS`로 통과했다. 확인된 definition count는 PRD 37, ARC 14, THR 12, CTL 20, VG 24, WBS 35, RSK 14이고, 37개 requirement row에서 모든 definition ID가 적어도 한 번 exact 참조된다.
 
-**Orphan count: 0.** 이 수치는 planned cross-document linkage의 orphan이 없다는 뜻이다. PRD-FR-001~PRD-FR-005, PRD-FR-007~PRD-FR-010과 PRD-NFR-001/009의 mapped evidence는 required floor에서 fresh `PASSED`다. Phase 0은 `READY`이고 W5 VG-010/VG-011과 W6 VG-012는 통과했지만 W7 VG-013, WBS-020 이후, Phase 1 Exit, 배포 또는 broader release 완료를 주장하지 않는다.
+**Orphan count: 0.** 이 수치는 planned cross-document linkage의 orphan이 없다는 뜻이다. PRD-FR-001~PRD-FR-005, PRD-FR-007~PRD-FR-012와 PRD-NFR-001/009의 mapped evidence는 required floor에서 fresh `PASSED`다. Phase 0은 `READY`이고 W5 VG-010/VG-011, W6 VG-012와 W7 VG-013은 통과했지만 WBS-023 이후, VG-014·VG-015, Phase 1 Exit, 배포 또는 broader release 완료를 주장하지 않는다.
 
 ## 6. 갱신 규칙
 

@@ -1,0 +1,85 @@
+{
+  "cases": [
+    {
+      "actual": "PASSED",
+      "expected": "PASSED",
+      "id": "POSITIVE_BOUNDED_PATCH",
+      "kind": "positive"
+    },
+    {
+      "actual": "PATCH_RESOURCE_INVALID",
+      "expected": "PATCH_RESOURCE_INVALID",
+      "id": "NEGATIVE_ABSOLUTE_RESOURCE",
+      "kind": "negative"
+    },
+    {
+      "actual": "PATCH_RESOURCE_INVALID",
+      "expected": "PATCH_RESOURCE_INVALID",
+      "id": "NEGATIVE_TRAVERSAL_RESOURCE",
+      "kind": "negative"
+    },
+    {
+      "actual": "PATCH_RESOURCE_UNAUTHORIZED",
+      "expected": "PATCH_RESOURCE_UNAUTHORIZED",
+      "id": "NEGATIVE_UNKNOWN_RESOURCE",
+      "kind": "negative"
+    },
+    {
+      "actual": "PATCH_BASE_MISMATCH",
+      "expected": "PATCH_BASE_MISMATCH",
+      "id": "NEGATIVE_BEFORE_HASH_MISMATCH",
+      "kind": "negative"
+    },
+    {
+      "actual": "PATCH_CONTAINMENT_VIOLATION",
+      "expected": "PATCH_CONTAINMENT_VIOLATION",
+      "id": "NEGATIVE_SOURCE_AS_WORKSPACE",
+      "kind": "negative"
+    },
+    {
+      "actual": "PATCH_CONTAINMENT_VIOLATION",
+      "expected": "PATCH_CONTAINMENT_VIOLATION",
+      "id": "NEGATIVE_WORKSPACE_SYMLINK_ESCAPE",
+      "kind": "negative"
+    },
+    {
+      "actual": "PATCH_DIFF_LIMIT_EXCEEDED",
+      "expected": "PATCH_DIFF_LIMIT_EXCEEDED",
+      "id": "NEGATIVE_DIFF_LIMIT",
+      "kind": "negative"
+    },
+    {
+      "actual": "PATCH_INPUT_INVALID",
+      "expected": "PATCH_INPUT_INVALID",
+      "id": "NEGATIVE_RAW_PATCH_INPUT",
+      "kind": "negative"
+    }
+  ],
+  "command_id": "task-checks",
+  "effect_counters": {
+    "host_external_writes": null,
+    "network_calls": null,
+    "outside_workspace_write_attempts": 0,
+    "remote_write_attempts": 0,
+    "result_artifact_raw_secret_occurrences": 0,
+    "source_tree_hash_unchanged": true,
+    "unauthorized_workspace_effects": 0
+  },
+  "evidence_tier": "E2",
+  "gate_id": "VG-013",
+  "input_hashes": {
+    "profile_source": "6be352eff5ee7ddf37e96e2e790ea95351732d1731280d5c0e5b4d47d68d024a",
+    "schema": "e76413cea2fc1007315c1c36740e1ecaa292197ed76b9be2b9a23fe25189d30b",
+    "suite": "c7f451850a8eaca964ba322e9144898a0e585e7444f14b75007b8d924546cc0e"
+  },
+  "observed_at": "2026-08-18T15:32:34Z",
+  "profile_digest": "cf779479dd356af4006bc3862e179174f724cde3dceed7c02b72970a97f49cdb",
+  "profile_id": "forgeops-patch-verification",
+  "result_version": "1.0",
+  "status": "PASSED",
+  "summary": {
+    "failed": 0,
+    "passed": 9,
+    "total": 9
+  }
+}

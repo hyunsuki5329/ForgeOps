@@ -200,6 +200,21 @@ project_profile:
       cwd: "."
       evidence_tier: E2
       required: true
+    - id: phase1-security-negative
+      command: python tools/phase1_safety/verify.py --schema contracts/forgeops-phase1-safety/1.0/schema.json --suite fixtures/forgeops-phase1-safety/suite.json --result artifacts/verification/phase-1-security-negative-result.json --command-id phase1-security-negative
+      cwd: "."
+      evidence_tier: E3
+      required: true
+    - id: phase1-evidence-freshness
+      command: python tools/phase1_safety/verify.py --schema contracts/forgeops-phase1-safety/1.0/schema.json --suite fixtures/forgeops-phase1-safety/suite.json --result artifacts/verification/phase-1-evidence-freshness-result.json --command-id phase1-evidence-freshness
+      cwd: "."
+      evidence_tier: E3
+      required: true
+    - id: phase1-safety-gate
+      command: python tools/phase1_safety/verify.py --schema contracts/forgeops-phase1-safety/1.0/schema.json --suite fixtures/forgeops-phase1-safety/suite.json --result artifacts/verification/phase-1-safety-gate-result.json --report-md artifacts/reviews/phase-1-safety-scorecard.md --report-html artifacts/reviews/phase-1-safety-scorecard.html --command-id phase1-safety-gate
+      cwd: "."
+      evidence_tier: E3
+      required: true
   protected_resources:
     - .git/**
     - .env
@@ -281,6 +296,11 @@ project_profile:
           command_ids:
             - trace-manifest-completeness
             - external-write-negative
+        - id: forgeops-phase1-safety
+          command_ids:
+            - phase1-security-negative
+            - phase1-evidence-freshness
+            - phase1-safety-gate
       validation_discovery:
         - pyproject.toml
         - uv.lock

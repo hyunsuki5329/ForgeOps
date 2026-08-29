@@ -1,0 +1,346 @@
+{
+  "suite_id": "forgeops-phase1-safety-v1",
+  "suite_version": "1.0",
+  "phase_id": "phase-1-safety",
+  "freshness_seconds": 300,
+  "registrations": [
+    {
+      "gate_id": "VG-005",
+      "profile_id": "forgeops-authority-resource",
+      "command_id": "resource-authority-negative",
+      "artifact_ref": "artifacts/verification/vg-005-resource-authority-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-authority-policy/1.0/schema.json"]},
+        {"field": "suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-authority-resource/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-005",
+      "profile_id": "forgeops-authority-resource",
+      "command_id": "protected-read-negative",
+      "artifact_ref": "artifacts/verification/vg-005-protected-read-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-authority-policy/1.0/schema.json"]},
+        {"field": "suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-authority-resource/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-006",
+      "profile_id": "forgeops-authority-command-network",
+      "command_id": "command-network-negative",
+      "artifact_ref": "artifacts/verification/vg-006-command-network-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-authority-policy/1.0/schema.json"]},
+        {"field": "suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-authority-command-network/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-007",
+      "profile_id": "forgeops-approval-policy",
+      "command_id": "approval-negative-fixture",
+      "artifact_ref": "artifacts/verification/vg-007-approval-policy-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-authority-policy/1.0/schema.json"]},
+        {"field": "suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-approval-policy/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-008",
+      "profile_id": "forgeops-sandbox-security",
+      "command_id": "image-provenance-negative",
+      "artifact_ref": "artifacts/verification/vg-008-image-provenance-result.json",
+      "required_tier": "E3",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-sandbox-contract/1.0/schema.json"]},
+        {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-sandbox-security/suite.json"]},
+        {"field": "input_hashes.runtime_profile_sha256", "mode": "artifact", "refs": ["artifacts/runtime/sandbox-runtime-profile.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-008",
+      "profile_id": "forgeops-sandbox-security",
+      "command_id": "containment-egress-negative",
+      "artifact_ref": "artifacts/verification/vg-008-containment-egress-result.json",
+      "required_tier": "E3",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-sandbox-contract/1.0/schema.json"]},
+        {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-sandbox-security/suite.json"]},
+        {"field": "input_hashes.runtime_profile_sha256", "mode": "artifact", "refs": ["artifacts/runtime/sandbox-runtime-profile.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-008",
+      "profile_id": "forgeops-sandbox-security",
+      "command_id": "teardown-negative",
+      "artifact_ref": "artifacts/verification/vg-008-teardown-result.json",
+      "required_tier": "E3",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-sandbox-contract/1.0/schema.json"]},
+        {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-sandbox-security/suite.json"]},
+        {"field": "input_hashes.runtime_profile_sha256", "mode": "artifact", "refs": ["artifacts/runtime/sandbox-runtime-profile.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-009",
+      "profile_id": "forgeops-secret-artifact-security",
+      "command_id": "secret-surface-negative",
+      "artifact_ref": "artifacts/verification/vg-009-secret-surface-result.json",
+      "required_tier": "E3",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-secret-artifact-contract/1.0/schema.json"]},
+        {"field": "hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-secret-artifact-security/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-009",
+      "profile_id": "forgeops-secret-artifact-security",
+      "command_id": "artifact-isolation-negative",
+      "artifact_ref": "artifacts/verification/vg-009-artifact-isolation-result.json",
+      "required_tier": "E3",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-secret-artifact-contract/1.0/schema.json"]},
+        {"field": "hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-secret-artifact-security/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-010",
+      "profile_id": "forgeops-snapshot-baseline",
+      "command_id": "snapshot-identity",
+      "artifact_ref": "artifacts/verification/vg-010-snapshot-identity-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.snapshot_schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-snapshot-contract/1.0/schema.json"]},
+        {"field": "input_hashes.context_schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-context-pack/1.0/schema.json"]},
+        {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-snapshot-baseline/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-010",
+      "profile_id": "forgeops-snapshot-baseline",
+      "command_id": "baseline-retrieval-repeat",
+      "artifact_ref": "artifacts/verification/vg-010-baseline-retrieval-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.snapshot_schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-snapshot-contract/1.0/schema.json"]},
+        {"field": "input_hashes.context_schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-context-pack/1.0/schema.json"]},
+        {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-snapshot-baseline/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-011",
+      "profile_id": "forgeops-context-security",
+      "command_id": "context-provenance",
+      "artifact_ref": "artifacts/verification/vg-011-context-provenance-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.snapshot_schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-snapshot-contract/1.0/schema.json"]},
+        {"field": "input_hashes.context_schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-context-pack/1.0/schema.json"]},
+        {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-context-security/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-011",
+      "profile_id": "forgeops-context-security",
+      "command_id": "injection-negative",
+      "artifact_ref": "artifacts/verification/vg-011-injection-negative-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.snapshot_schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-snapshot-contract/1.0/schema.json"]},
+        {"field": "input_hashes.context_schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-context-pack/1.0/schema.json"]},
+        {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-context-security/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-012",
+      "profile_id": "forgeops-local-vertical",
+      "command_id": "main-part-work-main",
+      "artifact_ref": "artifacts/verification/vg-012-local-vertical-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema", "mode": "blob", "refs": ["contracts/forgeops-local-vertical/1.0/schema.json"]},
+        {"field": "input_hashes.product_schema", "mode": "blob", "refs": ["contracts/product-task-contract/1.0/schema.json"]},
+        {"field": "input_hashes.snapshot_schema", "mode": "blob", "refs": ["contracts/forgeops-snapshot-contract/1.0/schema.json"]},
+        {"field": "input_hashes.context_schema", "mode": "blob", "refs": ["contracts/forgeops-context-pack/1.0/schema.json"]},
+        {"field": "input_hashes.suite", "mode": "blob", "refs": ["fixtures/forgeops-local-vertical/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-013",
+      "profile_id": "forgeops-patch-verification",
+      "command_id": "task-checks",
+      "artifact_ref": "artifacts/verification/vg-013-task-checks-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema", "mode": "blob", "refs": ["contracts/forgeops-patch-verification/1.0/schema.json"]},
+        {"field": "input_hashes.suite", "mode": "blob", "refs": ["fixtures/forgeops-patch-verification/suite.json"]},
+        {"field": "input_hashes.profile_source", "mode": "blob", "refs": ["tools/patch_verification/profiles.py"]}
+      ]
+    },
+    {
+      "gate_id": "VG-013",
+      "profile_id": "forgeops-patch-verification",
+      "command_id": "regression-checks",
+      "artifact_ref": "artifacts/verification/vg-013-regression-checks-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema", "mode": "blob", "refs": ["contracts/forgeops-patch-verification/1.0/schema.json"]},
+        {"field": "input_hashes.suite", "mode": "blob", "refs": ["fixtures/forgeops-patch-verification/suite.json"]},
+        {"field": "input_hashes.profile_source", "mode": "blob", "refs": ["tools/patch_verification/profiles.py"]}
+      ]
+    },
+    {
+      "gate_id": "VG-013",
+      "profile_id": "forgeops-patch-verification",
+      "command_id": "verification-anti-tamper",
+      "artifact_ref": "artifacts/verification/vg-013-verification-anti-tamper-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema", "mode": "blob", "refs": ["contracts/forgeops-patch-verification/1.0/schema.json"]},
+        {"field": "input_hashes.suite", "mode": "blob", "refs": ["fixtures/forgeops-patch-verification/suite.json"]},
+        {"field": "input_hashes.profile_source", "mode": "blob", "refs": ["tools/patch_verification/profiles.py"]}
+      ]
+    },
+    {
+      "gate_id": "VG-014",
+      "profile_id": "forgeops-lifecycle-budget",
+      "command_id": "budget-cancel-negative",
+      "artifact_ref": "artifacts/verification/vg-014-budget-cancel-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema", "mode": "blob", "refs": ["contracts/forgeops-lifecycle-trace/1.0/schema.json"]},
+        {"field": "input_hashes.suite", "mode": "blob", "refs": ["fixtures/forgeops-lifecycle-trace/suite.json"]},
+        {"field": "input_hashes.profile_source", "mode": "framed", "refs": ["tools/lifecycle_trace/verify.py", "tools/lifecycle_trace/model.py", "tools/lifecycle_trace/budget.py", "tools/lifecycle_trace/lifecycle.py", "tools/lifecycle_trace/trace.py"]}
+      ]
+    },
+    {
+      "gate_id": "VG-014",
+      "profile_id": "forgeops-lifecycle-budget",
+      "command_id": "no-progress-stop",
+      "artifact_ref": "artifacts/verification/vg-014-no-progress-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema", "mode": "blob", "refs": ["contracts/forgeops-lifecycle-trace/1.0/schema.json"]},
+        {"field": "input_hashes.suite", "mode": "blob", "refs": ["fixtures/forgeops-lifecycle-trace/suite.json"]},
+        {"field": "input_hashes.profile_source", "mode": "framed", "refs": ["tools/lifecycle_trace/verify.py", "tools/lifecycle_trace/model.py", "tools/lifecycle_trace/budget.py", "tools/lifecycle_trace/lifecycle.py", "tools/lifecycle_trace/trace.py"]}
+      ]
+    },
+    {
+      "gate_id": "VG-015",
+      "profile_id": "forgeops-trace-manifest",
+      "command_id": "trace-manifest-completeness",
+      "artifact_ref": "artifacts/verification/vg-015-trace-manifest-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema", "mode": "blob", "refs": ["contracts/forgeops-lifecycle-trace/1.0/schema.json"]},
+        {"field": "input_hashes.suite", "mode": "blob", "refs": ["fixtures/forgeops-lifecycle-trace/suite.json"]},
+        {"field": "input_hashes.profile_source", "mode": "framed", "refs": ["tools/lifecycle_trace/verify.py", "tools/lifecycle_trace/model.py", "tools/lifecycle_trace/budget.py", "tools/lifecycle_trace/lifecycle.py", "tools/lifecycle_trace/trace.py"]}
+      ]
+    },
+    {
+      "gate_id": "VG-015",
+      "profile_id": "forgeops-trace-manifest",
+      "command_id": "external-write-negative",
+      "artifact_ref": "artifacts/verification/vg-015-external-write-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "input_hashes.schema", "mode": "blob", "refs": ["contracts/forgeops-lifecycle-trace/1.0/schema.json"]},
+        {"field": "input_hashes.suite", "mode": "blob", "refs": ["fixtures/forgeops-lifecycle-trace/suite.json"]},
+        {"field": "input_hashes.profile_source", "mode": "framed", "refs": ["tools/lifecycle_trace/verify.py", "tools/lifecycle_trace/model.py", "tools/lifecycle_trace/budget.py", "tools/lifecycle_trace/lifecycle.py", "tools/lifecycle_trace/trace.py"]}
+      ]
+    },
+    {
+      "gate_id": "VG-023",
+      "profile_id": "forgeops-evidence-contract",
+      "command_id": "evidence-positive-negative",
+      "artifact_ref": "artifacts/verification/vg-023-evidence-contract-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-evidence-contract/1.0/schema.json"]},
+        {"field": "hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-evidence-contract/suite.json"]}
+      ]
+    },
+    {
+      "gate_id": "VG-023",
+      "profile_id": "forgeops-evidence-contract",
+      "command_id": "extension-provenance",
+      "artifact_ref": "artifacts/verification/vg-023-extension-provenance-result.json",
+      "required_tier": "E2",
+      "observed_at_field": "observed_at",
+      "input_bindings": [
+        {"field": "hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-evidence-contract/1.0/schema.json"]},
+        {"field": "hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-evidence-contract/suite.json"]}
+      ]
+    }
+  ],
+  "subsets": {
+    "security_negative": [
+      "resource-authority-negative",
+      "protected-read-negative",
+      "command-network-negative",
+      "approval-negative-fixture",
+      "image-provenance-negative",
+      "containment-egress-negative",
+      "teardown-negative",
+      "secret-surface-negative",
+      "artifact-isolation-negative",
+      "context-provenance",
+      "injection-negative",
+      "task-checks",
+      "regression-checks",
+      "verification-anti-tamper",
+      "budget-cancel-negative",
+      "no-progress-stop",
+      "trace-manifest-completeness",
+      "external-write-negative",
+      "evidence-positive-negative",
+      "extension-provenance"
+    ],
+    "required_evidence": [
+      "image-provenance-negative",
+      "containment-egress-negative",
+      "teardown-negative",
+      "secret-surface-negative",
+      "artifact-isolation-negative",
+      "snapshot-identity",
+      "baseline-retrieval-repeat",
+      "context-provenance",
+      "injection-negative",
+      "main-part-work-main",
+      "task-checks",
+      "regression-checks",
+      "verification-anti-tamper",
+      "budget-cancel-negative",
+      "no-progress-stop",
+      "trace-manifest-completeness",
+      "external-write-negative",
+      "evidence-positive-negative",
+      "extension-provenance"
+    ]
+  }
+}

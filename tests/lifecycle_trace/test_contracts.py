@@ -1,11 +1,11 @@
 import json
-import hashlib
 from pathlib import Path
 import unittest
 
 from jsonschema import Draft202012Validator
 
 from tools.lifecycle_trace import verify
+from tools.phase1_safety.registry import resolve_committed_sha256, resolve_framed_sha256
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -112,9 +112,9 @@ class LifecycleTraceContractTests(unittest.TestCase):
         totals = {"budget-cancel-negative": 16, "no-progress-stop": 10,
                   "trace-manifest-completeness": 12, "external-write-negative": 10}
         input_hashes = {
-            "schema": hashlib.sha256(SCHEMA.read_bytes()).hexdigest(),
-            "suite": hashlib.sha256(SUITE.read_bytes()).hexdigest(),
-            "profile_source": verify._profile_source_hash(ROOT),
+            "schema": resolve_committed_sha256(ROOT, verify.SCHEMA_REF),
+            "suite": resolve_committed_sha256(ROOT, verify.SUITE_REF),
+            "profile_source": resolve_framed_sha256(ROOT, verify.PROFILE_SOURCE_REFS),
         }
         rtm = (ROOT / "docs/project/requirements-traceability-matrix.md").read_text(encoding="utf-8")
         for command_id, total in totals.items():

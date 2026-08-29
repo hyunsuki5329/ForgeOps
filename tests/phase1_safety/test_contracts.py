@@ -172,12 +172,41 @@ class Phase1SafetyContractTests(unittest.TestCase):
             self.assertIn(f"--result {result_ref}", command["command"])
             self.assertEqual("E3", command["evidence_tier"])
             self.assertTrue(command["required"])
-
         profiles = profile["extensions"]["forgeops"]["verification_profiles"]
         selected = [item for item in profiles if item["id"] == "forgeops-phase1-safety"]
         self.assertEqual(1, len(selected))
         self.assertEqual(list(expected), selected[0]["command_ids"])
 
+    def test_stage_a_docs_keep_w9_incomplete_until_protected_main_evidence_import(self):
+        documents = {
+            relative: (ROOT / relative).read_text(encoding="utf-8")
+            for relative in (
+                "docs/project/wbs.md",
+                "docs/project/requirements-traceability-matrix.md",
+                "docs/quality/verification-and-evaluation-plan.md",
+                "docs/architecture/system-architecture.md",
+                "docs/security/threat-model.md",
+            )
+        }
+        wbs = documents["docs/project/wbs.md"]
+        for wbs_id in ("WBS-026", "WBS-027", "WBS-028"):
+            row = next(line for line in wbs.splitlines() if line.startswith(f"| {wbs_id} |"))
+            self.assertIn("| WBS_NOT_STARTED |", row)
+        combined = "\n".join(documents.values())
+        for required in (
+            "23개",
+            "20개",
+            "19개",
+            "protected `main`",
+            "2-job",
+            "evidence-only PR",
+            "VG-024",
+            "Phase 1 Exit",
+        ):
+            self.assertIn(required, combined)
+        self.assertIn("E3 5개", combined)
+        self.assertIn("E2 이상 14개", combined)
+        self.assertIn("8개 normalized effect counter", combined)
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,7 +10,7 @@
 
 **문서 범위:** PRD 37개, ARC 14개, THR 12개, CTL 20개, RSK 14개, WBS 35개, VG 24개의 planned linkage와 초기 검증 상태
 
-**현재 상태:** 37개 요구사항의 planned linkage는 `COVERED`; PRD-FR-001~PRD-FR-005, PRD-FR-007~PRD-FR-012 및 PRD-NFR-001/009의 13개는 fresh mapped evidence로 `PASSED`, 나머지 24개는 후속 mapped WBS가 남아 `NOT_RUN`이다. Phase 0 aggregation은 18/18 `PASSED`, blockers 0, `READY`이며 W5 VG-010/VG-011, W6 VG-012, W7 VG-013과 W8 VG-014/VG-015도 E2 `PASSED`다. W9와 Phase 1 Exit는 미완료다.
+**현재 상태:** 37개 요구사항의 planned linkage는 `COVERED`; PRD-FR-001~PRD-FR-005, PRD-FR-007~PRD-FR-012 및 PRD-NFR-001/009의 13개는 fresh mapped evidence로 `PASSED`, 나머지 24개는 후속 mapped WBS가 남아 `NOT_RUN`이다. Phase 0 aggregation은 18/18 `PASSED`, blockers 0, `READY`이며 W5 VG-010/VG-011, W6 VG-012, W7 VG-013과 W8 VG-014/VG-015도 E2 `PASSED`다. W9의 23-command/20-security-negative/19-required-evidence 구현은 준비됐지만 protected `main` merge SHA에 결합된 2-job E3 artifact와 evidence-only PR이 없으므로 WBS-026~WBS-028 Result는 계속 `NOT_RUN`이고 Phase 1 Exit도 미완료다.
 
 **기준 출처:** [제품 요구사항](../product/prd.md), [시스템 아키텍처](../architecture/system-architecture.md), [위협 모델](../security/threat-model.md), [검증 및 평가 계획](../quality/verification-and-evaluation-plan.md), [WBS](wbs.md), [위험 등록부](risk-register.md), [ForgeOps 제품 기초 문서 실행 계획](../superpowers/plans/2026-07-14-forgeops-product-documentation.md)
 

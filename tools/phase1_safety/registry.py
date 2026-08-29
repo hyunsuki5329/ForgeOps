@@ -59,7 +59,7 @@ _WINDOWS_ABSOLUTE = re.compile(r"^[A-Za-z]:[\\/]")
 _FIELD = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
 _MODES = {"blob", "artifact", "framed"}
 _MAX_BLOB_BYTES = 8 * 1024 * 1024
-_CANONICAL_REGISTRY_SHA256 = "24e435dfbec2f7daf7c21278bf16f0f2524ba6f00f1d6fb21c6c02294e19a03d"
+_CANONICAL_REGISTRY_SHA256 = "02a331862c8933fb5620623b2ca1379ed187863e0fc097d84649c868ec2cf46c"
 
 
 @dataclass(frozen=True)
@@ -156,7 +156,8 @@ def load_registry(suite: Mapping[str, object]) -> tuple[Registration, ...]:
         }:
             raise SafetyError("REGISTRY_INVALID")
         artifact_ref = _safe_ref(item["artifact_ref"])
-        if artifact_ref in artifact_refs or item["observed_at_field"] != "observed_at":
+        expected_time_field = "time" if item["gate_id"] == "VG-008" else "observed_at"
+        if artifact_ref in artifact_refs or item["observed_at_field"] != expected_time_field:
             raise SafetyError("REGISTRY_INVALID")
         artifact_refs.add(artifact_ref)
         if not isinstance(item["input_bindings"], list) or not item["input_bindings"]:

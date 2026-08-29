@@ -58,7 +58,7 @@
       "command_id": "image-provenance-negative",
       "artifact_ref": "artifacts/verification/vg-008-image-provenance-result.json",
       "required_tier": "E3",
-      "observed_at_field": "observed_at",
+      "observed_at_field": "time",
       "input_bindings": [
         {"field": "input_hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-sandbox-contract/1.0/schema.json"]},
         {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-sandbox-security/suite.json"]},
@@ -71,7 +71,7 @@
       "command_id": "containment-egress-negative",
       "artifact_ref": "artifacts/verification/vg-008-containment-egress-result.json",
       "required_tier": "E3",
-      "observed_at_field": "observed_at",
+      "observed_at_field": "time",
       "input_bindings": [
         {"field": "input_hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-sandbox-contract/1.0/schema.json"]},
         {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-sandbox-security/suite.json"]},
@@ -84,7 +84,7 @@
       "command_id": "teardown-negative",
       "artifact_ref": "artifacts/verification/vg-008-teardown-result.json",
       "required_tier": "E3",
-      "observed_at_field": "observed_at",
+      "observed_at_field": "time",
       "input_bindings": [
         {"field": "input_hashes.schema_sha256", "mode": "blob", "refs": ["contracts/forgeops-sandbox-contract/1.0/schema.json"]},
         {"field": "input_hashes.suite_sha256", "mode": "blob", "refs": ["fixtures/forgeops-sandbox-security/suite.json"]},

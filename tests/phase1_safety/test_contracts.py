@@ -93,6 +93,9 @@ class Phase1SafetyContractTests(unittest.TestCase):
         self.assertEqual(20, len(suite["subsets"]["security_negative"]))
         self.assertEqual(REQUIRED_EVIDENCE, tuple(suite["subsets"]["required_evidence"]))
         self.assertEqual(19, len(suite["subsets"]["required_evidence"]))
+        for item in suite["registrations"]:
+            expected_time_field = "time" if item["gate_id"] == "VG-008" else "observed_at"
+            self.assertEqual(expected_time_field, item["observed_at_field"])
 
     def test_schema_rejects_unknown_suite_and_result_fields(self):
         schema = json.loads(SCHEMA.read_text(encoding="utf-8"))

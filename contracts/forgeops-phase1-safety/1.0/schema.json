@@ -52,7 +52,7 @@
         "command_id": {"$ref": "#/$defs/commandId"},
         "artifact_ref": {"$ref": "#/$defs/relativeRef"},
         "required_tier": {"$ref": "#/$defs/tier"},
-        "observed_at_field": {"const": "observed_at"},
+        "observed_at_field": {"enum": ["observed_at", "time"]},
         "input_bindings": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/hashBinding"}}
       }
     },

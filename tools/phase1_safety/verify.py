@@ -17,7 +17,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 if __package__ in (None, ""):
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from tools.phase1_safety.audit import reduce_security_negative
+from tools.phase1_safety.audit import reduce_required_evidence, reduce_security_negative
 from tools.phase1_safety.model import SafetyError, SourceIdentity, atomic_write_json, validate_source_identity
 from tools.phase1_safety.registry import load_registry
 
@@ -97,6 +97,7 @@ def main(
     source_identity: SourceIdentity | None = None,
     binding_resolver=None,
     source_checker=None,
+    receipt_validator=None,
 ) -> int:
     args = _parser().parse_args(argv)
     try:
@@ -111,14 +112,19 @@ def main(
         registrations = load_registry(suite)
         identity = source_identity or _identity_from_environment()
         when = validated_at or datetime.now(timezone.utc).replace(microsecond=0)
-        if args.command_id != "phase1-security-negative":
+        if args.command_id == "phase1-safety-gate":
             raise SafetyError("VERIFIER_COMMAND_NOT_IMPLEMENTED")
         kwargs = {}
         if binding_resolver is not None:
             kwargs["binding_resolver"] = binding_resolver
         if source_checker is not None:
             kwargs["source_checker"] = source_checker
-        result = reduce_security_negative(
+        if receipt_validator is not None:
+            kwargs["receipt_validator"] = receipt_validator
+        reducer = reduce_security_negative if args.command_id == "phase1-security-negative" else reduce_required_evidence
+        if reducer is reduce_security_negative:
+            kwargs.pop("receipt_validator", None)
+        result = reducer(
             root,
             registrations=registrations,
             validated_at=when,

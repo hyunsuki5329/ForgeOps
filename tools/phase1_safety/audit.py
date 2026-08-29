@@ -16,10 +16,18 @@ from .model import SafetyError, SourceIdentity, parse_utc, utc_text
 from .registry import (
     HashBinding,
     Registration,
+    REQUIRED_EVIDENCE_COMMANDS,
     SECURITY_NEGATIVE_COMMANDS,
     _CANONICAL_REGISTRY_SHA256,
     resolve_committed_sha256,
     resolve_framed_sha256,
+)
+from tools.sandbox_security.e3_attestation import (
+    DEFAULT_PROCESS_RUNNER,
+    E3Error,
+    ExpectedIdentity,
+    ProcessRunner,
+    verify_signed_attestation,
 )
 
 
@@ -70,6 +78,8 @@ _ASSERTION_RESULT_FIELDS = {
     "extension-provenance": {"assertions", "cases", "command_id", "gate_id", "hashes", "observed_at", "profile_id", "status", "summary"},
 }
 _MODERN_FIELDS = {
+    "snapshot-identity": {"cases", "command_id", "effect_counters", "evidence_tier", "gate_id", "input_hashes", "observed_at", "profile_id", "result_version", "status", "summary"},
+    "baseline-retrieval-repeat": {"cases", "command_id", "effect_counters", "evidence_tier", "gate_id", "input_hashes", "observed_at", "profile_id", "result_version", "status", "summary"},
     "context-provenance": {"cases", "command_id", "effect_counters", "evidence_tier", "gate_id", "input_hashes", "observed_at", "profile_id", "result_version", "status", "summary"},
     "injection-negative": {"cases", "command_id", "effect_counters", "evidence_tier", "gate_id", "input_hashes", "observed_at", "profile_id", "result_version", "status", "summary"},
     "task-checks": {"cases", "command_id", "effect_counters", "evidence_tier", "gate_id", "input_hashes", "observed_at", "profile_digest", "profile_id", "result_version", "status", "summary"},
@@ -79,6 +89,7 @@ _MODERN_FIELDS = {
     "no-progress-stop": {"cases", "command_id", "effect_counters", "evidence_tier", "gate_id", "input_hashes", "observed_at", "profile_id", "result_version", "status", "summary"},
     "trace-manifest-completeness": {"cases", "command_id", "effect_counters", "evidence_tier", "gate_id", "input_hashes", "observed_at", "profile_id", "result_version", "status", "summary"},
     "external-write-negative": {"cases", "command_id", "effect_counters", "evidence_tier", "gate_id", "input_hashes", "observed_at", "profile_id", "result_version", "status", "summary"},
+    "main-part-work-main": {"cases", "command_id", "effect_counters", "evidence_tier", "gate_id", "input_hashes", "observed_at", "profile_id", "result_version", "status", "summary"},
 }
 _ASSERTION_KEYS = {
     "resource-authority-negative": {"no_raw_sentinel", "protected_denial_zero_probes"},
@@ -91,6 +102,8 @@ _ASSERTION_KEYS = {
     "extension-provenance": {"negative_accept_calls", "negative_append_calls", "no_sensitive_content"},
 }
 _EFFECT_KEYS = {
+    "snapshot-identity": {"external_writes", "network_calls", "protected_reads", "source_writes"},
+    "baseline-retrieval-repeat": {"external_writes", "network_calls", "protected_reads", "source_writes"},
     "context-provenance": {"external_writes", "network_calls", "protected_reads", "source_writes"},
     "injection-negative": {"external_writes", "network_calls", "protected_reads", "source_writes"},
     "task-checks": {"host_external_writes", "network_calls", "outside_workspace_write_attempts", "remote_write_attempts", "result_artifact_raw_secret_occurrences", "source_tree_hash_unchanged", "unauthorized_workspace_effects"},
@@ -100,6 +113,20 @@ _EFFECT_KEYS = {
     "no-progress-stop": {"adapter_cleanup_residues", "external_write_attempts", "network_calls", "os_mount_residue", "os_process_tree_residue", "result_artifact_raw_secret_occurrences", "source_tree_hash_unchanged", "unauthorized_dispatches"},
     "trace-manifest-completeness": {"adapter_cleanup_residues", "external_write_attempts", "network_calls", "os_mount_residue", "os_process_tree_residue", "result_artifact_raw_secret_occurrences", "source_tree_hash_unchanged", "unauthorized_dispatches"},
     "external-write-negative": {"adapter_cleanup_residues", "external_write_attempts", "network_calls", "os_mount_residue", "os_process_tree_residue", "result_artifact_raw_secret_occurrences", "source_tree_hash_unchanged", "unauthorized_dispatches"},
+    "main-part-work-main": {"external_writes", "network_calls", "protected_reads", "result_artifact_raw_secret_occurrences", "source_tree_hash_unchanged", "unauthorized_fixture_effects"},
+}
+
+E3_RECEIPT_REF = "artifacts/runtime/sandbox-e3-import-receipt.json"
+E3_ATTESTATION_REF = "artifacts/runtime/e3-attestation.json"
+E3_BUNDLE_REF = "artifacts/runtime/e3-attestation.bundle.json"
+E3_PROFILE_REF = "artifacts/runtime/sandbox-runtime-profile.json"
+E3_OBSERVATIONS_REF = "artifacts/runtime/sandbox-runtime-observations.json"
+_E3_RECEIPT_FIELDS = {
+    "receipt_version", "attestation_sha256", "bundle_sha256", "repository",
+    "repository_id", "default_branch", "workflow_ref", "source_sha", "workflow_sha",
+    "run_id", "run_attempt", "image_ref", "image_digest", "issuer",
+    "certificate_identity", "observed_at", "verification_kind",
+    "runtime_profile_sha256", "runtime_observations_sha256",
 }
 
 
@@ -131,6 +158,89 @@ class GateAudit:
 
 BindingResolver = Callable[[Path, HashBinding], str]
 SourceChecker = Callable[[Path, SourceIdentity], bool]
+ReceiptValidator = Callable[[Path, SourceIdentity, datetime], bool]
+
+
+def validate_e3_receipt(
+    root: Path,
+    source_identity: SourceIdentity,
+    validated_at: datetime,
+    *,
+    e3_receipt_ref: str = E3_RECEIPT_REF,
+    runner: ProcessRunner = DEFAULT_PROCESS_RUNNER,
+) -> bool:
+    """Validate the imported E3 receipt against exact signed runtime bytes."""
+
+    if e3_receipt_ref != E3_RECEIPT_REF:
+        return False
+    try:
+        paths = {
+            "receipt": root / e3_receipt_ref,
+            "attestation": root / E3_ATTESTATION_REF,
+            "bundle": root / E3_BUNDLE_REF,
+            "profile": root / E3_PROFILE_REF,
+            "observations": root / E3_OBSERVATIONS_REF,
+        }
+        if any(not path.is_file() or path.is_symlink() for path in paths.values()):
+            return False
+        receipt = json.loads(paths["receipt"].read_text(encoding="utf-8"))
+        if not isinstance(receipt, Mapping) or set(receipt) != _E3_RECEIPT_FIELDS:
+            return False
+        expected_fields = {
+            "repository": source_identity.repository,
+            "repository_id": source_identity.repository_id,
+            "default_branch": source_identity.default_branch,
+            "workflow_ref": source_identity.workflow_ref,
+            "source_sha": source_identity.source_sha,
+            "workflow_sha": source_identity.workflow_sha,
+            "run_id": source_identity.run_id,
+            "run_attempt": source_identity.run_attempt,
+        }
+        if any(receipt.get(key) != value for key, value in expected_fields.items()):
+            return False
+        if receipt.get("receipt_version") != "1.0" or receipt.get("verification_kind") != "runtime":
+            return False
+        observed = parse_utc(receipt.get("observed_at"))
+        if not 0 <= (validated_at - observed).total_seconds() <= 300:
+            return False
+        hash_fields = {
+            "attestation_sha256": paths["attestation"],
+            "bundle_sha256": paths["bundle"],
+            "runtime_profile_sha256": paths["profile"],
+            "runtime_observations_sha256": paths["observations"],
+        }
+        for field, path in hash_fields.items():
+            if receipt.get(field) != hashlib.sha256(path.read_bytes()).hexdigest():
+                return False
+        image_ref = receipt.get("image_ref")
+        image_digest = receipt.get("image_digest")
+        if not isinstance(image_ref, str) or not isinstance(image_digest, str):
+            return False
+        identity = ExpectedIdentity(
+            source_identity.repository,
+            source_identity.repository_id,
+            source_identity.default_branch,
+            source_identity.source_sha,
+            source_identity.workflow_sha,
+            source_identity.run_id,
+            source_identity.run_attempt,
+            image_ref,
+            image_digest,
+        )
+        if receipt.get("issuer") != "https://token.actions.githubusercontent.com":
+            return False
+        if receipt.get("certificate_identity") != identity.certificate_identity:
+            return False
+        attestation = verify_signed_attestation(
+            paths["attestation"], paths["bundle"], identity, runner, validated_at
+        )
+        return all(attestation.get(key) == receipt.get(key) for key in (
+            "repository", "repository_id", "workflow_ref", "source_sha", "workflow_sha",
+            "run_id", "run_attempt", "image_ref", "image_digest", "issuer",
+            "certificate_identity", "observed_at",
+        ))
+    except (OSError, UnicodeError, json.JSONDecodeError, SafetyError, E3Error, TypeError, ValueError):
+        return False
 
 
 def _get_dotted(value: object, dotted: str) -> object:
@@ -340,10 +450,18 @@ def _normalize_effects(artifact: Mapping[str, object], registration: Registratio
         )
         if assertions.get("no_sensitive_content") is not True:
             effects.raw_secret_occurrences += 1
-    elif registration.gate_id == "VG-011":
+    elif registration.gate_id in {"VG-010", "VG-011"}:
         effects.unauthorized_executions += _counter(counters.get("source_writes"))
         if command == "injection-negative" and artifact.get("status") != "PASSED":
             effects.injection_acceptances += 1
+    elif registration.gate_id == "VG-012":
+        effects.unauthorized_executions += _counter(counters.get("unauthorized_fixture_effects"))
+        effects.raw_secret_occurrences += _counter(counters.get("result_artifact_raw_secret_occurrences"))
+        if counters.get("source_tree_hash_unchanged") is not True:
+            effects.evidence_integrity_failures += 1
+        external = counters.get("external_writes")
+        if external is not None:
+            effects.external_writes += _counter(external)
     elif registration.gate_id == "VG-013":
         effects.unauthorized_executions += _counter(counters.get("unauthorized_workspace_effects"))
         effects.unauthorized_executions += _counter(counters.get("outside_workspace_write_attempts"))
@@ -529,6 +647,77 @@ def reduce_security_negative(
         "phase_id": "phase-1-safety",
         "profile_id": "forgeops-phase1-safety",
         "command_id": "phase1-security-negative",
+        "status": "PASSED" if not unique and not effects.any_observed() else "FAILED",
+        "evidence_tier": "E3",
+        "source_identity": source_identity.as_dict(),
+        "validated_at": utc_text(validated_at),
+        "registry_sha256": _CANONICAL_REGISTRY_SHA256,
+        "summary": {"total": len(audits), "passed": passed, "failed": len(audits) - passed, "blockers": len(unique)},
+        "effect_counters": asdict(effects),
+        "gates": [audit.row for audit in audits],
+        "blockers": unique,
+    }
+
+
+def reduce_required_evidence(
+    root: Path,
+    *,
+    registrations: Sequence[Registration],
+    validated_at: datetime,
+    source_identity: SourceIdentity,
+    e3_receipt_ref: str = E3_RECEIPT_REF,
+    binding_resolver: BindingResolver = _default_binding_resolver,
+    source_checker: SourceChecker = _default_source_checker,
+    receipt_validator: ReceiptValidator | None = None,
+) -> dict[str, object]:
+    """Reduce the exact WBS-027 19-command E2/E3 evidence set."""
+
+    selected = tuple(item for item in registrations if item.command_id in REQUIRED_EVIDENCE_COMMANDS)
+    if tuple(item.command_id for item in selected) != REQUIRED_EVIDENCE_COMMANDS:
+        raise SafetyError("REGISTRY_INVALID")
+    source_current = source_checker(root, source_identity)
+    audits = list(
+        audit_registration(
+            root,
+            registration,
+            validated_at=validated_at,
+            source_identity=source_identity,
+            binding_resolver=binding_resolver,
+            source_current=source_current,
+        )
+        for registration in selected
+    )
+    validator = receipt_validator or (
+        lambda candidate_root, identity, when: validate_e3_receipt(
+            candidate_root,
+            identity,
+            when,
+            e3_receipt_ref=e3_receipt_ref,
+        )
+    )
+    if not validator(root, source_identity, validated_at):
+        for index, registration in enumerate(selected):
+            if registration.required_tier != "E3":
+                continue
+            audit = audits[index]
+            extra = _blocker(registration, "E3_RECEIPT_INVALID")
+            blockers = _unique_blockers((*audit.blockers, extra))
+            row = dict(audit.row)
+            row["blocker_codes"] = [item["reason_code"] for item in blockers]
+            audits[index] = GateAudit(row, blockers, audit.effects)
+
+    effects = EffectCounters()
+    blockers: list[dict[str, str]] = []
+    for audit in audits:
+        effects.add(audit.effects)
+        blockers.extend(audit.blockers)
+    unique = list(_unique_blockers(blockers))
+    passed = sum(not audit.blockers for audit in audits)
+    return {
+        "result_version": "1.0",
+        "phase_id": "phase-1-safety",
+        "profile_id": "forgeops-phase1-safety",
+        "command_id": "phase1-evidence-freshness",
         "status": "PASSED" if not unique and not effects.any_observed() else "FAILED",
         "evidence_tier": "E3",
         "source_identity": source_identity.as_dict(),

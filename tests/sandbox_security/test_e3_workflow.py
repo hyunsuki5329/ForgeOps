@@ -55,10 +55,18 @@ class E3WorkflowPolicyTests(unittest.TestCase):
             for line in attributes_path.read_text(encoding="utf-8").splitlines()
             if line.strip() and not line.lstrip().startswith("#")
         ]
-        self.assertEqual(
-            [f"{path} text eol=lf" for path in exact_byte_inputs],
-            active_lines,
-        )
+        for path in exact_byte_inputs:
+            self.assertIn(f"{path} text eol=lf", active_lines)
+        for required in (
+            "contracts/forgeops-phase1-safety/** text eol=lf",
+            "fixtures/forgeops-phase1-safety/** text eol=lf",
+            "tools/phase1_safety/** text eol=lf",
+            "tests/phase1_safety/** text eol=lf",
+            "artifacts/verification/phase-1-*-result.json text eol=lf",
+            "artifacts/reviews/phase-1-safety-scorecard.* text eol=lf",
+        ):
+            self.assertIn(required, active_lines)
+        self.assertNotIn("* text eol=lf", active_lines)
 
         completed = subprocess.run(
             ["git", "check-attr", "text", "eol", "--", *exact_byte_inputs],
@@ -260,24 +268,45 @@ class E3WorkflowPolicyTests(unittest.TestCase):
         self.assertEqual(2, text.count("cosign-release: 'v3.0.6'"))
 
     def test_workflow_invokes_fixed_clis_and_uploads_only_the_public_allowlist(self):
-        from tools.sandbox_security.e3_artifact import E3_ARTIFACT_FILES, E3_STAGING_ROOT
+        from tools.phase1_safety.registry import EXPECTED_COMMANDS
+        from tools.sandbox_security.e3_artifact import PHASE1_ARTIFACT_FILES, PHASE1_STAGING_ROOT
 
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("python tools/sandbox_security/e3_helper.py", text)
         self.assertIn("python tools/sandbox_security/e3_attestation.py import", text)
         self.assertEqual(3, text.count("python tools/sandbox_security/verify.py"))
-        self.assertIn("python tools/sandbox_security/e3_artifact.py build", text)
-        self.assertIn("python tools/sandbox_security/e3_artifact.py stage-upload", text)
-        self.assertIn("name: forgeops-e3-evidence-${{ github.run_id }}-${{ github.run_attempt }}", text)
+        for _gate, _profile, command_id, _tier in EXPECTED_COMMANDS:
+            self.assertEqual(1, text.count(f"--command-id {command_id}"), command_id)
+        self.assertIn("python tools/sandbox_security/e3_artifact.py build-phase1", text)
+        self.assertIn("python tools/sandbox_security/e3_artifact.py stage-phase1-upload", text)
+        self.assertIn("name: forgeops-phase1-evidence-${{ github.run_id }}-${{ github.run_attempt }}", text)
         self.assertIn("if-no-files-found: error", text)
         self.assertIn("include-hidden-files: false", text)
         self.assertIn("retention-days: 7", text)
-        upload = text.split("- name: Upload public E3 evidence", 1)[1]
-        self.assertIn(f"path: {E3_STAGING_ROOT}", upload)
+        upload = text.split("- name: Upload public W9 evidence", 1)[1]
+        self.assertIn(f"path: {PHASE1_STAGING_ROOT}", upload)
         self.assertNotIn("path: |", upload)
-        for path in E3_ARTIFACT_FILES:
+        for path in PHASE1_ARTIFACT_FILES:
             self.assertNotIn(f"          {path}", upload)
         self.assertIn('test "$WORKFLOW_SHA" = "$SOURCE_SHA"', text)
+        self.assertNotIn("continue-on-error", text)
+
+    def test_w9_verifier_steps_are_strictly_ordered_before_upload(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        ordered = (
+            "- name: Check out signed source",
+            "- name: Verify digest identity before provisioning",
+            "- name: Configure rootless Docker",
+            "- name: Collect fixed runtime evidence",
+            "- name: Verify and import signed attestation",
+            "- name: Run exact Phase 0 and W9 union gates",
+            "- name: Run W9 safety reducers and gate",
+            "- name: Build closed W9 public manifest",
+            "- name: Stage exact W9 public artifact tree",
+            "- name: Upload public W9 evidence",
+        )
+        positions = [text.index(value) for value in ordered]
+        self.assertEqual(sorted(positions), positions)
 
 
 class E3ArtifactTests(unittest.TestCase):

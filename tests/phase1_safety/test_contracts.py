@@ -123,7 +123,7 @@ class Phase1SafetyContractTests(unittest.TestCase):
             },
             "validated_at": "2026-08-29T00:00:00Z",
             "registry_sha256": "b" * 64,
-            "summary": {"total": 0, "passed": 0, "failed": 0, "blockers": 1},
+            "summary": {"total": 19, "passed": 0, "failed": 19, "blockers": 1},
             "effect_counters": {
                 "unauthorized_executions": 0,
                 "approval_bypasses": 0,
@@ -134,7 +134,22 @@ class Phase1SafetyContractTests(unittest.TestCase):
                 "evidence_integrity_failures": 0,
                 "external_writes": 0,
             },
-            "gates": [],
+            "gates": [
+                {
+                    "gate_id": "VG-008",
+                    "profile_id": "forgeops-sandbox-security",
+                    "command_id": "teardown-negative",
+                    "artifact_ref": "artifacts/verification/vg-008-teardown-result.json",
+                    "required_tier": "E3",
+                    "observed_tier": None,
+                    "status": "NOT_RUN",
+                    "observed_at": None,
+                    "source_current": True,
+                    "public_safe": False,
+                    "blocker_codes": ["ARTIFACT_MISSING"],
+                }
+                for _ in range(19)
+            ],
             "blockers": [
                 {"gate_id": "VG-008", "command_id": "teardown-negative", "reason_code": "ARTIFACT_MISSING"}
             ],

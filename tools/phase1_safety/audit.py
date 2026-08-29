@@ -728,3 +728,103 @@ def reduce_required_evidence(
         "gates": [audit.row for audit in audits],
         "blockers": unique,
     }
+
+
+def _saved_reducer_blocker(
+    root: Path,
+    relative: str,
+    expected: Mapping[str, object],
+    anchor: Registration,
+    validated_at: datetime,
+) -> dict[str, str] | None:
+    path = root / relative
+    if not path.is_file() or path.is_symlink():
+        return _blocker(anchor, "REDUCER_RESULT_MISSING")
+    try:
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(saved, Mapping) or set(saved) != set(expected):
+            return _blocker(anchor, "REDUCER_RESULT_INVALID")
+        saved_time = parse_utc(saved.get("validated_at"))
+        age = (validated_at - saved_time).total_seconds()
+        if not 0 <= age <= 300:
+            return _blocker(anchor, "REDUCER_RESULT_STALE")
+        for key, value in expected.items():
+            if key != "validated_at" and saved.get(key) != value:
+                return _blocker(anchor, "REDUCER_RESULT_MISMATCH")
+        if saved.get("status") != "PASSED":
+            return _blocker(anchor, "REDUCER_RESULT_MISMATCH")
+    except (OSError, UnicodeError, json.JSONDecodeError, SafetyError, TypeError):
+        return _blocker(anchor, "REDUCER_RESULT_INVALID")
+    return None
+
+
+def decide_phase1_safety(
+    root: Path,
+    *,
+    registrations: Sequence[Registration],
+    validated_at: datetime,
+    source_identity: SourceIdentity,
+    binding_resolver: BindingResolver = _default_binding_resolver,
+    source_checker: SourceChecker = _default_source_checker,
+    receipt_validator: ReceiptValidator | None = None,
+) -> dict[str, object]:
+    """Re-audit source artifacts and make the WBS-028 READY decision."""
+
+    shared = {
+        "registrations": registrations,
+        "validated_at": validated_at,
+        "source_identity": source_identity,
+        "binding_resolver": binding_resolver,
+        "source_checker": source_checker,
+    }
+    security = reduce_security_negative(root, **shared)
+    required = reduce_required_evidence(
+        root,
+        **shared,
+        **({"receipt_validator": receipt_validator} if receipt_validator is not None else {}),
+    )
+    security_selected = tuple(item for item in registrations if item.command_id in SECURITY_NEGATIVE_COMMANDS)
+    required_selected = tuple(item for item in registrations if item.command_id in REQUIRED_EVIDENCE_COMMANDS)
+    if not security_selected or not required_selected:
+        raise SafetyError("REGISTRY_INVALID")
+
+    blockers = list(security["blockers"])
+    blockers.extend(required["blockers"])
+    for relative, expected, anchor in (
+        ("artifacts/verification/phase-1-security-negative-result.json", security, security_selected[0]),
+        ("artifacts/verification/phase-1-evidence-freshness-result.json", required, required_selected[0]),
+    ):
+        saved_blocker = _saved_reducer_blocker(root, relative, expected, anchor, validated_at)
+        if saved_blocker is not None:
+            blockers.append(saved_blocker)
+    unique = list(_unique_blockers(blockers))
+    effects = {
+        key: max(security["effect_counters"][key], required["effect_counters"][key])
+        for key in asdict(EffectCounters())
+    }
+    ready = (
+        security["status"] == "PASSED"
+        and required["status"] == "PASSED"
+        and not unique
+        and not any(effects.values())
+    )
+    return {
+        "result_version": "1.0",
+        "phase_id": "phase-1-safety",
+        "profile_id": "forgeops-phase1-safety",
+        "command_id": "phase1-safety-gate",
+        "status": "READY" if ready else "NOT_READY",
+        "evidence_tier": "E3",
+        "source_identity": source_identity.as_dict(),
+        "validated_at": utc_text(validated_at),
+        "registry_sha256": _CANONICAL_REGISTRY_SHA256,
+        "summary": {
+            "total": required["summary"]["total"],
+            "passed": required["summary"]["passed"],
+            "failed": required["summary"]["failed"],
+            "blockers": len(unique),
+        },
+        "effect_counters": effects,
+        "gates": required["gates"],
+        "blockers": unique,
+    }

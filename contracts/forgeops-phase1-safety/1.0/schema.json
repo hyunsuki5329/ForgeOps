@@ -161,7 +161,7 @@
         "registry_sha256": {"$ref": "#/$defs/sha256"},
         "summary": {"$ref": "#/$defs/summary"},
         "effect_counters": {"$ref": "#/$defs/effectCounters"},
-        "gates": {"type": "array", "items": {"$ref": "#/$defs/gateRow"}},
+        "gates": {"type": "array", "minItems": 19, "maxItems": 19, "items": {"$ref": "#/$defs/gateRow"}},
         "blockers": {"type": "array", "items": {"$ref": "#/$defs/blocker"}}
       }
     },

@@ -17,9 +17,10 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 if __package__ in (None, ""):
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from tools.phase1_safety.audit import reduce_required_evidence, reduce_security_negative
+from tools.phase1_safety.audit import decide_phase1_safety, reduce_required_evidence, reduce_security_negative
 from tools.phase1_safety.model import SafetyError, SourceIdentity, atomic_write_json, validate_source_identity
 from tools.phase1_safety.registry import load_registry
+from tools.phase1_safety.scorecard import atomic_publish_scorecard
 
 
 SCHEMA_REF = "contracts/forgeops-phase1-safety/1.0/schema.json"
@@ -100,8 +101,10 @@ def main(
     receipt_validator=None,
 ) -> int:
     args = _parser().parse_args(argv)
+    gate_execution_started = False
     try:
         _validate_cli(args)
+        gate_execution_started = args.command_id == "phase1-safety-gate"
         schema = _load_json(root / args.schema)
         suite = _load_json(root / args.suite)
         if not isinstance(schema, dict) or not isinstance(suite, dict):
@@ -112,8 +115,6 @@ def main(
         registrations = load_registry(suite)
         identity = source_identity or _identity_from_environment()
         when = validated_at or datetime.now(timezone.utc).replace(microsecond=0)
-        if args.command_id == "phase1-safety-gate":
-            raise SafetyError("VERIFIER_COMMAND_NOT_IMPLEMENTED")
         kwargs = {}
         if binding_resolver is not None:
             kwargs["binding_resolver"] = binding_resolver
@@ -121,7 +122,12 @@ def main(
             kwargs["source_checker"] = source_checker
         if receipt_validator is not None:
             kwargs["receipt_validator"] = receipt_validator
-        reducer = reduce_security_negative if args.command_id == "phase1-security-negative" else reduce_required_evidence
+        reducers = {
+            "phase1-security-negative": reduce_security_negative,
+            "phase1-evidence-freshness": reduce_required_evidence,
+            "phase1-safety-gate": decide_phase1_safety,
+        }
+        reducer = reducers[args.command_id]
         if reducer is reduce_security_negative:
             kwargs.pop("receipt_validator", None)
         result = reducer(
@@ -131,15 +137,32 @@ def main(
             source_identity=identity,
             **kwargs,
         )
-        result_schema = {"$ref": "#/$defs/reducerResult", "$defs": schema["$defs"]}
+        definition = "gateResult" if args.command_id == "phase1-safety-gate" else "reducerResult"
+        result_schema = {"$ref": f"#/$defs/{definition}", "$defs": schema["$defs"]}
         if list(Draft202012Validator(result_schema).iter_errors(result)):
             raise SafetyError("VERIFIER_RESULT_INVALID")
+        if args.command_id == "phase1-safety-gate":
+            atomic_publish_scorecard(
+                root / args.result,
+                root / args.report_md,
+                root / args.report_html,
+                result,
+            )
+            return 0 if result["status"] == "READY" else 1
         atomic_write_json(root / args.result, result)
         return 0 if result["status"] == "PASSED" else 1
     except SafetyError as error:
+        if gate_execution_started:
+            for relative in (args.result, args.report_md, args.report_html):
+                if relative is not None:
+                    (root / relative).unlink(missing_ok=True)
         print(error.code, file=sys.stderr)
         return 2
     except Exception:
+        if gate_execution_started:
+            for relative in (args.result, args.report_md, args.report_html):
+                if relative is not None:
+                    (root / relative).unlink(missing_ok=True)
         print("VERIFIER_UNEXPECTED_FAILURE", file=sys.stderr)
         return 2
 

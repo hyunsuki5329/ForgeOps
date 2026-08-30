@@ -207,6 +207,30 @@ class Phase1SafetyContractTests(unittest.TestCase):
                 "ff16f39d74861710c5500d81045c46512ee8d589",
                 documents[relative],
             )
+        threat_status = next(
+            line
+            for line in documents["docs/security/threat-model.md"].splitlines()
+            if line.startswith("**현재 상태:**")
+        )
+        self.assertIn("33287890009", threat_status)
+        self.assertIn("WBS-026~WBS-028", threat_status)
+        self.assertIn("`READY`", threat_status)
+        self.assertNotIn("아직 없다", threat_status)
+        self.assertNotIn("계속 `NOT_RUN`", threat_status)
+        rtm = documents["docs/project/requirements-traceability-matrix.md"]
+        nfr_rows = {
+            requirement_id: next(
+                line for line in rtm.splitlines() if line.startswith(f"| {requirement_id} |")
+            )
+            for requirement_id in ("PRD-NFR-002", "PRD-NFR-003", "PRD-NFR-006", "PRD-NFR-011")
+        }
+        self.assertIn("phase-1-security-negative-result.json", nfr_rows["PRD-NFR-002"])
+        self.assertNotIn("WBS-026 및 후속", nfr_rows["PRD-NFR-002"])
+        self.assertIn("vg-014-budget-cancel-result.json", nfr_rows["PRD-NFR-003"])
+        self.assertNotIn("WBS-024·WBS-028과 VG-014가 남아", nfr_rows["PRD-NFR-003"])
+        for requirement_id in ("PRD-NFR-006", "PRD-NFR-011"):
+            self.assertIn("vg-015-trace-manifest-result.json", nfr_rows[requirement_id])
+            self.assertNotIn("VG-015 미실행", nfr_rows[requirement_id])
         for required in (
             "23개",
             "20개",

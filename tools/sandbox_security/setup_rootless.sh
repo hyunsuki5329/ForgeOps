@@ -6,6 +6,11 @@ fail() {
   exit "$2"
 }
 
+rootless_diagnostics() {
+  SYSTEMD_COLORS=0 systemctl --user status docker.service --no-pager >&2 || true
+  SYSTEMD_COLORS=0 journalctl --user --unit docker.service --no-pager --lines 50 --output short-iso >&2 || true
+}
+
 has_subid_mapping() {
   awk -F: -v user="$runner_user" '
     $1 == user &&
@@ -38,8 +43,14 @@ expected_runtime_dir="/run/user/$runner_uid"
 [ "$(stat -c %u "$XDG_RUNTIME_DIR")" = "$runner_uid" ] || fail "E3_ROOTLESS_RUNTIME_DIR_INVALID" 28
 [ -S "$XDG_RUNTIME_DIR/bus" ] || fail "E3_ROOTLESS_USER_BUS_MISSING" 29
 
-dockerd-rootless-setuptool.sh install --force || fail "E3_ROOTLESS_INSTALL_FAILED" 30
-systemctl --user start docker.service || fail "E3_ROOTLESS_SERVICE_FAILED" 31
+if ! dockerd-rootless-setuptool.sh install --force; then
+  rootless_diagnostics
+  fail "E3_ROOTLESS_INSTALL_FAILED" 30
+fi
+if ! systemctl --user start docker.service; then
+  rootless_diagnostics
+  fail "E3_ROOTLESS_SERVICE_FAILED" 31
+fi
 docker context use rootless >/dev/null || fail "E3_ROOTLESS_SERVICE_FAILED" 31
 export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/docker.sock"
 for _attempt in {1..20}; do

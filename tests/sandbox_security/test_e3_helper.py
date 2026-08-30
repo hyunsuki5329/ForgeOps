@@ -79,6 +79,20 @@ class RootlessSetupTests(unittest.TestCase):
             with self.subTest(reason=reason):
                 self.assertIn(f'fail "{reason}" {code}', script)
 
+    def test_install_failure_emits_bounded_service_diagnostics_before_stable_code(self):
+        script = (ROOT / "tools/sandbox_security/setup_rootless.sh").read_text(encoding="utf-8")
+
+        self.assertIn("rootless_diagnostics()", script)
+        self.assertIn("systemctl --user status docker.service --no-pager", script)
+        self.assertIn(
+            "journalctl --user --unit docker.service --no-pager --lines 50",
+            script,
+        )
+        self.assertLess(
+            script.index("rootless_diagnostics"),
+            script.index('fail "E3_ROOTLESS_INSTALL_FAILED" 30'),
+        )
+
     def test_controller_check_is_order_independent_and_rejects_each_missing_controller(self):
         script = (ROOT / "tools/sandbox_security/setup_rootless.sh").read_text(encoding="utf-8")
         self.assertIn("for controller in memory pids cpu", script)

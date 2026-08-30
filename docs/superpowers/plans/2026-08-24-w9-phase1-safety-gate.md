@@ -283,7 +283,24 @@ def verify_downloaded_phase1_artifact(
     *,
     validation_at: datetime,
 ) -> dict[str, object]: ...
+
+def verify_downloaded_phase1_artifact_from_facts(
+    source: Path,
+    expected_repository: str,
+    expected_repository_id: str,
+    expected_default_branch: str,
+    expected_run_id: str,
+    expected_run_attempt: int,
+    expected_source_sha: str,
+    *,
+    validation_at: datetime,
+) -> dict[str, object]: ...
 ```
+
+The fixed download/import CLI accepts only independently observed GitHub API
+facts. Image reference and digest are read from the already snapshotted receipt
+inside the verifier and must then pass the signed identity checks; callers do
+not inspect unverified artifact content to construct trusted input.
 
 **RED**
 

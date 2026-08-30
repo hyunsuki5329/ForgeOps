@@ -269,8 +269,9 @@ class Phase1ArtifactBoundaryTests(unittest.TestCase):
             PHASE1_MANIFEST_FILE,
             PHASE1_PAYLOAD_FILES,
             build_phase1_manifest,
-            import_downloaded_phase1_artifact,
+            import_downloaded_phase1_artifact_from_facts,
             stage_phase1_upload_artifact,
+            verify_downloaded_phase1_artifact_from_facts,
             verify_downloaded_phase1_artifact,
         )
 
@@ -282,12 +283,53 @@ class Phase1ArtifactBoundaryTests(unittest.TestCase):
             self.assertNotIn(PHASE1_MANIFEST_FILE, [item["path"] for item in manifest["files"]])
             staging = stage_phase1_upload_artifact(root)
             verified = verify_downloaded_phase1_artifact(staging, identity, runner=runner, validation_at=NOW)
-            targets = import_downloaded_phase1_artifact(staging, Path(target_directory), identity, runner=runner, validation_at=NOW)
+            facts = {
+                "expected_repository": identity.repository,
+                "expected_repository_id": identity.repository_id,
+                "expected_default_branch": identity.default_branch,
+                "expected_run_id": identity.run_id,
+                "expected_run_attempt": identity.run_attempt,
+                "expected_source_sha": identity.source_sha,
+            }
+            verified_from_facts = verify_downloaded_phase1_artifact_from_facts(
+                staging, **facts, runner=runner, validation_at=NOW
+            )
+            targets = import_downloaded_phase1_artifact_from_facts(
+                staging, Path(target_directory), **facts, runner=runner, validation_at=NOW
+            )
 
             self.assertEqual("READY", verified["status"])
+            self.assertEqual(verified, verified_from_facts)
             self.assertEqual(set(PHASE1_ARTIFACT_FILES), set(targets))
             for relative in PHASE1_ARTIFACT_FILES:
                 self.assertEqual((staging / relative).read_bytes(), targets[relative].read_bytes())
+
+    def test_facts_only_download_rejects_github_identity_near_miss(self):
+        from tools.sandbox_security.e3_artifact import (
+            ArtifactError,
+            PHASE1_MANIFEST_FILE,
+            build_phase1_manifest,
+            stage_phase1_upload_artifact,
+            verify_downloaded_phase1_artifact_from_facts,
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            identity, runner = self._source(root)
+            build_phase1_manifest(root, root / PHASE1_MANIFEST_FILE, runner=runner, validation_at=NOW)
+            staging = stage_phase1_upload_artifact(root)
+            with self.assertRaises(ArtifactError):
+                verify_downloaded_phase1_artifact_from_facts(
+                    staging,
+                    expected_repository=identity.repository,
+                    expected_repository_id="999",
+                    expected_default_branch=identity.default_branch,
+                    expected_run_id=identity.run_id,
+                    expected_run_attempt=identity.run_attempt,
+                    expected_source_sha=identity.source_sha,
+                    runner=runner,
+                    validation_at=NOW,
+                )
 
     def test_download_rejects_extra_missing_tampered_and_stale_payload(self):
         from tools.sandbox_security.e3_artifact import (

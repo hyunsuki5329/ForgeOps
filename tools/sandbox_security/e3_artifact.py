@@ -545,6 +545,73 @@ def verify_downloaded_phase1_artifact(
         return _verify_phase1_snapshot(snapshot, expected_identity, runner=runner, validation_at=validation_at)
 
 
+def _phase1_identity_from_github_facts(
+    source: Path,
+    expected_repository: str,
+    expected_repository_id: str,
+    expected_default_branch: str,
+    expected_run_id: str,
+    expected_run_attempt: int,
+    expected_source_sha: str,
+) -> ExpectedIdentity:
+    """Bind caller-supplied GitHub API facts to image identity inside the verifier."""
+
+    from tools.phase1_safety.model import SafetyError, validate_source_identity
+
+    try:
+        source_identity = validate_source_identity({
+            "repository": expected_repository,
+            "repository_id": expected_repository_id,
+            "default_branch": expected_default_branch,
+            "workflow_ref": f"refs/heads/{expected_default_branch}",
+            "source_sha": expected_source_sha,
+            "workflow_sha": expected_source_sha,
+            "run_id": expected_run_id,
+            "run_attempt": expected_run_attempt,
+        })
+        receipt = _load_json(source / "artifacts/runtime/sandbox-e3-import-receipt.json")
+        return ExpectedIdentity(
+            source_identity.repository,
+            source_identity.repository_id,
+            source_identity.default_branch,
+            source_identity.source_sha,
+            source_identity.workflow_sha,
+            source_identity.run_id,
+            source_identity.run_attempt,
+            receipt["image_ref"],
+            receipt["image_digest"],
+        )
+    except (KeyError, TypeError, ValueError, SafetyError) as error:
+        raise ArtifactError("E3_ARTIFACT_IDENTITY_INVALID") from error
+
+
+def verify_downloaded_phase1_artifact_from_facts(
+    source: Path,
+    expected_repository: str,
+    expected_repository_id: str,
+    expected_default_branch: str,
+    expected_run_id: str,
+    expected_run_attempt: int,
+    expected_source_sha: str,
+    *,
+    runner: ProcessRunner = DEFAULT_PROCESS_RUNNER,
+    validation_at: datetime | None = None,
+) -> dict[str, Any]:
+    """Verify W9 evidence from immutable GitHub API facts without pre-reading it."""
+
+    with _snapshot_phase1_source(source) as snapshot:
+        identity = _phase1_identity_from_github_facts(
+            snapshot,
+            expected_repository,
+            expected_repository_id,
+            expected_default_branch,
+            expected_run_id,
+            expected_run_attempt,
+            expected_source_sha,
+        )
+        return _verify_phase1_snapshot(snapshot, identity, runner=runner, validation_at=validation_at)
+
+
 def _verify_snapshot(
     source: Path, expected_repository: str, expected_repository_id: str,
     expected_default_branch: str, expected_run_id: str, expected_run_attempt: int,
@@ -733,6 +800,42 @@ def import_downloaded_phase1_artifact(
     return targets
 
 
+def import_downloaded_phase1_artifact_from_facts(
+    source: Path,
+    root: Path,
+    expected_repository: str,
+    expected_repository_id: str,
+    expected_default_branch: str,
+    expected_run_id: str,
+    expected_run_attempt: int,
+    expected_source_sha: str,
+    *,
+    runner: ProcessRunner = DEFAULT_PROCESS_RUNNER,
+    validation_at: datetime | None = None,
+    replacer=os.replace,
+) -> dict[str, Path]:
+    """Import W9 evidence using only independently observed GitHub API facts."""
+
+    with _snapshot_phase1_source(source) as snapshot:
+        identity = _phase1_identity_from_github_facts(
+            snapshot,
+            expected_repository,
+            expected_repository_id,
+            expected_default_branch,
+            expected_run_id,
+            expected_run_attempt,
+            expected_source_sha,
+        )
+        return import_downloaded_phase1_artifact(
+            snapshot,
+            root,
+            identity,
+            runner=runner,
+            validation_at=validation_at,
+            replacer=replacer,
+        )
+
+
 def import_downloaded_artifact(source: Path, root: Path, expected_identity: ExpectedIdentity, *, runner: ProcessRunner = DEFAULT_PROCESS_RUNNER, validation_at: datetime | None = None, replacer=os.replace) -> dict[str, Path]:
     """Verify then atomically replace only fixed repository targets."""
 
@@ -794,8 +897,6 @@ def main(argv: list[str] | None = None) -> int:
         phase1_parser.add_argument("--expected-run-id", required=True)
         phase1_parser.add_argument("--expected-run-attempt", required=True, type=int)
         phase1_parser.add_argument("--expected-source-sha", required=True)
-        phase1_parser.add_argument("--expected-image-ref", required=True)
-        phase1_parser.add_argument("--expected-image-digest", required=True)
     arguments = parser.parse_args(argv)
     try:
         if arguments.operation == "build":
@@ -812,22 +913,19 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.expected_default_branch, arguments.expected_run_id,
                 arguments.expected_run_attempt, arguments.expected_source_sha,
             )
-        else:
-            identity = ExpectedIdentity(
-                arguments.expected_repository,
-                arguments.expected_repository_id,
-                arguments.expected_default_branch,
-                arguments.expected_source_sha,
-                arguments.expected_source_sha,
-                arguments.expected_run_id,
-                arguments.expected_run_attempt,
-                arguments.expected_image_ref,
-                arguments.expected_image_digest,
+        elif arguments.operation == "verify-phase1-download":
+            verify_downloaded_phase1_artifact_from_facts(
+                Path(arguments.source), arguments.expected_repository, arguments.expected_repository_id,
+                arguments.expected_default_branch, arguments.expected_run_id,
+                arguments.expected_run_attempt, arguments.expected_source_sha,
             )
-            if arguments.operation == "verify-phase1-download":
-                verify_downloaded_phase1_artifact(Path(arguments.source), identity)
-            else:
-                import_downloaded_phase1_artifact(Path(arguments.source), _ROOT, identity)
+        else:
+            import_downloaded_phase1_artifact_from_facts(
+                Path(arguments.source), _ROOT, arguments.expected_repository,
+                arguments.expected_repository_id, arguments.expected_default_branch,
+                arguments.expected_run_id, arguments.expected_run_attempt,
+                arguments.expected_source_sha,
+            )
     except ArtifactError:
         return 2
     return 0

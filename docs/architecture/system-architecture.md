@@ -26,6 +26,8 @@ sandbox provisioner, Tool Gateway, durable event store 및 외부 publisher는
 정의됐다는 뜻이고 `PLANNED`는 후속 구현·검증 대상이라는 뜻이며, 어느
 표시도 현재 실행 가능성이나 Phase Exit 통과를 주장하지 않는다.
 
+**W9 safety aggregation boundary:** `tools/phase1_safety`는 23개 등록 결과를 닫힌 source registry로 묶고, 20개 security-negative와 19개 required-evidence를 별도로 reduce한 뒤 원본 artifact를 다시 감사해 최종 READY를 결정한다. 기존 `.github/workflows/vg-008-e3.yml`의 producer/verifier 두 job만 사용하며 세 번째 신뢰 job을 추가하지 않는다. versioned W9 payload는 runtime 5개, 등록 결과 23개, W9 결과 3개와 scorecard 2개만 허용한다. 이 구조는 protected `main` merge SHA의 외부 E3 run과 검증된 import가 존재하기 전에는 current evidence 또는 W9 완료를 만들지 않으며, W10의 local demonstration, VG-024와 Phase 1 Exit를 포함하지 않는다.
+
 ## 2. 현재와 목표 경계
 
 ForgeOps는 **Harness Foundation과 Phase 0 W1 bridge 완료** 상태다. 현재

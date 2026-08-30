@@ -262,7 +262,7 @@ jobs:
           set -euo pipefail
           python tools/sandbox_security/e3_attestation.py import
 
-      - name: Run all Phase 0 registered gates
+      - name: Run exact Phase 0 and W9 union gates
         shell: bash
         run: |
           set -euo pipefail
@@ -282,6 +282,18 @@ jobs:
           python tools/sandbox_security/verify.py --schema contracts/forgeops-sandbox-contract/1.0/schema.json --suite fixtures/forgeops-sandbox-security/suite.json --runtime-profile artifacts/runtime/sandbox-runtime-profile.json --runtime docker --result artifacts/verification/vg-008-teardown-result.json --command-id teardown-negative
           python tools/secret_artifact_security/verify.py --schema contracts/forgeops-secret-artifact-contract/1.0/schema.json --suite fixtures/forgeops-secret-artifact-security/suite.json --result artifacts/verification/vg-009-secret-surface-result.json --command-id secret-surface-negative
           python tools/secret_artifact_security/verify.py --schema contracts/forgeops-secret-artifact-contract/1.0/schema.json --suite fixtures/forgeops-secret-artifact-security/suite.json --result artifacts/verification/vg-009-artifact-isolation-result.json --command-id artifact-isolation-negative
+          python tools/snapshot_context/verify.py snapshot-baseline --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-snapshot-baseline/suite.json --result artifacts/verification/vg-010-snapshot-identity-result.json --command-id snapshot-identity
+          python tools/snapshot_context/verify.py snapshot-baseline --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-snapshot-baseline/suite.json --result artifacts/verification/vg-010-baseline-retrieval-result.json --command-id baseline-retrieval-repeat
+          python tools/snapshot_context/verify.py context --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-context-security/suite.json --result artifacts/verification/vg-011-context-provenance-result.json --command-id context-provenance
+          python tools/snapshot_context/verify.py context --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-context-security/suite.json --result artifacts/verification/vg-011-injection-negative-result.json --command-id injection-negative
+          python tools/local_vertical/verify.py --schema contracts/forgeops-local-vertical/1.0/schema.json --product-schema contracts/product-task-contract/1.0/schema.json --snapshot-schema contracts/forgeops-snapshot-contract/1.0/schema.json --context-schema contracts/forgeops-context-pack/1.0/schema.json --suite fixtures/forgeops-local-vertical/suite.json --result artifacts/verification/vg-012-local-vertical-result.json --command-id main-part-work-main
+          python tools/patch_verification/verify.py --schema contracts/forgeops-patch-verification/1.0/schema.json --suite fixtures/forgeops-patch-verification/suite.json --result artifacts/verification/vg-013-task-checks-result.json --command-id task-checks
+          python tools/patch_verification/verify.py --schema contracts/forgeops-patch-verification/1.0/schema.json --suite fixtures/forgeops-patch-verification/suite.json --result artifacts/verification/vg-013-regression-checks-result.json --command-id regression-checks
+          python tools/patch_verification/verify.py --schema contracts/forgeops-patch-verification/1.0/schema.json --suite fixtures/forgeops-patch-verification/suite.json --result artifacts/verification/vg-013-verification-anti-tamper-result.json --command-id verification-anti-tamper
+          python tools/lifecycle_trace/verify.py --schema contracts/forgeops-lifecycle-trace/1.0/schema.json --suite fixtures/forgeops-lifecycle-trace/suite.json --result artifacts/verification/vg-014-budget-cancel-result.json --command-id budget-cancel-negative
+          python tools/lifecycle_trace/verify.py --schema contracts/forgeops-lifecycle-trace/1.0/schema.json --suite fixtures/forgeops-lifecycle-trace/suite.json --result artifacts/verification/vg-014-no-progress-result.json --command-id no-progress-stop
+          python tools/lifecycle_trace/verify.py --schema contracts/forgeops-lifecycle-trace/1.0/schema.json --suite fixtures/forgeops-lifecycle-trace/suite.json --result artifacts/verification/vg-015-trace-manifest-result.json --command-id trace-manifest-completeness
+          python tools/lifecycle_trace/verify.py --schema contracts/forgeops-lifecycle-trace/1.0/schema.json --suite fixtures/forgeops-lifecycle-trace/suite.json --result artifacts/verification/vg-015-external-write-result.json --command-id external-write-negative
           python tools/evidence_contract/verify.py --schema contracts/forgeops-evidence-contract/1.0/schema.json --suite fixtures/forgeops-evidence-contract/suite.json --result artifacts/verification/vg-023-evidence-contract-result.json --command-id evidence-positive-negative
           python tools/evidence_contract/verify.py --schema contracts/forgeops-evidence-contract/1.0/schema.json --suite fixtures/forgeops-evidence-contract/suite.json --result artifacts/verification/vg-023-extension-provenance-result.json --command-id extension-provenance
           python tools/phase_exit/verify.py --schema contracts/forgeops-phase-exit-contract/1.0/schema.json --suite fixtures/forgeops-phase-exit/phase-0-suite.json --result artifacts/verification/phase-0-exit-result.json --report artifacts/reviews/phase-0-exit-report.md --command-id phase0-exit-gate
@@ -299,23 +311,31 @@ jobs:
               raise SystemExit(2)
           PY
 
-      - name: Build closed public manifest
+      - name: Run W9 safety reducers and gate
         shell: bash
         run: |
           set -euo pipefail
-          python tools/sandbox_security/e3_artifact.py build
+          python tools/phase1_safety/verify.py --schema contracts/forgeops-phase1-safety/1.0/schema.json --suite fixtures/forgeops-phase1-safety/suite.json --result artifacts/verification/phase-1-security-negative-result.json --command-id phase1-security-negative
+          python tools/phase1_safety/verify.py --schema contracts/forgeops-phase1-safety/1.0/schema.json --suite fixtures/forgeops-phase1-safety/suite.json --result artifacts/verification/phase-1-evidence-freshness-result.json --command-id phase1-evidence-freshness
+          python tools/phase1_safety/verify.py --schema contracts/forgeops-phase1-safety/1.0/schema.json --suite fixtures/forgeops-phase1-safety/suite.json --result artifacts/verification/phase-1-safety-gate-result.json --report-md artifacts/reviews/phase-1-safety-scorecard.md --report-html artifacts/reviews/phase-1-safety-scorecard.html --command-id phase1-safety-gate
 
-      - name: Stage exact public artifact tree
+      - name: Build closed W9 public manifest
         shell: bash
         run: |
           set -euo pipefail
-          python tools/sandbox_security/e3_artifact.py stage-upload
+          python tools/sandbox_security/e3_artifact.py build-phase1
 
-      - name: Upload public E3 evidence
+      - name: Stage exact W9 public artifact tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/sandbox_security/e3_artifact.py stage-phase1-upload
+
+      - name: Upload public W9 evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: forgeops-e3-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: e3-upload
+          name: forgeops-phase1-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: phase1-upload
           if-no-files-found: error
           include-hidden-files: false
           retention-days: 7

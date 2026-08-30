@@ -14,6 +14,7 @@ from tools.snapshot_context.model import (
     sha256_bytes,
 )
 from tools.snapshot_context.snapshot import (
+    _load_snapshot_schema,
     _read_stable_regular_file,
     create_snapshot,
     verify_snapshot,
@@ -41,6 +42,12 @@ def make_repository(root: Path) -> None:
 
 
 class SnapshotProviderTests(unittest.TestCase):
+    def test_runtime_schema_uses_absolute_file_id_for_jsonschema_portability(self):
+        schema = _load_snapshot_schema()
+
+        self.assertTrue(schema["$id"].startswith("file:"))
+        self.assertTrue(schema["$id"].endswith("/contracts/forgeops-snapshot-contract/1.0/schema.json"))
+
     def test_clean_snapshot_is_repeatable_and_preserves_source(self):
         with tempfile.TemporaryDirectory() as folder:
             base = Path(folder)

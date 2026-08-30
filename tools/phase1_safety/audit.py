@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 from typing import Callable, Mapping, Sequence
 from urllib.parse import urlsplit
 
@@ -758,7 +759,7 @@ def _saved_reducer_blocker(
     return None
 
 
-def decide_phase1_safety(
+def _decide_phase1_safety_snapshot(
     root: Path,
     *,
     registrations: Sequence[Registration],
@@ -828,3 +829,68 @@ def decide_phase1_safety(
         "gates": required["gates"],
         "blockers": unique,
     }
+
+
+def decide_phase1_safety(
+    root: Path,
+    *,
+    registrations: Sequence[Registration],
+    validated_at: datetime,
+    source_identity: SourceIdentity,
+    binding_resolver: BindingResolver = _default_binding_resolver,
+    source_checker: SourceChecker = _default_source_checker,
+    receipt_validator: ReceiptValidator | None = None,
+) -> dict[str, object]:
+    """Capture each mutable input once, then decide only from that snapshot."""
+
+    frozen_bindings: dict[HashBinding, str | SafetyError] = {}
+    for registration in registrations:
+        for binding in registration.input_bindings:
+            if binding in frozen_bindings:
+                continue
+            try:
+                frozen_bindings[binding] = binding_resolver(root, binding)
+            except SafetyError as error:
+                frozen_bindings[binding] = error
+    source_current = source_checker(root, source_identity)
+
+    def resolve_frozen(_snapshot_root: Path, binding: HashBinding) -> str:
+        value = frozen_bindings[binding]
+        if isinstance(value, SafetyError):
+            raise SafetyError(value.code)
+        return value
+
+    refs = tuple(dict.fromkeys((
+        *(registration.artifact_ref for registration in registrations),
+        E3_ATTESTATION_REF,
+        E3_BUNDLE_REF,
+        E3_PROFILE_REF,
+        E3_OBSERVATIONS_REF,
+        E3_RECEIPT_REF,
+        "artifacts/verification/phase-1-security-negative-result.json",
+        "artifacts/verification/phase-1-evidence-freshness-result.json",
+    )))
+    with tempfile.TemporaryDirectory(prefix="forgeops-phase1-decision-") as directory:
+        snapshot = Path(directory)
+        for relative in refs:
+            source = root / relative
+            if not source.is_file() or source.is_symlink():
+                continue
+            try:
+                content = source.read_bytes()
+            except OSError:
+                continue
+            if not 0 < len(content) <= 8 * 1024 * 1024:
+                continue
+            target = snapshot / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        return _decide_phase1_safety_snapshot(
+            snapshot,
+            registrations=registrations,
+            validated_at=validated_at,
+            source_identity=source_identity,
+            binding_resolver=resolve_frozen,
+            source_checker=lambda _root, _identity: source_current,
+            receipt_validator=receipt_validator,
+        )

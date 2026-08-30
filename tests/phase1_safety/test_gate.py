@@ -100,6 +100,23 @@ class Phase1SafetyGateTests(unittest.TestCase):
 
         self.assertEqual(canonical_json_bytes(first), canonical_json_bytes(second))
 
+    def test_decision_uses_one_snapshot_when_original_changes_mid_audit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _identity, _runner, kwargs = _prepared(root)
+            target = root / "artifacts/verification/phase-1-security-negative-result.json"
+
+            def mutate_original_after_snapshot(_snapshot_root, _identity, _when):
+                saved = json.loads(target.read_text(encoding="utf-8"))
+                saved["summary"]["passed"] = 0
+                target.write_text(json.dumps(saved), encoding="utf-8")
+                return True
+
+            kwargs["receipt_validator"] = mutate_original_after_snapshot
+            decision = decide_phase1_safety(root, **kwargs)
+
+        self.assertEqual("READY", decision["status"])
+
     def test_registered_gate_cli_writes_one_schema_valid_generation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

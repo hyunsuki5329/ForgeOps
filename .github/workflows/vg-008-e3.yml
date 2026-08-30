@@ -64,6 +64,8 @@ jobs:
       - name: Build and push fixed probe image
         id: build
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: .
           file: tools/sandbox_security/e3_image/Dockerfile

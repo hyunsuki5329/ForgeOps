@@ -29,6 +29,21 @@ STATE_ORDER = ("tracked", "staged", "modified", "untracked")
 _READ_OBSERVER: ContextVar[Callable[[Path], None] | None] = ContextVar(
     "snapshot_read_observer", default=None
 )
+_SNAPSHOT_SCHEMA_ID = "contracts/forgeops-snapshot-contract/1.0/schema.json"
+
+
+def _load_snapshot_schema() -> dict[str, object]:
+    schema_path = Path(__file__).resolve().parents[2] / _SNAPSHOT_SCHEMA_ID
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        if not isinstance(schema, dict) or schema.get("$id") != _SNAPSHOT_SCHEMA_ID:
+            raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
+        schema["$id"] = schema_path.resolve(strict=True).as_uri()
+        return schema
+    except SnapshotError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise SnapshotError("SNAPSHOT_CONTENT_CHANGED") from exc
 
 
 @contextmanager
@@ -340,14 +355,7 @@ def create_snapshot(
 def verify_snapshot(snapshot_root: Path, manifest: Mapping[str, object]) -> None:
     snapshot_root = _validated_root_path(Path(snapshot_root))
     try:
-        schema_path = (
-            Path(__file__).resolve().parents[2]
-            / "contracts"
-            / "forgeops-snapshot-contract"
-            / "1.0"
-            / "schema.json"
-        )
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        schema = _load_snapshot_schema()
         if list(Draft202012Validator(schema).iter_errors(manifest)):
             raise SnapshotError("SNAPSHOT_CONTENT_CHANGED")
         body = _manifest_digest_body(manifest)

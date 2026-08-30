@@ -177,7 +177,7 @@ class Phase1SafetyContractTests(unittest.TestCase):
         self.assertEqual(1, len(selected))
         self.assertEqual(list(expected), selected[0]["command_ids"])
 
-    def test_stage_a_docs_keep_w9_incomplete_until_protected_main_evidence_import(self):
+    def test_stage_b_docs_record_protected_main_evidence_and_close_only_w9(self):
         documents = {
             relative: (ROOT / relative).read_text(encoding="utf-8")
             for relative in (
@@ -191,8 +191,46 @@ class Phase1SafetyContractTests(unittest.TestCase):
         wbs = documents["docs/project/wbs.md"]
         for wbs_id in ("WBS-026", "WBS-027", "WBS-028"):
             row = next(line for line in wbs.splitlines() if line.startswith(f"| {wbs_id} |"))
-            self.assertIn("| WBS_NOT_STARTED |", row)
+            self.assertIn("| WBS_DONE |", row)
         combined = "\n".join(documents.values())
+        self.assertIn("33287890009", combined)
+        self.assertIn("ff16f39d74861710c5500d81045c46512ee8d589", combined)
+        self.assertIn("forgeops-phase1-evidence-33287890009-1", combined)
+        self.assertIn("20/20", combined)
+        self.assertIn("19/19", combined)
+        for relative in (
+            "docs/architecture/system-architecture.md",
+            "docs/security/threat-model.md",
+        ):
+            self.assertIn("33287890009", documents[relative])
+            self.assertIn(
+                "ff16f39d74861710c5500d81045c46512ee8d589",
+                documents[relative],
+            )
+        threat_status = next(
+            line
+            for line in documents["docs/security/threat-model.md"].splitlines()
+            if line.startswith("**현재 상태:**")
+        )
+        self.assertIn("33287890009", threat_status)
+        self.assertIn("WBS-026~WBS-028", threat_status)
+        self.assertIn("`READY`", threat_status)
+        self.assertNotIn("아직 없다", threat_status)
+        self.assertNotIn("계속 `NOT_RUN`", threat_status)
+        rtm = documents["docs/project/requirements-traceability-matrix.md"]
+        nfr_rows = {
+            requirement_id: next(
+                line for line in rtm.splitlines() if line.startswith(f"| {requirement_id} |")
+            )
+            for requirement_id in ("PRD-NFR-002", "PRD-NFR-003", "PRD-NFR-006", "PRD-NFR-011")
+        }
+        self.assertIn("phase-1-security-negative-result.json", nfr_rows["PRD-NFR-002"])
+        self.assertNotIn("WBS-026 및 후속", nfr_rows["PRD-NFR-002"])
+        self.assertIn("vg-014-budget-cancel-result.json", nfr_rows["PRD-NFR-003"])
+        self.assertNotIn("WBS-024·WBS-028과 VG-014가 남아", nfr_rows["PRD-NFR-003"])
+        for requirement_id in ("PRD-NFR-006", "PRD-NFR-011"):
+            self.assertIn("vg-015-trace-manifest-result.json", nfr_rows[requirement_id])
+            self.assertNotIn("VG-015 미실행", nfr_rows[requirement_id])
         for required in (
             "23개",
             "20개",

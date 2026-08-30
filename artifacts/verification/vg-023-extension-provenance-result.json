@@ -76,7 +76,7 @@
     "schema_sha256": "d0e66f02be956c7ce404914070a60ae568a54aa7230c1e767472193d4044476b",
     "suite_sha256": "9fe888a2ecff2d9015bb7df45e0e233c34e7792dea2af3d5b11ca1c3af02a81a"
   },
-  "observed_at": "2026-07-31T08:55:45Z",
+  "observed_at": "2026-08-30T02:25:26Z",
   "profile_id": "forgeops-evidence-contract",
   "status": "PASSED",
   "summary": {

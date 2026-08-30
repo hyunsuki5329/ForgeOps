@@ -4,7 +4,7 @@
 **최종 검토일:** 2026-07-14
 **대상 독자:** 1인 개발자, 포트폴리오 검토자
 **기준 출처:** [ForgeOps 제품 요구사항 문서](../product/prd.md), [ForgeOps 시스템 아키텍처](../architecture/system-architecture.md), [ForgeOps 제품 기초 문서 체계 설계](../superpowers/specs/2026-07-14-forgeops-product-documentation-design.md), [ForgeOps 전체 제품 핸드오프](../handoff/forgeops-full-handoff.md)
-**현재 상태:** Portable Harness Foundation의 exact authority와 evidence 계약, Phase 0 및 W5~W8의 로컬 검증 slice가 구현됐다. W9의 fail-closed aggregation은 23개 union, 20개 security-negative와 19개 required-evidence를 exact registry로 검증하고 8개 normalized effect counter의 zero invariant를 강제하도록 구현됐지만, protected `main` merge SHA에서 실행된 current 2-job E3 증빙은 아직 없다. 따라서 WBS-026~WBS-028과 Phase 1 safety gate는 계속 `NOT_RUN`이며 W10/VG-024/Phase 1 Exit도 범위 밖이다.
+**현재 상태:** Portable Harness Foundation의 exact authority와 evidence 계약, Phase 0 및 W5~W9의 검증 slice가 구현됐다. protected `main` run `33287890009`는 source/workflow SHA `ff16f39d74861710c5500d81045c46512ee8d589`에서 23개 union, 20/20 security-negative와 19/19 required-evidence를 검증하고 8개 normalized effect counter가 모두 0인 Phase 1 safety gate `READY`를 기록했다. 따라서 WBS-026~WBS-028은 `WBS_DONE`이며 W10, VG-024와 Phase 1 Exit는 별도 미완료 범위다.
 
 ## 1. 목적과 방법
 
@@ -280,3 +280,7 @@ evidence가 필요하다. 다음 변경 규칙을 적용한다.
 - [Main Orchestrator Protocol 2.0](../../.github/agents/main_instruction.prompt.md) — canonical state, authority, evidence와 human gate 불변식
 - [Part Analyst 역할 계약](../../.github/agents/part_agent.prompt.md) — read-only discovery와 비신뢰 입력 경계
 - [Work Executor 역할 계약](../../.github/agents/work_agent.prompt.md) — exact action preflight, 실행, fresh evidence와 residual risk 경계
+
+## W9 protected-main threat checkpoint (2026-08-30)
+
+Protected-main run `33287890009` at source/workflow SHA `ff16f39d74861710c5500d81045c46512ee8d589` verified the signed `forgeops-phase1-evidence-33287890009-1` artifact through the isolated two-job Linux E3 boundary. The exact 20/20 security-negative cases and 19/19 required-evidence criteria passed; unauthorized execution, approval bypass, containment/egress escape, injection acceptance, raw-secret occurrence, cleanup failure, evidence-integrity failure, and external write counters were all 0. These observations close the W9 threat checkpoint without claiming that W10, VG-024, the Phase 1 Exit, deployment, publication, or release risks are closed.

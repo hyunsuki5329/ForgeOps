@@ -193,13 +193,13 @@
   "evidence_tier": "E2",
   "gate_id": "VG-012",
   "input_hashes": {
-    "context_schema": "b9e22c4bc0f5fe25df7cc67b7abe19c0a9ebc9e3c01c102995feb46ee48fc48a",
+    "context_schema": "4cf5865e6147470afc06671a05a512f8404986c14b31026ef7fea74f80f9811e",
     "product_schema": "25056ed672952c95ccd4e1f944dd884a9de5a9886c6cd3b3a2b87ab2a6d8c9e4",
     "schema": "3724916b0d58d30d92bdac6f7c5fec20bd8fcf3148bf13dfb76df8c95f2cfe22",
-    "snapshot_schema": "2d0e16fcc65f96e24ba6eb075b74ed10f70c0161e250e35cf1a256a4f73dc3e0",
+    "snapshot_schema": "881ae532f821ad61fc4c57c0c285297fcaa124f7dd2336447f6879d05dc52bac",
     "suite": "570c4b60e417c3bdb9618abbf1aeec9414bf6f0c2f7bf21c19839908c282d144"
   },
-  "observed_at": "2026-08-02T08:18:04Z",
+  "observed_at": "2026-08-30T02:25:24Z",
   "profile_id": "forgeops-local-vertical",
   "result_version": "1.0",
   "status": "PASSED",

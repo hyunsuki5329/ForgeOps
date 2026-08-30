@@ -555,3 +555,7 @@ containment, durability, idempotency 또는 rollback을 보장하지 않는다.
 후속 위협 모델, 검증·평가 계획, WBS, RTM과 위험 등록부는 각 기준 문서가
 생성된 뒤 안정적인 ARC/PRD ID로 연결한다. 존재하지 않는 미래 경로나
 계획된 검증 명령을 현재 evidence reference로 기록하지 않는다.
+
+## W9 protected-main architecture checkpoint (2026-08-30)
+
+Protected-main run `33287890009` bound the two-job producer/verifier architecture to source and workflow SHA `ff16f39d74861710c5500d81045c46512ee8d589`. The verifier accepted exactly one signed `forgeops-phase1-evidence-33287890009-1` artifact, an exact 23-command registry, the 20-command security-negative subset, and the 19-command required-evidence subset. The resulting Phase 1 safety decision is `READY` with blockers 0 and all eight normalized effect counters at 0. This checkpoint validates the W9 evidence architecture only; the planned product runtime, W10 local demonstration, VG-024 public-safe package, Phase 1 Exit, deployment, and release remain outside the accepted boundary.

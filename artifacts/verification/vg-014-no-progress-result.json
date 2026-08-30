@@ -79,7 +79,7 @@
     "schema": "bfc64c48af63006b7a91d25a2def4d4811f466f972e2de379b5a0e9a1e1b6c09",
     "suite": "8ff793f3f70ecd156b60471a9c0a101fad85d2636ad8cfc62581f962173a33b7"
   },
-  "observed_at": "2026-08-18T16:56:55Z",
+  "observed_at": "2026-08-30T02:25:25Z",
   "profile_id": "forgeops-lifecycle-budget",
   "result_version": "1.0",
   "status": "PASSED",

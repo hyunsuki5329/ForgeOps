@@ -280,3 +280,7 @@ evidence가 필요하다. 다음 변경 규칙을 적용한다.
 - [Main Orchestrator Protocol 2.0](../../.github/agents/main_instruction.prompt.md) — canonical state, authority, evidence와 human gate 불변식
 - [Part Analyst 역할 계약](../../.github/agents/part_agent.prompt.md) — read-only discovery와 비신뢰 입력 경계
 - [Work Executor 역할 계약](../../.github/agents/work_agent.prompt.md) — exact action preflight, 실행, fresh evidence와 residual risk 경계
+
+## W9 protected-main threat checkpoint (2026-08-30)
+
+Protected-main run `33287890009` at source/workflow SHA `ff16f39d74861710c5500d81045c46512ee8d589` verified the signed `forgeops-phase1-evidence-33287890009-1` artifact through the isolated two-job Linux E3 boundary. The exact 20/20 security-negative cases and 19/19 required-evidence criteria passed; unauthorized execution, approval bypass, containment/egress escape, injection acceptance, raw-secret occurrence, cleanup failure, evidence-integrity failure, and external write counters were all 0. These observations close the W9 threat checkpoint without claiming that W10, VG-024, the Phase 1 Exit, deployment, publication, or release risks are closed.

@@ -72,7 +72,7 @@
     "schema": "e76413cea2fc1007315c1c36740e1ecaa292197ed76b9be2b9a23fe25189d30b",
     "suite": "c7f451850a8eaca964ba322e9144898a0e585e7444f14b75007b8d924546cc0e"
   },
-  "observed_at": "2026-08-18T15:32:35Z",
+  "observed_at": "2026-08-30T02:25:25Z",
   "profile_digest": "cf779479dd356af4006bc3862e179174f724cde3dceed7c02b72970a97f49cdb",
   "profile_id": "forgeops-patch-verification",
   "result_version": "1.0",

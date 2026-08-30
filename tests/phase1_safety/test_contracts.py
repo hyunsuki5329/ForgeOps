@@ -177,7 +177,7 @@ class Phase1SafetyContractTests(unittest.TestCase):
         self.assertEqual(1, len(selected))
         self.assertEqual(list(expected), selected[0]["command_ids"])
 
-    def test_stage_a_docs_keep_w9_incomplete_until_protected_main_evidence_import(self):
+    def test_stage_b_docs_record_protected_main_evidence_and_close_only_w9(self):
         documents = {
             relative: (ROOT / relative).read_text(encoding="utf-8")
             for relative in (
@@ -191,8 +191,22 @@ class Phase1SafetyContractTests(unittest.TestCase):
         wbs = documents["docs/project/wbs.md"]
         for wbs_id in ("WBS-026", "WBS-027", "WBS-028"):
             row = next(line for line in wbs.splitlines() if line.startswith(f"| {wbs_id} |"))
-            self.assertIn("| WBS_NOT_STARTED |", row)
+            self.assertIn("| WBS_DONE |", row)
         combined = "\n".join(documents.values())
+        self.assertIn("33287890009", combined)
+        self.assertIn("ff16f39d74861710c5500d81045c46512ee8d589", combined)
+        self.assertIn("forgeops-phase1-evidence-33287890009-1", combined)
+        self.assertIn("20/20", combined)
+        self.assertIn("19/19", combined)
+        for relative in (
+            "docs/architecture/system-architecture.md",
+            "docs/security/threat-model.md",
+        ):
+            self.assertIn("33287890009", documents[relative])
+            self.assertIn(
+                "ff16f39d74861710c5500d81045c46512ee8d589",
+                documents[relative],
+            )
         for required in (
             "23개",
             "20개",

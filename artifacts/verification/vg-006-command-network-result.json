@@ -556,7 +556,7 @@
   ],
   "catalog_match": true,
   "command_id": "command-network-negative",
-  "observed_at": "2026-07-31T08:55:40Z",
+  "observed_at": "2026-08-30T02:25:15Z",
   "schema_sha256": "f7efb70700f16d93fa9b37c76140fa9a624e0f573625423b8b39637409b27a0c",
   "status": "PASSED",
   "suite_sha256": "d51e266c84b2fd701e9f7c51c2db1ce8b6256962041532ca73524b819a613963",

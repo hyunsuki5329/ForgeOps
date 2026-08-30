@@ -101,6 +101,21 @@ def _load_json(path: Path) -> object:
         raise VerificationError("VERIFIER_INPUT_INVALID") from exc
 
 
+def _runtime_schema(
+    schema: object,
+    schema_path: Path,
+    expected_id: str,
+) -> dict[str, object]:
+    if not isinstance(schema, dict) or schema.get("$id") != expected_id:
+        raise VerificationError("VERIFIER_INPUT_INVALID")
+    normalized = copy.deepcopy(schema)
+    try:
+        normalized["$id"] = schema_path.resolve(strict=True).as_uri()
+    except (OSError, ValueError) as exc:
+        raise VerificationError("VERIFIER_INPUT_INVALID") from exc
+    return normalized
+
+
 def atomic_write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
@@ -501,7 +516,8 @@ def run(args: argparse.Namespace, *, repository_root: Path = REPOSITORY_ROOT) ->
             Draft202012Validator.check_schema(loaded[name])
     except Exception as exc:
         raise VerificationError("VERIFIER_INPUT_INVALID") from exc
-    suite = _validate_suite(loaded["suite"], loaded["schema"])
+    suite_schema = _runtime_schema(loaded["schema"], paths["schema"], SCHEMA_REF)
+    suite = _validate_suite(loaded["suite"], suite_schema)
     source_before = _tree_hash(repository_root)
     evaluated = [
         _evaluate_case(case, suite["base_fixture"], loaded["product_schema"])

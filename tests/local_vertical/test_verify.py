@@ -45,6 +45,16 @@ class LocalVerticalVerifierTests(unittest.TestCase):
     def result_path(self):
         return self.repository / namespace().result
 
+    def test_runtime_suite_schema_uses_absolute_local_id_without_mutating_contract(self):
+        schema_path = self.repository / namespace().schema
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+
+        normalized = verify._runtime_schema(schema, schema_path, namespace().schema)
+
+        self.assertEqual(namespace().schema, schema["$id"])
+        self.assertTrue(normalized["$id"].startswith("file:"))
+        self.assertTrue(normalized["$id"].endswith("/contracts/forgeops-local-vertical/1.0/schema.json"))
+
     def test_registered_run_writes_closed_public_safe_result_atomically(self):
         result_path = self.result_path()
         result_path.parent.mkdir(parents=True)

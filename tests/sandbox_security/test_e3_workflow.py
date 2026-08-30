@@ -188,6 +188,15 @@ class E3WorkflowPolicyTests(unittest.TestCase):
         for forbidden in ("| sh", "| bash", "get.docker.com", "apt-key", "trusted=yes", "add-apt-repository", "--privileged"):
             self.assertNotIn(forbidden, install)
 
+    def test_build_step_disables_automatic_build_record_artifact(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        build = text.split("- name: Build and push fixed probe image", 1)[1].split(
+            "- name: Seal build outputs", 1
+        )[0]
+
+        self.assertIn("DOCKER_BUILD_RECORD_UPLOAD: false", build)
+        self.assertEqual(1, text.count("DOCKER_BUILD_RECORD_UPLOAD"))
+
     def test_verify_job_installs_version_matched_rootless_prerequisites_before_configuration(self):
         text = WORKFLOW.read_text(encoding="utf-8")
         install = text.split("- name: Install rootless Docker prerequisites", 1)[1].split(

@@ -201,6 +201,7 @@ class E3WorkflowPolicyTests(unittest.TestCase):
         self.assertIn("sudo apt-get update", install)
         self.assertIn("dpkg-query --show --showformat='${Version}' docker-ce-cli", install)
         self.assertIn("apt-cache policy uidmap", install)
+        self.assertIn("apt-cache policy slirp4netns", install)
         self.assertIn("apt-cache madison docker-ce-rootless-extras", install)
         self.assertIn(
             "uidmap_version=\"$(apt-cache policy uidmap | awk '/Candidate:/ { print $2; exit }')\" || prerequisite_fail \"E3_ROOTLESS_UIDMAP_VERSION_UNAVAILABLE\" 41",
@@ -211,7 +212,9 @@ class E3WorkflowPolicyTests(unittest.TestCase):
             install,
         )
         self.assertIn('"uidmap=$uidmap_version"', install)
+        self.assertIn('"slirp4netns=$slirp4netns_version"', install)
         self.assertIn('"docker-ce-rootless-extras=$docker_version"', install)
+        self.assertIn("command -v slirp4netns", install)
         self.assertIn("--no-install-recommends", install)
         self.assertIn('sudo systemctl start "user@$runner_uid.service"', install)
         self.assertIn('test -S "$XDG_RUNTIME_DIR/bus"', install)
@@ -224,6 +227,7 @@ class E3WorkflowPolicyTests(unittest.TestCase):
             "E3_ROOTLESS_USER_SESSION_FAILED": 44,
             "E3_ROOTLESS_RUNTIME_DIR_INVALID": 45,
             "E3_ROOTLESS_USER_BUS_MISSING": 46,
+            "E3_ROOTLESS_SLIRP_VERSION_UNAVAILABLE": 52,
         }
         for reason, code in expected_failures.items():
             with self.subTest(reason=reason):

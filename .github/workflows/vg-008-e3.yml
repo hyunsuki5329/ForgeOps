@@ -209,14 +209,17 @@ jobs:
           sudo apt-get update || prerequisite_fail "E3_ROOTLESS_REPOSITORY_UPDATE_FAILED" 51
           docker_version="$(dpkg-query --show --showformat='${Version}' docker-ce-cli)" || prerequisite_fail "E3_ROOTLESS_DOCKER_CLI_VERSION_UNAVAILABLE" 40
           uidmap_version="$(apt-cache policy uidmap | awk '/Candidate:/ { print $2; exit }')" || prerequisite_fail "E3_ROOTLESS_UIDMAP_VERSION_UNAVAILABLE" 41
+          slirp4netns_version="$(apt-cache policy slirp4netns | awk '/Candidate:/ { print $2; exit }')" || prerequisite_fail "E3_ROOTLESS_SLIRP_VERSION_UNAVAILABLE" 52
           rootless_version="$(apt-cache madison docker-ce-rootless-extras | awk -v expected="$docker_version" '$3 == expected { print $3; exit }')" || prerequisite_fail "E3_ROOTLESS_EXTRAS_VERSION_MISMATCH" 42
           [[ "$docker_version" =~ ^[0-9A-Za-z.+:~_-]+$ ]] || prerequisite_fail "E3_ROOTLESS_DOCKER_CLI_VERSION_UNAVAILABLE" 40
           [[ "$uidmap_version" =~ ^[0-9A-Za-z.+:~_-]+$ ]] || prerequisite_fail "E3_ROOTLESS_UIDMAP_VERSION_UNAVAILABLE" 41
+          [[ "$slirp4netns_version" =~ ^[0-9A-Za-z.+:~_-]+$ ]] || prerequisite_fail "E3_ROOTLESS_SLIRP_VERSION_UNAVAILABLE" 52
           test "$rootless_version" = "$docker_version" || prerequisite_fail "E3_ROOTLESS_EXTRAS_VERSION_MISMATCH" 42
-          sudo apt-get install --yes --no-install-recommends "uidmap=$uidmap_version" "docker-ce-rootless-extras=$docker_version" || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
+          sudo apt-get install --yes --no-install-recommends "uidmap=$uidmap_version" "slirp4netns=$slirp4netns_version" "docker-ce-rootless-extras=$docker_version" || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
           command -v dockerd-rootless-setuptool.sh >/dev/null || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
           command -v newuidmap >/dev/null || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
           command -v newgidmap >/dev/null || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
+          command -v slirp4netns >/dev/null || prerequisite_fail "E3_ROOTLESS_PACKAGE_INSTALL_FAILED" 43
           runner_uid="$(id -u)"
           test "$runner_uid" -ne 0 || prerequisite_fail "E3_ROOTLESS_USER_SESSION_FAILED" 44
           export XDG_RUNTIME_DIR="/run/user/$runner_uid"
